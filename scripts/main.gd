@@ -207,7 +207,7 @@ func _ready() -> void:
 	var bg_court = Sprite2D.new()
 	bg_court.name = "BackgroundCourt"
 	bg_court.texture = preload("res://assets/images/stadium_court.png")
-	bg_court.position = Vector2(640.0, 360.0)
+	bg_court.position = Vector2(640.0, 365.0)
 	bg_court.scale = Vector2(1280.0 / 1920.0, 720.0 / 1080.0)
 	bg_court.z_index = -100
 	add_child(bg_court)
