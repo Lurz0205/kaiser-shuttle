@@ -721,8 +721,8 @@ func _setup_serve(server: String) -> void:
 		if ai_rival.ai_pressure_model:
 			ai_rival.ai_pressure_model.reset()
 	
-	player.reset_position(360.0, FLOOR_Y)
-	ai_rival.reset_position(920.0, FLOOR_Y)
+	player.reset_position(390.0, FLOOR_Y)
+	ai_rival.reset_position(890.0, FLOOR_Y)
 	
 	# Movement strictly locked during serve
 	player.is_serving_phase = true
@@ -1350,6 +1350,21 @@ func _on_aoi_shield_draw() -> void:
 		aoi_shield.draw_circle(spark_pos, spark_r, Color(0.75, 0.95, 1.0, alpha * 0.90))
 
 
+func _show_landing_callout(pos: Vector2, is_in: bool) -> void:
+	var callout = Label.new()
+	callout.text = "[ IN ]" if is_in else "[ OUT ]"
+	callout.modulate = Color(0.25, 1.2, 0.45, 1.0) if is_in else Color(1.2, 0.25, 0.25, 1.0)
+	callout.add_theme_font_size_override("font_size", 22)
+	callout.position = Vector2(pos.x - 30.0, FLOOR_Y - 45.0)
+	callout.z_index = 85
+	add_child(callout)
+	
+	var tween = create_tween().set_parallel(true)
+	tween.tween_property(callout, "position:y", FLOOR_Y - 75.0, 0.85).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	tween.tween_property(callout, "modulate:a", 0.0, 0.85).set_delay(0.25)
+	tween.chain().tween_callback(callout.queue_free)
+
+
 func _on_shuttlecock_landed(pos: Vector2, _floor_3d: Vector3 = Vector3.ZERO) -> void:
 	if current_state != MatchState.RALLY:
 		return
@@ -1373,29 +1388,36 @@ func _on_shuttlecock_landed(pos: Vector2, _floor_3d: Vector3 = Vector3.ZERO) -> 
 			if pos.x < SHORT_SERVICE_RIGHT:
 				point_winner = "ai"
 				reason = "GIAO CẦU CHƯA QUA VẠCH! ĐIỂM CHO RIVAL AI"
+				_show_landing_callout(pos, false)
 			elif pos.x > RIGHT_OUT_X:
 				point_winner = "ai"
 				reason = "GIAO CẦU NGOÀI BIÊN! ĐIỂM CHO RIVAL AI"
+				_show_landing_callout(pos, false)
 			else:
 				point_winner = "player"
 				reason = "ACE! ĐIỂM GIAO CẦU CHO PLAYER!"
+				_show_landing_callout(pos, true)
 		else:
 			# AI phát cầu: phải qua vạch SHORT_SERVICE_LEFT (450px) và không ra ngoài
 			if pos.x > SHORT_SERVICE_LEFT:
 				point_winner = "player"
 				reason = "GIAO CẦU CHƯA QUA VẠCH! ĐIỂM CHO PLAYER"
+				_show_landing_callout(pos, false)
 			elif pos.x < LEFT_OUT_X:
 				point_winner = "player"
 				reason = "GIAO CẦU NGOÀI BIÊN! ĐIỂM CHO PLAYER"
+				_show_landing_callout(pos, false)
 			else:
 				point_winner = "ai"
 				reason = "ACE! ĐIỂM GIAO CẦU CHO RIVAL AI!"
+				_show_landing_callout(pos, true)
 		
 		_award_point(point_winner, reason)
 		return
 	
 	# 2. RALLY BÌNH THƯỜNG
 	if shuttlecock.is_net_fault:
+		_show_landing_callout(pos, false)
 		if shuttlecock.last_hitter == "player":
 			point_winner = "ai"
 			reason = "CẦU KHÔNG QUA LƯỚI! ĐIỂM CHO RIVAL AI"
@@ -1403,6 +1425,7 @@ func _on_shuttlecock_landed(pos: Vector2, _floor_3d: Vector3 = Vector3.ZERO) -> 
 			point_winner = "player"
 			reason = "CẦU KHÔNG QUA LƯỚI! ĐIỂM CHO PLAYER"
 	elif pos.x < LEFT_OUT_X or pos.x > RIGHT_OUT_X:
+		_show_landing_callout(pos, false)
 		if shuttlecock.last_hitter == "player":
 			point_winner = "ai"
 			reason = "NGOÀI BIÊN! ĐIỂM CHO RIVAL AI"
@@ -1411,6 +1434,7 @@ func _on_shuttlecock_landed(pos: Vector2, _floor_3d: Vector3 = Vector3.ZERO) -> 
 			reason = "NGOÀI BIÊN! ĐIỂM CHO PLAYER"
 	else:
 		# In court
+		_show_landing_callout(pos, true)
 		if pos.x < NET_X:
 			point_winner = "ai"
 			reason = "ĐIỂM CHO RIVAL AI!"
