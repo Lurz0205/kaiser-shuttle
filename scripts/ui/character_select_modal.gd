@@ -21,7 +21,7 @@ var card_nodes: Dictionary = {}
 const CHAR_DATA = {
 	"nishikawa": {
 		"name": "NISHIKAWA",
-		"title": "The Golden Cannon",
+		"title": "Tia chớp vàng",
 		"archetype": "TẤN CÔNG BÙNG NỔ",
 		"color": Color(1.0, 0.78, 0.18, 1.0),
 		"icon_type": CustomIcon.IconType.LIGHTNING,
@@ -34,7 +34,7 @@ const CHAR_DATA = {
 	},
 	"fuji": {
 		"name": "FUJI",
-		"title": "The Maestro",
+		"title": "Cơn lốc xanh",
 		"archetype": "KỸ THUẬT BIẾN ẢO",
 		"color": Color(0.2, 0.88, 0.55, 1.0),
 		"icon_type": CustomIcon.IconType.FEATHER,
@@ -43,11 +43,11 @@ const CHAR_DATA = {
 		"control": 96,
 		"composure": 86,
 		"skill_name": "Tsubame Gaeshi",
-		"skill_desc": "Én lượn trở về - Cắt xoáy sà sát mép lưới, góc lượn gục hiểm hóc sát chân lưới!"
+		"skill_desc": "Cơn lốc xanh - Cắt xoáy lướt sà mép lưới, góc lượn gục hiểm hóc sát chân lưới!"
 	},
 	"wall": {
-		"name": "AOI",
-		"title": "The Wall",
+		"name": "ISABEL",
+		"title": "Nữ hoàng của đấu trường La Mã",
 		"archetype": "BỨC TƯỜNG PHÒNG THỦ",
 		"color": Color(0.25, 0.65, 1.0, 1.0),
 		"icon_type": CustomIcon.IconType.SHIELD,
@@ -55,8 +55,8 @@ const CHAR_DATA = {
 		"agility": 88,
 		"control": 85,
 		"composure": 96,
-		"skill_name": "Mirage Counter",
-		"skill_desc": "Hóa giải cú smash, bung cầu cao nhanh về cuối sân và lập tức hồi 20% thể lực!"
+		"skill_name": "Mirage Shield",
+		"skill_desc": "Khiên La Mã - Hóa giải cú đập smash của đối thủ, bung cầu cao sâu và lập tức hồi 20% thể lực!"
 	}
 }
 
