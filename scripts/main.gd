@@ -395,6 +395,7 @@ func _on_menu_start_match(p_id: String, r_id: String, diff: int, target_points: 
 		if ai_rival.stats:
 			ai_rival.stats.reset_stamina()
 			ai_rival.stats.reset_torque()
+		ai_rival.reset_in_match_learning()
 		set_ai_difficulty(diff)
 		
 	# Cập nhật tên huy hiệu trên HUD
@@ -596,6 +597,8 @@ func _process(delta: float) -> void:
 		score_player = 0
 		score_ai = 0
 		_update_scoreboard()
+		if ai_rival:
+			ai_rival.reset_in_match_learning()
 		_setup_serve("player")
 		if sfx_low_ball_play:
 			sfx_low_ball_play.play()
@@ -636,7 +639,9 @@ func _play_umpire_opening_call(server: String = "player") -> void:
 	is_umpire_speaking = true
 	if sfx_low_ball_play:
 		sfx_low_ball_play.play()
-	_show_banner("TRỌNG TÀI: \"LOVE ALL, PLAY!\"", Color(1.0, 0.88, 0.35))
+	if label_banner:
+		label_banner.visible = false
+		label_banner.text = ""
 	
 	get_tree().create_timer(1.7).timeout.connect(func():
 		is_umpire_speaking = false
@@ -721,7 +726,9 @@ func _setup_serve(server: String) -> void:
 	prev_shuttle_x = serve_pos.x
 	
 	if is_umpire_speaking:
-		_show_banner("TRỌNG TÀI: \"LOVE ALL, PLAY!\"", Color(1.0, 0.88, 0.35))
+		if label_banner:
+			label_banner.visible = false
+			label_banner.text = ""
 	else:
 		var server_name = "PLAYER" if server == "player" else "RIVAL AI"
 		_show_banner("%s GIAO CẦU (BẤM J HOẶC K)" % server_name, Color(1.0, 1.0, 1.0))
@@ -815,6 +822,8 @@ func _on_shot_hit(shot_type: String, is_smash: bool, quality: float, is_perfect:
 	if ai_rival:
 		ai_rival.current_tension_mult = tension_mult
 		ai_rival.current_tension_level = tension_lvl
+		if hitter == "player":
+			ai_rival.record_opponent_shot(shot_type, contact_pos.x)
 		if ai_rival.ai_pressure_model:
 			if (is_smash or shot_type == "smash" or shot_type == "boom_smash") and hitter == "player":
 				ai_rival.ai_pressure_model.on_opponent_smash(shot_type == "boom_smash")
@@ -1590,6 +1599,7 @@ func _on_match_over_play_again() -> void:
 	if ai_rival and ai_rival.stats:
 		ai_rival.stats.reset_stamina()
 		ai_rival.stats.reset_torque()
+		ai_rival.reset_in_match_learning()
 	_setup_serve("player")
 	_play_umpire_opening_call("player")
 
