@@ -886,8 +886,10 @@ func _process_ai(delta: float) -> void:
 	
 	# 4. AI CHỦ ĐỘNG BẬT NHẢY SMASH (JUMP SMASH INTERCEPTION)
 	# Không nhảy nếu AI phán đoán cầu bay Out!
-	# Và KIỂM TRA THỂ LỰC & ACCURACY: AI kiệt sức (Stamina < 25% hoặc Accuracy < 35%) thì KHÔNG nhảy smash điên cuồng nữa!
-	var is_exhausted = stats and (stats.stamina < 25.0 or stats.accuracy < 35.0)
+	# Và KIỂM TRA THỂ LỰC & ACCURACY:
+	# AI KHÓ (Hard): Bậc thầy kiểm soát thể lực, nếu Stamina < 48% thì tuyệt đối dừng nhảy đập phông thường
+	# để bảo toàn thể lực trong các pha cầu bền bỉ, chỉ bật nhảy khi có cơ hội cầu non (Chance Ball)!
+	var is_exhausted = stats and (stats.stamina < (48.0 if ai_difficulty == 2 else 25.0) or stats.accuracy < 35.0)
 	if is_on_ground() and can_hit and not ai_judges_out and not is_exhausted and not shuttlecock.is_smash and not shuttlecock.is_boom_smash and not shuttlecock.is_kill_smash:
 		var is_chance_ball_drop = (shuttlecock.is_weak_return or shuttlecock.current_shot_type == "weak_return")
 		var is_high_clear = (shuttlecock.current_shot_type == "clear" or shuttlecock.current_shot_type == "underhand_lift")
@@ -910,11 +912,13 @@ func _process_ai(delta: float) -> void:
 						stats.consume_stamina_action(5.0)
 		elif is_high_clear and ai_difficulty > 0:
 			# ĐÓN BẬT NHẢY ĐẬP PHÔNG CẦU CAO SÂU (CLEAR / LIFT JUMP SMASH):
+			# AI Hard chỉ nhảy nếu thể lực dồi dào (> 52%)
+			var ai_stamina_ok = (stats.stamina >= 52.0) if (ai_difficulty == 2 and stats) else true
 			var is_close_x = dist_x_shuttle <= 75.0
 			var is_in_range_x = (s_pos.x > 760.0 and s_pos.x < 1120.0)
 			var is_dropping_overhead = (s_pos.y >= 190.0 and s_pos.y <= 320.0 and shuttlecock.velocity.y > 0.0)
 			
-			if is_close_x and is_in_range_x and is_dropping_overhead:
+			if ai_stamina_ok and is_close_x and is_in_range_x and is_dropping_overhead:
 				var jump_chance = 0.88 if ai_difficulty == 2 else 0.50
 				if randf() < jump_chance:
 					velocity.y = JUMP_FORCE
@@ -1017,11 +1021,15 @@ func _process_ai(delta: float) -> void:
 		
 		# ==========================================================
 		# KIỂM TRA LỖI RÚC LƯỚI KHI BỊ DỒN ÉP CỰC HẠN (CHỈ KHI ACCURACY < 50%)
-		# (Tuyệt đối không tự ý bắn cầu ra ngoài biên)
+		# CHỈ ĐẬP HỎNG RÚC LƯỚI NẾU AI ĐANG TRÊN KHÔNG CỐ SMASH!
+		# TUYỆT ĐỐI KHÔNG RÚC LƯỚI KHI ĐỠ HOẶC BỎ NHỎ -> Biến thành bung cầu non (Chance Ball) cho người chơi
 		# ==========================================================
 		var ai_acc_fault = stats.accuracy if stats else 100.0
 		if ai_acc_fault < 50.0 and ai_pressure_model and ai_pressure_model.should_net_fault(ai_difficulty, ai_acc_fault):
-			_execute_fault_smash_into_net(hit_status)
+			if in_air and zone == "overhead":
+				_execute_fault_smash_into_net(hit_status)
+			else:
+				_execute_hit("weak_return", hit_status)
 			return
 		
 		# ==========================================================
@@ -1043,6 +1051,16 @@ func _process_ai(delta: float) -> void:
 				return
 				
 		var is_high_clear_lob = (shuttlecock.current_shot_type == "clear" or shuttlecock.current_shot_type == "underhand_lift")
+		
+		# CHIẾN THUẬT TIẾT KIỆM THỂ LỰC CỦA AI KHÓ TRONG PHA CẦU DÀI:
+		# Khi Stamina < 50%, AI Hard chủ động phông sâu cao vút (Clear / Lift) để đối thủ phải lùi xa,
+		# đồng thời kéo dài thời gian bay để AI kịp hồi phục thể lực (+9/s khi đứng yên/di chuyển chậm)
+		if ai_difficulty == 2 and stats and stats.stamina < 50.0:
+			if zone == "underhand":
+				_execute_hit("underhand_lift", hit_status)
+			else:
+				_execute_hit("clear", hit_status)
+			return
 		
 		# A. NẾU AI ĐANG TRÊN KHÔNG (CHỦ ĐỘNG NHẢY ĐẬP CẦU BỔNG):
 		if in_air:
