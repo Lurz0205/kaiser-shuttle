@@ -678,7 +678,8 @@ func _trigger_shot(shot_pressed: String, hit_status: Dictionary) -> void:
 	var is_incoming_smash = (shuttlecock.is_smash or shuttlecock.is_boom_smash or shuttlecock.is_kill_smash or shuttlecock.current_shot_type == "kill_smash")
 	var is_incoming_chance = (shuttlecock.is_weak_return or shuttlecock.current_shot_type == "weak_return")
 	var is_wall_counter = stats and (stats.character_id == "wall" or stats.special_skill_id == "mirage_counter") and stats.can_use_special()
-	var is_wall_counter_eligible = (is_incoming_smash or is_incoming_chance) and is_wall_counter
+	# Mirage Counter chỉ dùng để thủ phản đòn khi đối phương SMASH, KHÔNG kích hoạt khi đối phương bung Cầu Non (Chance Ball)!
+	var is_wall_counter_eligible = is_incoming_smash and is_wall_counter
 	var s_h = current_ground_y - shuttlecock.global_position.y
 	var is_in_air = not is_on_ground() and global_position.y < current_ground_y - 25.0
 	
@@ -688,12 +689,12 @@ func _trigger_shot(shot_pressed: String, hit_status: Dictionary) -> void:
 			shot_whiffed.emit()
 			return
 		
-		# CHỈ ĐẬP KHI Ở TRÊN ĐẦU HOẶC ĐANG NHẢY:
+		# CHỈ ĐẬP KHI Ở TRÊN ĐẦU HOẶC ĐANG NHẢY HOẶC KHI ĐỐI THỦ BUNG CẦU NON (CHANCE BALL):
 		var is_high_reach = (hit_status["zone"] == "overhead" and s_h >= 130.0)
 		var is_air_smash = (is_in_air and s_h >= 120.0)
-		if is_wall_counter and (is_incoming_smash or is_incoming_chance):
+		if is_wall_counter and is_incoming_smash:
 			_execute_hit("mirage_counter", hit_status)
-		elif is_air_smash or is_high_reach:
+		elif is_air_smash or is_high_reach or is_incoming_chance:
 			_execute_hit("smash", hit_status)
 		else:
 			_execute_fault_smash_into_net(hit_status)
@@ -1028,13 +1029,8 @@ func _process_ai(delta: float) -> void:
 		# ==========================================================
 		var is_chance_ball_incoming = (shuttlecock.is_weak_return or shuttlecock.current_shot_type == "weak_return")
 		if is_chance_ball_incoming:
-			# NẾU AI LÀ THE WALL VÀ ĐẦY FLOW: KÍCH HOẠT TUYỆT KỸ MIRAGE COUNTER KHI ĐỠ CẦU CHANCE!
-			if stats and (stats.character_id == "wall" or stats.special_skill_id == "mirage_counter") and stats.can_use_special():
-				stats.prime_special()
-				_execute_hit("mirage_counter", hit_status)
-				return
+			# NẾU LÀ CẦU NON CHANCE BALL: AI chủ động đập dứt điểm hoặc bỏ nhỏ lừa người, KHÔNG kích hoạt khiên thủ Mirage Counter
 			if is_exhausted:
-				# Kiệt sức: AI không thể bật đập dũng mãnh, ưu tiên kê nhỏ hoặc phông cao hồi sức
 				_execute_hit("drop" if randf() < 0.65 else "clear", hit_status)
 				return
 			var smash_chance = 1.0 if ai_difficulty == 2 else (0.95 if ai_difficulty == 1 else 0.85)
@@ -1387,7 +1383,7 @@ func _execute_hit(shot_type: String, hit_status: Dictionary = {}) -> void:
 	# Cưỡng ép kích hoạt tuyệt kỹ Mirage Counter (dù bấm Smash, Drop hay Clear)!
 	var is_incoming_smash = shuttlecock and (shuttlecock.is_smash or shuttlecock.is_boom_smash or shuttlecock.is_kill_smash or shuttlecock.current_shot_type == "kill_smash")
 	var is_incoming_chance = shuttlecock and (shuttlecock.is_weak_return or shuttlecock.current_shot_type == "weak_return")
-	var is_wall_auto_counter = (is_incoming_smash or is_incoming_chance) and stats and (stats.character_id == "wall" or stats.special_skill_id == "mirage_counter") and stats.can_use_special()
+	var is_wall_auto_counter = is_incoming_smash and stats and (stats.character_id == "wall" or stats.special_skill_id == "mirage_counter") and stats.can_use_special()
 	if is_wall_auto_counter:
 		shot_type = "mirage_counter"
 	
