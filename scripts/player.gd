@@ -1441,12 +1441,20 @@ func _execute_hit(shot_type: String, hit_status: Dictionary = {}) -> void:
 	if is_incoming_smash:
 		var is_kill = shuttlecock and (shuttlecock.is_kill_smash or shuttlecock.current_shot_type == "kill_smash")
 		var is_nishikawa_attacker = opponent_player and opponent_player.stats and (opponent_player.stats.character_id == "nishikawa" or opponent_player.stats.special_skill_id == "golden_smash")
-		if is_nishikawa_attacker and shot_type != "mirage_counter":
-			# CÚ ĐẬP LÔI ĐÌNH CỦA NISHIKAWA: Giảm 50% Accuracy và 30% Thể lực của người đỡ (chấn động cổ tay cực mạnh)!
-			if stats:
-				stats.consume_stamina_action(30.0)
-				stats.accuracy = max(0.0, stats.accuracy - 50.0)
-			balance = max(10.0, balance - 35.0)
+		if is_nishikawa_attacker:
+			if shot_type == "mirage_counter":
+				# ĐỠ BẰNG ISABEL BLOCK (MIRAGE COUNTER):
+				# Chịu trừ 30% thể lực từ uy lực sấm sét của Nishikawa trước,
+				# sau đó mới được hồi lại +20% thể lực từ khiên Mirage Shield!
+				if stats:
+					stats.consume_stamina_action(30.0)
+			else:
+				# CÚ ĐẬP LÔI ĐÌNH CỦA NISHIKAWA ĐÁNH TRÚNG NGƯỜI ĐỠ THƯỜNG:
+				# Giảm 50% Accuracy và 30% Thể lực của người đỡ (chấn động cổ tay cực mạnh)!
+				if stats:
+					stats.consume_stamina_action(30.0)
+					stats.accuracy = max(0.0, stats.accuracy - 50.0)
+				balance = max(10.0, balance - 35.0)
 		elif is_kill:
 			if is_perfect or quality >= 0.85:
 				# NẾU MAY MẮN / CĂN CHUẨN ĐỠ ĐƯỢC KILL SMASH: LẬT KÈO!
@@ -1477,16 +1485,36 @@ func _execute_hit(shot_type: String, hit_status: Dictionary = {}) -> void:
 	if is_wall_auto_counter:
 		shot_type = "mirage_counter"
 	
-	# ĐỠ CÚ TSUBAME GAESHI CỦA FUJI: Xoáy cưa gắt làm chấn động cổ tay, tụt thăng bằng và ép bung cầu non!
+	# ==========================================================
+	# ĐỠ CÚ TSUBAME GAESHI CỦA FUJI (CÂN BẰNG NERF THEO YÊU CẦU):
+	# - Đỡ không làm mất thể lực, chỉ làm mất balance và 10% accuracy.
+	# - Đỡ bằng J/K bình thường (không phải trượt cứu cầu): chỉ có 30% tỉ lệ tạo chance ball
+	#   (nếu chỉ số thể lực/accuracy đang yếu thì cộng dồn tỉ lệ này).
+	# - Trượt cứu cầu: KHÔNG tạo chance ball (chỉ tạo chance ball khi chỉ số đang yếu).
+	# ==========================================================
 	var is_incoming_tsubame = not is_incoming_smash and shuttlecock and (shuttlecock.current_shot_type == "tsubame_gaeshi" or shuttlecock.is_tsubame_gaeshi)
 	if is_incoming_tsubame and shot_type != "mirage_counter":
 		if stats:
-			stats.consume_stamina_action(15.0)
-			stats.accuracy = max(5.0, stats.accuracy - 20.0)
+			stats.accuracy = max(5.0, stats.accuracy - 10.0)
 		balance = max(20.0, balance - 25.0)
-		# Nếu không phải Perfect hoặc phải với tay thấp dưới mép lưới: ép bung Cầu Non (Chance Ball)!
-		if not is_perfect or is_underhand:
-			shot_type = "weak_return"
+		
+		var is_diving_or_sliding = is_diving or is_sliding
+		if not is_diving_or_sliding:
+			var weak_extra = 0.0
+			if stats:
+				var acc_p = clamp((50.0 - stats.accuracy) / 50.0, 0.0, 1.0) if stats.accuracy < 50.0 else 0.0
+				var sta_p = clamp((35.0 - stats.stamina) / 35.0, 0.0, 1.0) if stats.stamina < 35.0 else 0.0
+				weak_extra = (acc_p * 0.25) + (sta_p * 0.25)
+			var chance_ball_rate = 0.30 + weak_extra
+			if randf() < chance_ball_rate:
+				shot_type = "weak_return"
+		else:
+			# Trượt cứu cầu: Chỉ tạo chance ball khi chỉ số đang yếu:
+			var cur_acc = stats.accuracy if stats else 100.0
+			var cur_sta = stats.stamina if stats else 100.0
+			if cur_acc < 50.0 or cur_sta < 20.0:
+				if randf() < 0.40:
+					shot_type = "weak_return"
 	
 	# KIỂM TRA LỖI ĐÁNH HỎNG (UNFORCED BLUNDER) KHI ACCURACY < 50% HOẶC STAMINA < 35%:
 	var blunder = "none"
