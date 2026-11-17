@@ -203,11 +203,12 @@ func _ready() -> void:
 	if aoi_shield:
 		aoi_shield.draw.connect(_on_aoi_shield_draw)
 	
-	# Background Court Texture (Sân đấu dạng ảnh tĩnh pre-baked thay thế toàn bộ vector)
+	# Background Court Texture (Sân đấu Full HD 1920x1080 dạng ảnh tĩnh siêu thực thay thế toàn bộ vector)
 	var bg_court = Sprite2D.new()
 	bg_court.name = "BackgroundCourt"
 	bg_court.texture = preload("res://assets/images/stadium_court.png")
 	bg_court.position = Vector2(640.0, 360.0)
+	bg_court.scale = Vector2(1280.0 / 1920.0, 720.0 / 1080.0)
 	bg_court.z_index = -100
 	add_child(bg_court)
 	move_child(bg_court, 0)
