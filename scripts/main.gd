@@ -56,14 +56,19 @@ var effects_overlay: Node2D = null
 @onready var flash_rect: ColorRect = $HUD/FlashRect
 @onready var grayscale_rect: ColorRect = $HUD/GrayscaleRect
 @onready var nishikawa_lightning: Node2D = $NishikawaLightning
-@onready var aoi_shield: Node2D = $AoiShield
+@onready var aoi_shield: Node2D = $IsabelShield
 
-# AOI Mirage Shield Barrier Effect
+# Isabel (The Wall) Mirage Shield Barrier Effect
 var aoi_shield_active: bool = false
 var aoi_shield_timer: float = 0.0
 var aoi_shield_duration: float = 1.55
 var aoi_shield_center: Vector2 = Vector2.ZERO
 var aoi_shield_start_ticks: int = 0
+
+# Match Rules & Target Points
+var target_match_points: int = 11
+var is_umpire_speaking: bool = false
+var match_over_dialog: PanelContainer = null
 
 # HUD Athletic Gauges (Stamina & Accuracy)
 var stamina_bar_bg_player: ColorRect
@@ -107,13 +112,13 @@ var main_menu: MainMenuController
 @onready var btn_hard: Button = $HUD/SettingsPanel/VBox/DifficultyRow/BtnHard
 @onready var btn_squeak: Button = $HUD/SettingsPanel/VBox/SqueakRow/BtnSqueak
 
-# Audio (Smash, Phong, Rít giày, Sấm sét, AOI Block & Slowmo, Dây vợt net, Gió Fuji, Chém cầu sau sân, Trọng tài)
+# Audio (Smash, Phong, Rít giày, Sấm sét, Isabel Block & Slowmo, Dây vợt net, Gió Fuji, Chém cầu sau sân, Trọng tài)
 @onready var sfx_smash: AudioStreamPlayer = $Audio/SFXSmash
 @onready var sfx_phong: AudioStreamPlayer = $Audio/SFXPong
 @onready var sfx_squeak: AudioStreamPlayer = $Audio/SFXSqueak
 @onready var sfx_electric: AudioStreamPlayer = $Audio/SFXElectric
-@onready var sfx_aoi_block: AudioStreamPlayer = $Audio/SFXAoiBlock
-@onready var sfx_aoi_slowmo: AudioStreamPlayer = $Audio/SFXAoiSlowmo
+@onready var sfx_aoi_block: AudioStreamPlayer = $Audio/SFXIsabelBlock
+@onready var sfx_aoi_slowmo: AudioStreamPlayer = $Audio/SFXIsabelSlowmo
 @onready var sfx_string: AudioStreamPlayer = $Audio/SFXString
 @onready var sfx_fuji_wind: AudioStreamPlayer = $Audio/SFXFujiWind
 @onready var sfx_chem: AudioStreamPlayer = $Audio/SFXChem
@@ -355,7 +360,10 @@ func _toggle_character_select() -> void:
 		main_menu.visible = true
 
 
-func _on_menu_start_match(p_id: String, r_id: String, diff: int) -> void:
+func _on_menu_start_match(p_id: String, r_id: String, diff: int, target_points: int = 11) -> void:
+	target_match_points = target_points
+	if match_over_dialog:
+		match_over_dialog.visible = false
 	_set_in_game_hud_visible(true)
 	if player:
 		match p_id:
@@ -391,10 +399,7 @@ func _on_menu_start_match(p_id: String, r_id: String, diff: int) -> void:
 	score_ai = 0
 	_update_scoreboard()
 	_setup_serve("player")
-	
-	# Báo hiệu bắt đầu trận đấu (Love all, play audio):
-	if sfx_low_ball_play:
-		sfx_low_ball_play.play()
+	_play_umpire_opening_call("player")
 		
 	# Dừng nhạc sảnh chờ khi vào trận (fade-out 0.8s)
 	if bgm_lobby and bgm_lobby.playing:
@@ -610,8 +615,31 @@ func _update_stats_display() -> void:
 		label_spike_stats.modulate = Color(3.0, 1.8, 0.3, 1.0)
 
 
+func _play_umpire_opening_call(server: String = "player") -> void:
+	is_umpire_speaking = true
+	if sfx_low_ball_play:
+		sfx_low_ball_play.play()
+	_show_banner("TRỌNG TÀI: \"LOVE ALL, PLAY!\"", Color(1.0, 0.88, 0.35))
+	
+	get_tree().create_timer(1.7).timeout.connect(func():
+		is_umpire_speaking = false
+		if current_state == MatchState.SERVE:
+			var server_name = "PLAYER" if server == "player" else "RIVAL AI"
+			_show_banner("%s GIAO CẦU (BẤM J HOẶC K)" % server_name, Color(1.0, 1.0, 1.0))
+			if server == "ai":
+				get_tree().create_timer(0.8).timeout.connect(func():
+					if current_state == MatchState.SERVE and current_server == "ai" and not is_umpire_speaking:
+						var is_short = randf() < 0.35
+						var shot_type = "drop" if is_short else "clear"
+						_execute_serve("ai", shot_type)
+				)
+	)
+
+
 func _process_serve_state() -> void:
 	if main_menu and main_menu.visible:
+		return
+	if is_umpire_speaking:
 		return
 	if current_server == "player":
 		if Input.is_key_pressed(KEY_K):
@@ -675,17 +703,20 @@ func _setup_serve(server: String) -> void:
 	shuttlecock.is_serve = false
 	prev_shuttle_x = serve_pos.x
 	
-	var server_name = "PLAYER" if server == "player" else "RIVAL AI"
-	_show_banner("%s GIAO CẦU (BẤM J HOẶC K)" % server_name, Color(1.0, 1.0, 1.0))
-	
-	# AI auto serve after 0.8s
-	if server == "ai":
-		get_tree().create_timer(0.8).timeout.connect(func():
-			if current_state == MatchState.SERVE and current_server == "ai":
-				var is_short = randf() < 0.35
-				var shot_type = "drop" if is_short else "clear"
-				_execute_serve("ai", shot_type)
-		)
+	if is_umpire_speaking:
+		_show_banner("TRỌNG TÀI: \"LOVE ALL, PLAY!\"", Color(1.0, 0.88, 0.35))
+	else:
+		var server_name = "PLAYER" if server == "player" else "RIVAL AI"
+		_show_banner("%s GIAO CẦU (BẤM J HOẶC K)" % server_name, Color(1.0, 1.0, 1.0))
+		
+		# AI auto serve after 0.8s
+		if server == "ai":
+			get_tree().create_timer(0.8).timeout.connect(func():
+				if current_state == MatchState.SERVE and current_server == "ai" and not is_umpire_speaking:
+					var is_short = randf() < 0.35
+					var shot_type = "drop" if is_short else "clear"
+					_execute_serve("ai", shot_type)
+			)
 
 
 func _execute_serve(server: String, shot_type: String = "clear") -> void:
@@ -1361,17 +1392,170 @@ func _award_point(winner: String, reason: String) -> void:
 	
 	_update_scoreboard()
 	
-	if score_player >= MATCH_POINT or score_ai >= MATCH_POINT:
-		var champ = "PLAYER" if score_player >= MATCH_POINT else "RIVAL AI"
-		_show_banner("[ %s CHIẾN THẮNG VÁN ĐẤU! ]" % champ, Color(3.0, 2.5, 0.4))
-		await get_tree().create_timer(2.2).timeout
-		score_player = 0
-		score_ai = 0
-		_update_scoreboard()
+	# ==========================================================
+	# BWF DEUCE & MATCH WINNING RULES (LUẬT CÁCH 2 ĐIỂM)
+	# ==========================================================
+	var max_cap = 30 if target_match_points == 21 else (target_match_points + 6)
+	var diff = abs(score_player - score_ai)
+	var is_match_won = false
+	var champ = ""
+	
+	if score_player >= target_match_points or score_ai >= target_match_points:
+		if diff >= 2 or score_player >= max_cap or score_ai >= max_cap:
+			is_match_won = true
+			champ = "PLAYER" if score_player > score_ai else "RIVAL AI"
+		else:
+			# Deuce: Cách 2 điểm mới ăn
+			_show_banner("DEUCE! CÁCH 2 ĐIỂM ĐỂ THẮNG (%d - %d)" % [score_player, score_ai], Color(1.0, 0.88, 0.35))
+	
+	if is_match_won:
+		current_state = MatchState.POINT_OVER
+		_show_match_over_dialog(champ)
+		return
 	
 	await get_tree().create_timer(1.2).timeout
 	current_server = winner
 	_setup_serve(current_server)
+
+
+func _show_match_over_dialog(champ: String) -> void:
+	if not match_over_dialog:
+		match_over_dialog = PanelContainer.new()
+		match_over_dialog.custom_minimum_size = Vector2(500, 250)
+		match_over_dialog.position = Vector2(390, 235)
+		
+		var sb = StyleBoxFlat.new()
+		sb.bg_color = Color(0.06, 0.08, 0.13, 0.96)
+		sb.border_width_left = 2
+		sb.border_width_top = 2
+		sb.border_width_right = 2
+		sb.border_width_bottom = 2
+		sb.border_color = Color(0.95, 0.82, 0.25, 0.95)
+		sb.corner_radius_top_left = 12
+		sb.corner_radius_top_right = 12
+		sb.corner_radius_bottom_right = 12
+		sb.corner_radius_bottom_left = 12
+		sb.shadow_color = Color(0, 0, 0, 0.65)
+		sb.shadow_size = 12
+		match_over_dialog.add_theme_stylebox_override("panel", sb)
+		
+		var margin = MarginContainer.new()
+		margin.add_theme_constant_override("margin_left", 24)
+		margin.add_theme_constant_override("margin_top", 20)
+		margin.add_theme_constant_override("margin_right", 24)
+		margin.add_theme_constant_override("margin_bottom", 20)
+		match_over_dialog.add_child(margin)
+		
+		var vbox = VBoxContainer.new()
+		vbox.alignment = BoxContainer.ALIGNMENT_CENTER
+		vbox.add_theme_constant_override("separation", 14)
+		margin.add_child(vbox)
+		
+		var lbl_title = Label.new()
+		lbl_title.name = "LabelTitle"
+		lbl_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		lbl_title.add_theme_font_size_override("font_size", 20)
+		vbox.add_child(lbl_title)
+		
+		var lbl_score_res = Label.new()
+		lbl_score_res.name = "LabelScoreRes"
+		lbl_score_res.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		lbl_score_res.add_theme_font_size_override("font_size", 28)
+		lbl_score_res.modulate = Color(1.0, 1.0, 1.0)
+		vbox.add_child(lbl_score_res)
+		
+		var lbl_sub = Label.new()
+		lbl_sub.name = "LabelSub"
+		lbl_sub.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		lbl_sub.add_theme_font_size_override("font_size", 12)
+		lbl_sub.modulate = Color(0.70, 0.78, 0.88)
+		vbox.add_child(lbl_sub)
+		
+		var btn_row = HBoxContainer.new()
+		btn_row.alignment = BoxContainer.ALIGNMENT_CENTER
+		btn_row.add_theme_constant_override("separation", 16)
+		vbox.add_child(btn_row)
+		
+		var btn_again = Button.new()
+		btn_again.text = "CHƠI LẠI (PLAY AGAIN)"
+		btn_again.custom_minimum_size = Vector2(190, 42)
+		btn_again.add_theme_font_size_override("font_size", 13)
+		var sb_again = StyleBoxFlat.new()
+		sb_again.bg_color = Color(0.12, 0.40, 0.22, 0.95)
+		sb_again.border_width_left = 1
+		sb_again.border_width_top = 1
+		sb_again.border_width_right = 1
+		sb_again.border_width_bottom = 1
+		sb_again.border_color = Color(0.35, 0.95, 0.55)
+		sb_again.corner_radius_top_left = 6
+		sb_again.corner_radius_top_right = 6
+		sb_again.corner_radius_bottom_right = 6
+		sb_again.corner_radius_bottom_left = 6
+		btn_again.add_theme_stylebox_override("normal", sb_again)
+		btn_again.pressed.connect(_on_match_over_play_again)
+		btn_row.add_child(btn_again)
+		
+		var btn_menu = Button.new()
+		btn_menu.text = "MENU CHÍNH (MAIN MENU)"
+		btn_menu.custom_minimum_size = Vector2(190, 42)
+		btn_menu.add_theme_font_size_override("font_size", 13)
+		var sb_menu = StyleBoxFlat.new()
+		sb_menu.bg_color = Color(0.18, 0.22, 0.32, 0.95)
+		sb_menu.border_width_left = 1
+		sb_menu.border_width_top = 1
+		sb_menu.border_width_right = 1
+		sb_menu.border_width_bottom = 1
+		sb_menu.border_color = Color(0.45, 0.70, 0.95)
+		sb_menu.corner_radius_top_left = 6
+		sb_menu.corner_radius_top_right = 6
+		sb_menu.corner_radius_bottom_right = 6
+		sb_menu.corner_radius_bottom_left = 6
+		btn_menu.add_theme_stylebox_override("normal", sb_menu)
+		btn_menu.pressed.connect(_on_match_over_to_menu)
+		btn_row.add_child(btn_menu)
+		
+		$HUD.add_child(match_over_dialog)
+	
+	var lbl_title = match_over_dialog.find_child("LabelTitle", true, false) as Label
+	var lbl_score_res = match_over_dialog.find_child("LabelScoreRes", true, false) as Label
+	var lbl_sub = match_over_dialog.find_child("LabelSub", true, false) as Label
+	
+	if lbl_title:
+		lbl_title.text = "[ %s CHIẾN THẮNG TRẬN ĐẤU! ]" % champ
+		lbl_title.modulate = Color(0.35, 2.0, 0.6) if champ == "PLAYER" else Color(2.0, 0.45, 0.45)
+	if lbl_score_res:
+		lbl_score_res.text = "%d   -   %d" % [score_player, score_ai]
+	if lbl_sub:
+		lbl_sub.text = "TRẬN ĐẤU CHẠM %d ĐIỂM (CÁCH 2 ĐIỂM) • BWF RULES" % target_match_points
+		
+	match_over_dialog.visible = true
+
+
+func _on_match_over_play_again() -> void:
+	if match_over_dialog:
+		match_over_dialog.visible = false
+	score_player = 0
+	score_ai = 0
+	_update_scoreboard()
+	if player and player.stats:
+		player.stats.reset_stamina()
+		player.stats.reset_torque()
+	if ai_rival and ai_rival.stats:
+		ai_rival.stats.reset_stamina()
+		ai_rival.stats.reset_torque()
+	_setup_serve("player")
+	_play_umpire_opening_call("player")
+
+
+func _on_match_over_to_menu() -> void:
+	if match_over_dialog:
+		match_over_dialog.visible = false
+	_set_in_game_hud_visible(false)
+	main_menu.switch_state(MainMenuController.MenuState.MATCH_SETUP)
+	main_menu.visible = true
+	if bgm_lobby and not bgm_lobby.playing:
+		bgm_lobby.volume_db = -3.0
+		bgm_lobby.play()
 
 
 func _update_scoreboard() -> void:
