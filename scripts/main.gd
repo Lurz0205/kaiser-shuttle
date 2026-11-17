@@ -37,6 +37,7 @@ var perfect_burst_timer: float = 0.0
 var perfect_burst_col: Color = Color(1.0, 0.9, 0.2)
 const FloatingTextManager = preload("res://scripts/ui/floating_text_manager.gd")
 var floating_text_mgr: FloatingTextManager = FloatingTextManager.new()
+var effects_overlay: Node2D = null
 
 @onready var camera: Camera2D = $Camera2D
 @onready var player: BadmintonPlayer = $Player
@@ -187,6 +188,19 @@ func _ready() -> void:
 	if aoi_shield:
 		aoi_shield.draw.connect(_on_aoi_shield_draw)
 	
+	# Web Performance Optimization: tắt floor reflection để tránh glCopyTexSubImage2D / glGenerateMipmap
+	if OS.has_feature("web"):
+		var floor_refl = get_node_or_null("FloorReflection")
+		if floor_refl:
+			floor_refl.visible = false
+	
+	# Tách riêng hiệu ứng động (shockwave, burst, jump takeoff) ra overlay độc lập để không vẽ lại toàn bộ sân vận động
+	effects_overlay = Node2D.new()
+	effects_overlay.name = "EffectsOverlay"
+	effects_overlay.z_index = 50
+	add_child(effects_overlay)
+	effects_overlay.draw.connect(_on_effects_overlay_draw)
+	
 	if btn_settings:
 		btn_settings.pressed.connect(_toggle_settings_panel)
 	if btn_close_settings:
@@ -302,7 +316,12 @@ func _on_jump_taken(takeoff_pos: Vector2, facing_dir: float) -> void:
 		"dur": 0.35,
 		"dir": facing_dir
 	})
-	queue_redraw()
+	_redraw_effects()
+
+
+func _redraw_effects() -> void:
+	if effects_overlay:
+		effects_overlay.queue_redraw()
 
 
 func _toggle_settings_panel() -> void:
@@ -470,16 +489,16 @@ func _process(delta: float) -> void:
 	if shockwave_alpha > 0.0:
 		shockwave_radius += delta * 280.0
 		shockwave_alpha = move_toward(shockwave_alpha, 0.0, delta * 3.5)
-		queue_redraw()
+		_redraw_effects()
 	
 	# Perfect Hit Burst decay
 	if perfect_burst_timer > 0.0:
 		perfect_burst_timer = max(0.0, perfect_burst_timer - delta)
-		queue_redraw()
+		_redraw_effects()
 		
 	# Floating Combat Text update (chữ PERFECT bay nhẹ lên trên)
 	if floating_text_mgr and floating_text_mgr.update(delta):
-		queue_redraw()
+		_redraw_effects()
 	
 	# Jump Takeoff Effects update
 	if not jump_takeoff_effects.is_empty():
@@ -491,7 +510,7 @@ func _process(delta: float) -> void:
 			if eff["timer"] <= 0.0:
 				jump_takeoff_effects.remove_at(i)
 		if need_redraw:
-			queue_redraw()
+			_redraw_effects()
 	
 	# Nishikawa Lightning update:
 	# Giai đoạn 1: Slow-mo chung với game (bò từ từ quanh vợt và quả cầu, bị đảo màu trắng đen)
@@ -1232,7 +1251,7 @@ func _on_shuttlecock_landed(pos: Vector2, _floor_3d: Vector3 = Vector3.ZERO) -> 
 	shockwave_pos = pos
 	shockwave_radius = 8.0
 	shockwave_alpha = 0.9 if shuttlecock.is_smash else 0.5
-	queue_redraw()
+	_redraw_effects()
 	
 	var point_winner = ""
 	var reason = ""
@@ -1619,12 +1638,17 @@ func _draw() -> void:
 	draw_line(net_far_top, net_near_top, Color(1.0, 1.0, 1.0, 1.0), 4.8, true)
 	# Bottom Net Binding Cord
 	draw_line(net_far_bot, net_near_bot, Color(0.85, 0.88, 0.92, 0.75), 2.0, true)
-	
+
+
+func _on_effects_overlay_draw() -> void:
+	if not effects_overlay:
+		return
+		
 	# 7. Ground Shockwave
 	if shockwave_alpha > 0.01:
 		var sw_col = Color(1.0, 0.95, 0.5, shockwave_alpha)
-		draw_arc(Vector2(shockwave_pos.x, FLOOR_Y), shockwave_radius, 0, TAU, 36, sw_col, 4.0, true)
-		draw_arc(Vector2(shockwave_pos.x, FLOOR_Y), shockwave_radius * 0.7, 0, TAU, 28, Color(1.0, 1.0, 1.0, shockwave_alpha * 0.7), 2.5, true)
+		effects_overlay.draw_arc(Vector2(shockwave_pos.x, FLOOR_Y), shockwave_radius, 0, TAU, 36, sw_col, 4.0, true)
+		effects_overlay.draw_arc(Vector2(shockwave_pos.x, FLOOR_Y), shockwave_radius * 0.7, 0, TAU, 28, Color(1.0, 1.0, 1.0, shockwave_alpha * 0.7), 2.5, true)
 		
 	# 8. Golden Anime Perfect Impact Burst (Rực rỡ, lấp lánh và biến mất sau 0.4s)
 	if perfect_burst_timer > 0.0:
@@ -1635,8 +1659,8 @@ func _draw() -> void:
 		var col_burst = Color(perfect_burst_col.r, perfect_burst_col.g, perfect_burst_col.b, burst_alpha * 0.95)
 		
 		# Vòng hào quang sáng rực
-		draw_arc(perfect_burst_pos, r_outer, 0, TAU, 36, col_burst, 3.5, true)
-		draw_arc(perfect_burst_pos, r_inner, 0, TAU, 28, Color(1.0, 1.0, 1.0, burst_alpha), 2.0, true)
+		effects_overlay.draw_arc(perfect_burst_pos, r_outer, 0, TAU, 36, col_burst, 3.5, true)
+		effects_overlay.draw_arc(perfect_burst_pos, r_inner, 0, TAU, 28, Color(1.0, 1.0, 1.0, burst_alpha), 2.0, true)
 		
 		# 8 tia chớp năng lượng phát tán theo các góc
 		for i in range(8):
@@ -1644,7 +1668,7 @@ func _draw() -> void:
 			var dir = Vector2(cos(ang), sin(ang))
 			var p1 = perfect_burst_pos + dir * (r_inner * 0.6)
 			var p2 = perfect_burst_pos + dir * (r_outer * 1.15)
-			draw_line(p1, p2, col_burst, 2.5, true)
+			effects_overlay.draw_line(p1, p2, col_burst, 2.5, true)
 	
 	# 9. Jump Takeoff Burst & Floor Dust Skid Effects (Hiệu ứng dậm nhảy mặt sàn)
 	for eff in jump_takeoff_effects:
@@ -1658,23 +1682,23 @@ func _draw() -> void:
 		var rx = 16.0 + prog * 58.0
 		var ry = 4.0 + prog * 9.0
 		var ring_col = Color(1.0, 0.95, 0.75, alpha * 0.85)
-		draw_arc(p_pos, rx, 0, TAU, 28, ring_col, 3.0 * (1.0 - prog * 0.6), true)
+		effects_overlay.draw_arc(p_pos, rx, 0, TAU, 28, ring_col, 3.0 * (1.0 - prog * 0.6), true)
 		
 		# Vệt bụi quét sàn dạt sang 2 bên chân
 		var skid_len = 14.0 + prog * 48.0
 		var dust_col = Color(0.95, 0.95, 1.0, alpha * 0.75)
-		draw_line(p_pos + Vector2(-8, -2), p_pos + Vector2(-skid_len, -2), dust_col, 2.5 * (1.0 - prog * 0.5), true)
-		draw_line(p_pos + Vector2(8, -2), p_pos + Vector2(skid_len, -2), dust_col, 2.5 * (1.0 - prog * 0.5), true)
+		effects_overlay.draw_line(p_pos + Vector2(-8, -2), p_pos + Vector2(-skid_len, -2), dust_col, 2.5 * (1.0 - prog * 0.5), true)
+		effects_overlay.draw_line(p_pos + Vector2(8, -2), p_pos + Vector2(skid_len, -2), dust_col, 2.5 * (1.0 - prog * 0.5), true)
 		
 		# Tia khí đẩy bật nhảy vọt lên
 		for off_x in [-14.0, 0.0, 14.0]:
 			var y_start = p_pos.y - 4.0 - prog * 8.0
 			var y_end = y_start - (14.0 + prog * 28.0)
-			draw_line(Vector2(p_pos.x + off_x, y_start), Vector2(p_pos.x + off_x, y_end), Color(1.0, 1.0, 1.0, alpha * 0.6), 2.0, true)
+			effects_overlay.draw_line(Vector2(p_pos.x + off_x, y_start), Vector2(p_pos.x + off_x, y_end), Color(1.0, 1.0, 1.0, alpha * 0.6), 2.0, true)
 	
 	# 10. Floating Combat Text (Popup PERFECT bay nhẹ lên trên)
 	if floating_text_mgr:
-		floating_text_mgr.draw(self)
+		floating_text_mgr.draw(effects_overlay)
 
 
 # ==========================================================
