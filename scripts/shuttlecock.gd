@@ -650,25 +650,13 @@ func _on_lightning_trail_draw() -> void:
 
 
 # ==========================================================
-# VECTOR SHUTTLECOCK DRAWING
+# SHUTTLECOCK DRAWING (TEXTURE SPRITE REPLACES EXPENSIVE VECTORS)
 # ==========================================================
 
 func _draw() -> void:
-	var feather_pts = PackedVector2Array([
-		Vector2(2.0, -4.0),
-		Vector2(-18.0, -10.0),
-		Vector2(-18.0, 10.0),
-		Vector2(2.0, 4.0)
-	])
-	draw_polygon(feather_pts, PackedColorArray([Color(0.95, 0.95, 1.0, 0.95)]))
-	draw_polyline(feather_pts, Color(0.15, 0.2, 0.3, 0.9), 1.5, true)
-	
-	draw_line(Vector2(-8, -7), Vector2(-8, 7), Color(0.85, 0.2, 0.2, 0.85), 2.0, true)
-	draw_line(Vector2(-13, -9), Vector2(-13, 9), Color(0.2, 0.4, 0.8, 0.85), 1.5, true)
-	
-	draw_circle(Vector2(5.0, 0.0), 5.5, Color(1.0, 1.0, 1.0, 1.0), true, -1.0, true)
-	draw_circle(Vector2(5.0, 0.0), 5.5, Color(0.1, 0.1, 0.15, 0.9), false, 1.5, true)
-	draw_line(Vector2(2.0, -5.0), Vector2(2.0, 5.0), Color(0.9, 0.2, 0.2, 1.0), 2.5, true)
+	# Quả cầu đã được nâng cấp lên Texture 2D độ phân giải cao dạng ảnh thực tế (shuttlecock.png)
+	# qua node Sprite2D, loại bỏ hoàn toàn các lệnh vẽ polygon và circle tốn kém mỗi frame.
+	pass
 
 
 # ==========================================================
