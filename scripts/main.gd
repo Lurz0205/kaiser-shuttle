@@ -119,6 +119,7 @@ var main_menu: MainMenuController
 @onready var sfx_chem: AudioStreamPlayer = $Audio/SFXChem
 @onready var sfx_low_ball_play: AudioStreamPlayer = $Audio/SFXLowBallPlay
 @onready var bgm_lobby: AudioStreamPlayer = $Audio/BGMLobby
+var amb_player: AudioStreamPlayer = null
 
 # Multi-sample sound pools (phát random không lặp lại)
 var sfx_string_streams: Array[AudioStream] = []
@@ -199,6 +200,18 @@ func _ready() -> void:
 	effects_overlay.z_index = 50
 	add_child(effects_overlay)
 	effects_overlay.draw.connect(_on_effects_overlay_draw)
+	
+	# Âm thanh môi trường sân thi đấu nhẹ nhàng liên tục (Khử hiện tượng ngắt âm nền đột ngột ở tai nghe)
+	amb_player = AudioStreamPlayer.new()
+	amb_player.name = "AMBStadium"
+	var amb_stream = preload("res://assets/audio/stadium_ambience.wav")
+	if amb_stream is AudioStreamWAV:
+		(amb_stream as AudioStreamWAV).loop_mode = AudioStreamWAV.LOOP_FORWARD
+	amb_player.stream = amb_stream
+	amb_player.volume_db = -24.0
+	amb_player.bus = "Master"
+	add_child(amb_player)
+	amb_player.play()
 	
 	if btn_settings:
 		btn_settings.pressed.connect(_toggle_settings_panel)
@@ -806,7 +819,7 @@ func _on_shot_hit(shot_type: String, is_smash: bool, quality: float, is_perfect:
 		sfx_phong.play()
 		current_shot_max_speed = (72.0 + randf_range(-2.0, 2.0))
 		shake_amount = 1.0
-		_show_banner("CHANCE BALL!", Color(3.8, 2.5, 0.4), true, 1.0)
+		_show_banner("CHANCE BALL!", Color(1.0, 1.0, 1.0), true, 1.0)
 	elif is_smash or shot_type == "smash" or shot_type == "kill_smash":
 		sfx_smash.play()
 		var is_kill = (shot_type == "kill_smash")
