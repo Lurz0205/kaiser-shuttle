@@ -8,7 +8,7 @@ extends Control
 
 const CustomIcon = preload("res://scripts/ui/custom_icon.gd")
 
-signal start_match_requested(player_char: String, rival_char: String, difficulty: int)
+signal start_match_requested(player_char: String, rival_char: String, difficulty: int, target_points: int)
 signal settings_updated(squeak: bool)
 
 enum MenuState {
@@ -23,6 +23,7 @@ var current_state: MenuState = MenuState.TITLE
 var selected_player_id: String = "nishikawa"
 var selected_rival_id: String = "wall"
 var selected_difficulty: int = 1 # 0: Dễ, 1: Trung bình, 2: Khó
+var selected_target_points: int = 11 # 11, 15, hoặc 21
 
 # Settings parameters
 var squeak_enabled: bool = true
@@ -38,11 +39,14 @@ var label_matchup_summary: Label
 var btn_diff_easy: Button
 var btn_diff_medium: Button
 var btn_diff_hard: Button
+var btn_pts_11: Button
+var btn_pts_15: Button
+var btn_pts_21: Button
 
 const CHAR_DATA = {
 	"nishikawa": {
 		"name": "NISHIKAWA",
-		"title": "The Golden Cannon",
+		"title": "Tia chớp vàng",
 		"archetype": "TẤN CÔNG BÙNG NỔ",
 		"color": Color(0.98, 0.82, 0.25, 1.0),
 		"icon_type": CustomIcon.IconType.LIGHTNING,
@@ -51,11 +55,11 @@ const CHAR_DATA = {
 		"control": 74,
 		"composure": 84,
 		"skill_name": "Golden Smash",
-		"skill_desc": "[Nội tại] Khi đầy Nộ: Cú SMASH được cưỡng ép 100% PERFECT, sấm sét ngưng đọng thời gian, giảm 50% Accuracy & 30% Thể lực đối phương! (Đánh thường không mất Nộ)"
+		"skill_desc": "[Nội tại] Khi đầy Nộ: Cú SMASH được cưỡng ép 100% PERFECT, sấm sét ngưng đọng thời gian, giảm 50% Accuracy & 30% Thể lực đối phương!"
 	},
 	"fuji": {
-		"name": "FUJI SYUSUKE",
-		"title": "The Maestro",
+		"name": "FUJI",
+		"title": "Cơn lốc xanh",
 		"archetype": "KỸ THUẬT BIẾN ẢO",
 		"color": Color(0.25, 0.88, 0.60, 1.0),
 		"icon_type": CustomIcon.IconType.FEATHER,
@@ -64,11 +68,11 @@ const CHAR_DATA = {
 		"control": 96,
 		"composure": 86,
 		"skill_name": "Tsubame Gaeshi",
-		"skill_desc": "[Nội tại] Khi đầy Nộ: Cú bỏ nhỏ hóa thành Én Lượn lướt sát mép lưới cùng vệt lá cây xanh biếc, cắt xoáy hiểm hóc!"
+		"skill_desc": "[Nội tại] Cơn lốc xanh: Cú bỏ nhỏ hóa thành Én Lượn lướt sà sát mép lưới cùng lốc xoáy ngọc bích, cắt xoáy hiểm hóc!"
 	},
 	"wall": {
-		"name": "AOI TSUBAME",
-		"title": "The Wall",
+		"name": "ISABEL",
+		"title": "Nữ hoàng của đấu trường La Mã",
 		"archetype": "BỨC TƯỜNG PHÒNG THỦ",
 		"color": Color(0.30, 0.70, 1.0, 1.0),
 		"icon_type": CustomIcon.IconType.SHIELD,
@@ -76,8 +80,8 @@ const CHAR_DATA = {
 		"agility": 88,
 		"control": 85,
 		"composure": 96,
-		"skill_name": "Mirage Counter",
-		"skill_desc": "[Nội tại] Tự kích hoạt khi đỡ smash lúc đầy Nộ: Hóa giải hoàn toàn đòn đập, bung sâu cuối sân & hồi 20% thể lực!"
+		"skill_name": "Mirage Shield",
+		"skill_desc": "[Nội tại] Khiên La Mã: Hóa giải hoàn toàn đòn smash của đối thủ khi đầy Nộ, bung sâu cuối sân & hồi ngay 20% thể lực!"
 	}
 }
 
@@ -118,6 +122,7 @@ func switch_state(new_state: MenuState) -> void:
 		if setup_panel.visible:
 			_update_setup_cards()
 			_update_difficulty_buttons()
+			_update_points_buttons()
 	if settings_panel: settings_panel.visible = (new_state == MenuState.SETTINGS)
 
 func _build_ui() -> void:
@@ -283,6 +288,30 @@ func _build_ui() -> void:
 	btn_diff_hard = _create_clean_button("KHÓ (HARD)", Color(0.95, 0.35, 0.35), Vector2(110, 32), 11)
 	btn_diff_hard.pressed.connect(func(): _set_difficulty(2))
 	diff_box.add_child(btn_diff_hard)
+	
+	# Điểm thắng ván đấu (Match Points: 11, 15, hoặc 21)
+	var pts_box = HBoxContainer.new()
+	pts_box.alignment = BoxContainer.ALIGNMENT_CENTER
+	pts_box.add_theme_constant_override("separation", 10)
+	setup_vbox.add_child(pts_box)
+	
+	var lbl_pts = Label.new()
+	lbl_pts.text = "ĐIỂM THẮNG (CÁCH 2 ĐIỂM):"
+	lbl_pts.add_theme_font_size_override("font_size", 12)
+	lbl_pts.modulate = Color(0.75, 0.82, 0.90)
+	pts_box.add_child(lbl_pts)
+	
+	btn_pts_11 = _create_clean_button("11 ĐIỂM", Color(0.3, 0.9, 0.4), Vector2(100, 32), 11)
+	btn_pts_11.pressed.connect(func(): _set_target_points(11))
+	pts_box.add_child(btn_pts_11)
+	
+	btn_pts_15 = _create_clean_button("15 ĐIỂM", Color(0.95, 0.80, 0.25), Vector2(100, 32), 11)
+	btn_pts_15.pressed.connect(func(): _set_target_points(15))
+	pts_box.add_child(btn_pts_15)
+	
+	btn_pts_21 = _create_clean_button("21 ĐIỂM (BWF)", Color(0.95, 0.40, 0.35), Vector2(120, 32), 11)
+	btn_pts_21.pressed.connect(func(): _set_target_points(21))
+	pts_box.add_child(btn_pts_21)
 	
 	# Matchup Summary
 	label_matchup_summary = Label.new()
@@ -512,6 +541,12 @@ func _select_rival(cid: String) -> void:
 func _set_difficulty(diff: int) -> void:
 	selected_difficulty = diff
 	_update_difficulty_buttons()
+	_update_setup_cards()
+
+func _set_target_points(pts: int) -> void:
+	selected_target_points = pts
+	_update_points_buttons()
+	_update_setup_cards()
 
 func _update_difficulty_buttons() -> void:
 	if btn_diff_easy:
@@ -520,6 +555,14 @@ func _update_difficulty_buttons() -> void:
 		btn_diff_medium.modulate = Color(1.2, 1.2, 1.2) if selected_difficulty == 1 else Color(0.60, 0.60, 0.60)
 	if btn_diff_hard:
 		btn_diff_hard.modulate = Color(1.2, 1.2, 1.2) if selected_difficulty == 2 else Color(0.60, 0.60, 0.60)
+
+func _update_points_buttons() -> void:
+	if btn_pts_11:
+		btn_pts_11.modulate = Color(1.3, 1.3, 1.3) if selected_target_points == 11 else Color(0.60, 0.60, 0.60)
+	if btn_pts_15:
+		btn_pts_15.modulate = Color(1.3, 1.3, 1.3) if selected_target_points == 15 else Color(0.60, 0.60, 0.60)
+	if btn_pts_21:
+		btn_pts_21.modulate = Color(1.3, 1.3, 1.3) if selected_target_points == 21 else Color(0.60, 0.60, 0.60)
 
 func _update_setup_cards() -> void:
 	for cid in card_nodes.keys():
@@ -575,8 +618,8 @@ func _update_setup_cards() -> void:
 		var p_name = CHAR_DATA[selected_player_id]["name"]
 		var r_name = CHAR_DATA[selected_rival_id]["name"]
 		var diff_str = "DỄ" if selected_difficulty == 0 else ("TRUNG BÌNH" if selected_difficulty == 1 else "KHÓ")
-		label_matchup_summary.text = "KÈO ĐẤU:  [PLAYER: %s]   VS   [AI: %s]   •   ĐỘ KHÓ: [%s]" % [p_name, r_name, diff_str]
+		label_matchup_summary.text = "KÈO ĐẤU:  [PLAYER: %s]   VS   [AI: %s]   •   ĐỘ KHÓ: [%s]   •   CHẠM: [%d ĐIỂM]" % [p_name, r_name, diff_str, selected_target_points]
 
 func _confirm_and_start_match() -> void:
-	start_match_requested.emit(selected_player_id, selected_rival_id, selected_difficulty)
+	start_match_requested.emit(selected_player_id, selected_rival_id, selected_difficulty, selected_target_points)
 	visible = false
