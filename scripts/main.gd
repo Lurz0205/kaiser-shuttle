@@ -188,11 +188,10 @@ func _ready() -> void:
 	if aoi_shield:
 		aoi_shield.draw.connect(_on_aoi_shield_draw)
 	
-	# Web Performance Optimization: tắt floor reflection để tránh glCopyTexSubImage2D / glGenerateMipmap
-	if OS.has_feature("web"):
-		var floor_refl = get_node_or_null("FloorReflection")
-		if floor_refl:
-			floor_refl.visible = false
+	# Đảm bảo gương phản chiếu sàn thi đấu luôn hiển thị sắc nét
+	var floor_refl = get_node_or_null("FloorReflection")
+	if floor_refl:
+		floor_refl.visible = true
 	
 	# Tách riêng hiệu ứng động (shockwave, burst, jump takeoff) ra overlay độc lập để không vẽ lại toàn bộ sân vận động
 	effects_overlay = Node2D.new()
