@@ -225,6 +225,11 @@ func should_pop_weak_return(is_incoming_smash: bool) -> bool:
 
 ## Accuracy thấp (< 50%) hoặc Thể lực cạn kiệt (< 35%) sẽ tạo ra lỗi đánh hỏng (rúc lưới, out sân, đánh hụt)
 func check_unforced_blunder(shot_type: String = "") -> String:
+	# Cú bỏ nhỏ (drop) tuyệt đối không rúc lưới gây mất điểm lãng xẹt:
+	# Nếu mệt mỏi / accuracy thấp thì cú bỏ nhỏ sẽ chuyển thành bung cầu non (weak return/chance ball) cho đối thủ
+	if shot_type == "drop":
+		return "none"
+		
 	var is_smash_shot = (shot_type == "smash" or shot_type == "kill_smash" or shot_type == "boom_smash")
 	var acc_p = clamp((50.0 - accuracy) / 50.0, 0.0, 1.0) if accuracy < 50.0 else 0.0
 	var sta_p = clamp((35.0 - stamina) / 35.0, 0.0, 1.0) if stamina < 35.0 else 0.0
@@ -301,9 +306,9 @@ func calculate_error_spread(timing_quality: float, is_perfect: bool, is_off_bala
 static func create_nishikawa() -> Resource:
 	var s = load("res://scripts/core/character_stats.gd").new()
 	s.character_id = "nishikawa"
-	s.character_name = "Nishikawa (The Golden Cannon)"
+	s.character_name = "Nishikawa (Tia chớp vàng)"
 	s.special_skill_id = "golden_smash"
-	s.special_skill_name = "Nishikawa Golden Smash"
+	s.special_skill_name = "Golden Smash"
 	s.power = 98.0
 	s.agility = 78.0
 	s.control = 74.0
@@ -313,7 +318,7 @@ static func create_nishikawa() -> Resource:
 static func create_fuji() -> Resource:
 	var s = load("res://scripts/core/character_stats.gd").new()
 	s.character_id = "fuji"
-	s.character_name = "Fuji (The Maestro)"
+	s.character_name = "Fuji (Cơn lốc xanh)"
 	s.special_skill_id = "tsubame_gaeshi"
 	s.special_skill_name = "Tsubame Gaeshi"
 	s.power = 76.0
@@ -325,9 +330,9 @@ static func create_fuji() -> Resource:
 static func create_wall() -> Resource:
 	var s = load("res://scripts/core/character_stats.gd").new()
 	s.character_id = "wall"
-	s.character_name = "Aoi (The Wall)"
+	s.character_name = "Isabel (Nữ hoàng của đấu trường La Mã)"
 	s.special_skill_id = "mirage_counter"
-	s.special_skill_name = "Mirage Counter"
+	s.special_skill_name = "Mirage Shield"
 	s.power = 74.0
 	s.agility = 88.0
 	s.control = 85.0
