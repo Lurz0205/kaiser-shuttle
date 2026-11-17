@@ -555,12 +555,59 @@ func _update_trail() -> void:
 
 
 func _on_lightning_trail_draw() -> void:
-	if not is_boom_smash:
+	if not is_boom_smash and not is_tsubame_gaeshi:
 		return
 	if trail_points.size() < 2:
 		return
 	
 	var n_pts = trail_points.size()
+	var time_sec = Time.get_ticks_msec() / 1000.0
+	
+	# ==========================================================
+	# 1. FUJI - CƠN LỐC XANH (EMERALD GALE VORTEX TWIN-HELIX)
+	# ==========================================================
+	if is_tsubame_gaeshi:
+		var helix1_pts = PackedVector2Array()
+		var helix2_pts = PackedVector2Array()
+		
+		for i in range(n_pts):
+			var pt = trail_points[i]
+			var frac = 1.0 - float(i) / float(n_pts)
+			var next_pt = trail_points[max(0, i - 1)] if i > 0 else (pt + velocity.normalized() * 5.0)
+			var diff = (next_pt - pt).normalized()
+			var perp = Vector2(-diff.y, diff.x)
+			
+			var wave = sin(time_sec * 18.0 + float(i) * 0.65) * (14.0 * frac)
+			helix1_pts.append(pt + perp * wave)
+			helix2_pts.append(pt - perp * wave)
+		
+		if helix1_pts.size() >= 2:
+			# Dải lốc xoáy ngọc lục bảo 1 (Emerald Outer Ribbon)
+			lightning_trail.draw_polyline(helix1_pts, Color(0.25, 1.8, 0.55, 0.85), 3.8, true)
+			# Lõi gió bão trắng ngọc sáng rực (Jade-White Core)
+			lightning_trail.draw_polyline(helix1_pts, Color(0.85, 2.4, 1.2, 0.95), 1.6, true)
+			
+		if helix2_pts.size() >= 2:
+			# Dải áp suất khí xoáy ngược chiều 2 (Cyan-Mint Spiral Ribbon)
+			lightning_trail.draw_polyline(helix2_pts, Color(0.30, 1.6, 0.95, 0.75), 3.0, true)
+			lightning_trail.draw_polyline(helix2_pts, Color(0.90, 2.4, 1.8, 0.95), 1.4, true)
+			
+		# Lốc xoáy mini bao bọc quả cầu đang lao dốc (Cork Vortex Aura)
+		if is_active:
+			lightning_trail.draw_arc(global_position, 16.0, time_sec * 14.0, time_sec * 14.0 + PI * 1.35, 16, Color(0.35, 2.0, 0.75, 0.90), 2.4, true)
+			lightning_trail.draw_arc(global_position, 9.0, -time_sec * 18.0, -time_sec * 18.0 + PI * 1.2, 16, Color(0.85, 2.4, 1.4, 0.95), 1.8, true)
+			
+			# Vệt khí cắt gió (Wind Slash Crescents)
+			for w in range(3):
+				var ang = time_sec * 12.0 + (TAU / 3.0) * w
+				var w_pos = global_position + Vector2(cos(ang), sin(ang)) * 14.0
+				var w_end = w_pos + Vector2(-sin(ang), cos(ang)) * 10.0
+				lightning_trail.draw_line(w_pos, w_end, Color(0.6, 2.2, 0.9, 0.85), 1.8, true)
+		return
+
+	# ==========================================================
+	# 2. NISHIKAWA - TIA CHỚP VÀNG (GOLDEN LIGHTNING BOLTS)
+	# ==========================================================
 	for i in range(n_pts - 1):
 		var p1 = trail_points[i]
 		var p2 = trail_points[i + 1]
@@ -629,28 +676,33 @@ func _draw() -> void:
 # ==========================================================
 
 func _spawn_fuji_leaf() -> void:
-	var spawn_pos = global_position + Vector2(randf_range(-6.0, 6.0), randf_range(-6.0, 6.0))
 	var leaf_cols = [
 		Color(0.24, 0.88, 0.38, 0.95), # Fresh Bamboo Green
 		Color(0.18, 0.78, 0.30, 0.95), # Lush Leaf Green
 		Color(0.48, 0.96, 0.42, 0.95), # Light Spring Leaf Green
+		Color(0.20, 0.92, 0.60, 0.95), # Emerald Wind Gale
 		Color(0.62, 0.90, 0.28, 0.95)  # Golden Leaf Green
 	]
-	var col = leaf_cols[randi() % leaf_cols.size()]
-	var vel_back = -velocity.x * 0.08
-	var leaf = {
-		"pos": spawn_pos,
-		"vel": Vector2(vel_back + randf_range(-16.0, 16.0), randf_range(24.0, 48.0)),
-		"rot": randf_range(0.0, TAU),
-		"spin": randf_range(-3.5, 3.5),
-		"size": randf_range(7.5, 12.0),
-		"life": randf_range(0.65, 0.90),
-		"max_life": 0.85,
-		"col": col,
-		"wobble_freq": randf_range(3.5, 6.0),
-		"wobble_phase": randf_range(0.0, TAU)
-	}
-	fuji_leaves.append(leaf)
+	
+	# Sinh 2 lá phong/trúc lượn xoáy theo ngọn gió Cơn lốc xanh
+	for k in range(2):
+		var spawn_pos = global_position + Vector2(randf_range(-12.0, 12.0), randf_range(-10.0, 10.0))
+		var col = leaf_cols[randi() % leaf_cols.size()]
+		var vel_back = -velocity.x * randf_range(0.06, 0.12)
+		var leaf = {
+			"pos": spawn_pos,
+			"vel": Vector2(vel_back + randf_range(-22.0, 22.0), randf_range(20.0, 56.0)),
+			"rot": randf_range(0.0, TAU),
+			"spin": randf_range(-4.5, 4.5),
+			"size": randf_range(8.0, 13.5),
+			"life": randf_range(0.70, 0.95),
+			"max_life": 0.95,
+			"col": col,
+			"wobble_freq": randf_range(4.0, 7.5),
+			"wobble_phase": randf_range(0.0, TAU)
+		}
+		fuji_leaves.append(leaf)
+	
 	if leaf_trail:
 		leaf_trail.queue_redraw()
 
