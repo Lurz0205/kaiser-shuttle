@@ -514,8 +514,8 @@ func _update_trail_styling() -> void:
 		return
 	trail.clear_points()
 	if is_weak_return:
-		trail.default_color = Color(3.5, 2.8, 0.4, 0.95) # Golden Chance Ball
-		trail.width = 13.0
+		trail.default_color = Color(1.0, 1.0, 1.0, 0.95) # Pure White Chance Ball
+		trail.width = 11.0
 	elif is_tsubame_gaeshi:
 		trail.default_color = Color(0.18, 0.95, 0.38, 0.95) # Vibrant Leaf/Foliage Green
 		trail.width = 14.0
