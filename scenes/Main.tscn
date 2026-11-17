@@ -1,0 +1,551 @@
+[gd_scene load_steps=32 format=3 uid="uid://cmainscene01"]
+
+[ext_resource type="Script" path="res://scripts/main.gd" id="1_script"]
+[ext_resource type="Environment" path="res://scenes/default_env.tres" id="2_env"]
+[ext_resource type="PackedScene" path="res://scenes/Player.tscn" id="3_player"]
+[ext_resource type="PackedScene" path="res://scenes/Shuttlecock.tscn" id="4_shuttle"]
+[ext_resource type="AudioStream" path="res://assets/audio/smash.wav" id="5_smash"]
+[ext_resource type="AudioStream" path="res://assets/audio/phong.wav" id="6_phong"]
+[ext_resource type="AudioStream" path="res://assets/audio/shoe_squeak.wav" id="7_squeak"]
+[ext_resource type="Shader" path="res://shaders/floor_reflection.gdshader" id="8_refl_shader"]
+[ext_resource type="Shader" path="res://shaders/grayscale_impact.gdshader" id="9_gray_shader"]
+[ext_resource type="AudioStream" path="res://assets/audio/electric_charge.wav" id="10_electric"]
+[ext_resource type="AudioStream" path="res://assets/audio/aoi_block.wav" id="11_aoi_block"]
+[ext_resource type="AudioStream" path="res://assets/audio/string.wav" id="12_string"]
+[ext_resource type="AudioStream" path="res://assets/audio/fuji_wind.wav" id="13_fuji_wind"]
+[ext_resource type="AudioStream" path="res://assets/audio/chem_cau.wav" id="14_chem_cau"]
+[ext_resource type="AudioStream" path="res://assets/audio/aoi_slowmo.wav" id="15_aoi_slowmo"]
+[ext_resource type="AudioStream" path="res://assets/audio/low_ball_play.wav" id="16_low_ball_play"]
+[ext_resource type="AudioStream" path="res://assets/audio/lobby_theme.ogg" id="17_lobby_theme"]
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_net"]
+size = Vector2(14, 110)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_floor"]
+size = Vector2(1400, 30)
+
+[sub_resource type="SystemFont" id="SystemFont_sport"]
+font_names = PackedStringArray("Bahnschrift", "Segoe UI", "Arial")
+font_weight = 700
+subpixel_positioning = 1
+
+[sub_resource type="SystemFont" id="SystemFont_regular"]
+font_names = PackedStringArray("Segoe UI", "Arial")
+font_weight = 500
+subpixel_positioning = 1
+
+[sub_resource type="LabelSettings" id="LabelSettings_score"]
+font = SubResource("SystemFont_sport")
+font_size = 42
+font_color = Color(1, 0.9, 0.22, 1)
+outline_size = 6
+outline_color = Color(0.04, 0.05, 0.08, 1)
+shadow_size = 4
+shadow_color = Color(0, 0, 0, 0.7)
+
+[sub_resource type="LabelSettings" id="LabelSettings_badge"]
+font = SubResource("SystemFont_sport")
+font_size = 14
+font_color = Color(1, 1, 1, 1)
+outline_size = 3
+outline_color = Color(0.05, 0.05, 0.08, 0.9)
+
+[sub_resource type="LabelSettings" id="LabelSettings_stats"]
+font = SubResource("SystemFont_sport")
+font_size = 16
+font_color = Color(1, 1, 1, 0.95)
+outline_size = 3
+outline_color = Color(0.05, 0.05, 0.08, 0.9)
+
+[sub_resource type="LabelSettings" id="LabelSettings_banner"]
+font = SubResource("SystemFont_sport")
+font_size = 42
+font_color = Color(3.5, 2.8, 0.4, 1)
+outline_size = 8
+outline_color = Color(0.02, 0.03, 0.06, 1)
+shadow_size = 6
+shadow_color = Color(0, 0, 0, 0.8)
+
+[sub_resource type="LabelSettings" id="LabelSettings_controls"]
+font = SubResource("SystemFont_regular")
+font_size = 14
+font_color = Color(0.92, 0.95, 1, 0.95)
+outline_size = 3
+outline_color = Color(0.03, 0.04, 0.07, 0.9)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_scoreboard"]
+bg_color = Color(0.06, 0.08, 0.12, 0.92)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.24, 0.33, 0.5, 0.85)
+corner_radius_top_left = 12
+corner_radius_top_right = 12
+corner_radius_bottom_right = 12
+corner_radius_bottom_left = 12
+shadow_color = Color(0, 0, 0, 0.5)
+shadow_size = 8
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_player_badge"]
+bg_color = Color(0.85, 0.2, 0.18, 0.9)
+corner_radius_top_left = 6
+corner_radius_top_right = 6
+corner_radius_bottom_right = 6
+corner_radius_bottom_left = 6
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_ai_badge"]
+bg_color = Color(0.18, 0.35, 0.82, 0.9)
+corner_radius_top_left = 6
+corner_radius_top_right = 6
+corner_radius_bottom_right = 6
+corner_radius_bottom_left = 6
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_stat_pill"]
+bg_color = Color(0.09, 0.12, 0.18, 0.92)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.2, 0.28, 0.42, 0.7)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_btn"]
+bg_color = Color(0.08, 0.11, 0.17, 0.9)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.25, 0.35, 0.5, 0.8)
+corner_radius_top_left = 6
+corner_radius_top_right = 6
+corner_radius_bottom_right = 6
+corner_radius_bottom_left = 6
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_controls"]
+bg_color = Color(0.05, 0.07, 0.11, 0.88)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.22, 0.28, 0.42, 0.7)
+corner_radius_top_left = 14
+corner_radius_top_right = 14
+corner_radius_bottom_right = 14
+corner_radius_bottom_left = 14
+shadow_color = Color(0, 0, 0, 0.45)
+shadow_size = 6
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_refl"]
+shader = ExtResource("8_refl_shader")
+shader_parameter/floor_y = 550.0
+shader_parameter/reflection_strength = 0.35
+shader_parameter/blur_level = 1.2
+shader_parameter/floor_tint = Color(0.2, 0.58, 0.32, 1)
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_gray"]
+shader = ExtResource("9_gray_shader")
+shader_parameter/grayscale_amount = 0.0
+shader_parameter/contrast = 1.35
+shader_parameter/tint_color = Vector3(1, 1, 1)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_settings_btn"]
+bg_color = Color(0.08, 0.11, 0.18, 0.92)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.3, 0.45, 0.65, 0.85)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_settings_panel"]
+bg_color = Color(0.06, 0.08, 0.13, 0.96)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.28, 0.42, 0.65, 0.9)
+corner_radius_top_left = 12
+corner_radius_top_right = 12
+corner_radius_bottom_right = 12
+corner_radius_bottom_left = 12
+shadow_color = Color(0, 0, 0, 0.65)
+shadow_size = 12
+content_margin_left = 14.0
+content_margin_top = 12.0
+content_margin_right = 14.0
+content_margin_bottom = 14.0
+
+[sub_resource type="LabelSettings" id="LabelSettings_settings_title"]
+font = SubResource("SystemFont_sport")
+font_size = 15
+font_color = Color(1, 0.88, 0.3, 1)
+outline_size = 3
+outline_color = Color(0.05, 0.05, 0.08, 0.9)
+
+[sub_resource type="LabelSettings" id="LabelSettings_settings_item"]
+font = SubResource("SystemFont_sport")
+font_size = 13
+font_color = Color(0.9, 0.92, 0.96, 0.95)
+outline_size = 2
+outline_color = Color(0.05, 0.05, 0.08, 0.9)
+
+[node name="Main" type="Node2D"]
+script = ExtResource("1_script")
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
+environment = ExtResource("2_env")
+
+[node name="Camera2D" type="Camera2D" parent="."]
+position = Vector2(640, 360)
+
+[node name="NetCollision" type="StaticBody2D" parent="."]
+position = Vector2(640, 495)
+collision_layer = 4
+collision_mask = 3
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="NetCollision"]
+shape = SubResource("RectangleShape2D_net")
+
+[node name="FloorCollision" type="StaticBody2D" parent="."]
+position = Vector2(640, 630)
+collision_layer = 4
+collision_mask = 3
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="FloorCollision"]
+shape = SubResource("RectangleShape2D_floor")
+
+[node name="Player" parent="." instance=ExtResource("3_player")]
+position = Vector2(360, 550)
+
+[node name="AIRival" parent="." instance=ExtResource("3_player")]
+position = Vector2(920, 550)
+is_ai = true
+court_side = "ai"
+
+[node name="Shuttlecock" parent="." instance=ExtResource("4_shuttle")]
+position = Vector2(390, 480)
+
+[node name="FloorReflection" type="Polygon2D" parent="."]
+material = SubResource("ShaderMaterial_refl")
+polygon = PackedVector2Array(190, 485, 1090, 485, 1210, 615, 70, 615)
+
+[node name="NishikawaLightning" type="Node2D" parent="."]
+
+[node name="AoiShield" type="Node2D" parent="."]
+
+[node name="HUD" type="CanvasLayer" parent="."]
+
+[node name="FlashRect" type="ColorRect" parent="HUD"]
+visible = false
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+color = Color(1, 1, 1, 0)
+
+[node name="GrayscaleRect" type="ColorRect" parent="HUD"]
+visible = false
+material = SubResource("ShaderMaterial_gray")
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="ScoreBoard" type="PanelContainer" parent="HUD"]
+anchors_preset = 5
+anchor_left = 0.5
+anchor_right = 0.5
+offset_left = -270.0
+offset_top = 14.0
+offset_right = 270.0
+offset_bottom = 100.0
+grow_horizontal = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_scoreboard")
+
+[node name="Inner" type="Control" parent="HUD/ScoreBoard"]
+layout_mode = 2
+
+[node name="BadgePlayer" type="Panel" parent="HUD/ScoreBoard/Inner"]
+layout_mode = 1
+offset_left = 16.0
+offset_top = 12.0
+offset_right = 140.0
+offset_bottom = 44.0
+theme_override_styles/panel = SubResource("StyleBoxFlat_player_badge")
+
+[node name="LabelPlayer" type="Label" parent="HUD/ScoreBoard/Inner/BadgePlayer"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+text = "PLAYER 1"
+label_settings = SubResource("LabelSettings_badge")
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="BadgeRival" type="Panel" parent="HUD/ScoreBoard/Inner"]
+layout_mode = 1
+anchors_preset = 1
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -140.0
+offset_top = 12.0
+offset_right = -16.0
+offset_bottom = 44.0
+grow_horizontal = 0
+theme_override_styles/panel = SubResource("StyleBoxFlat_ai_badge")
+
+[node name="LabelRival" type="Label" parent="HUD/ScoreBoard/Inner/BadgeRival"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+text = "RIVAL AI"
+label_settings = SubResource("LabelSettings_badge")
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="LabelScore" type="Label" parent="HUD/ScoreBoard/Inner"]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -80.0
+offset_top = -34.0
+offset_right = 80.0
+offset_bottom = 14.0
+grow_horizontal = 2
+grow_vertical = 2
+text = "0  -  0"
+label_settings = SubResource("LabelSettings_score")
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="PillStats" type="Panel" parent="HUD/ScoreBoard/Inner"]
+visible = false
+layout_mode = 1
+anchors_preset = 7
+anchor_left = 0.5
+anchor_top = 1.0
+anchor_right = 0.5
+anchor_bottom = 1.0
+offset_left = -190.0
+offset_top = -34.0
+offset_right = 190.0
+offset_bottom = -8.0
+grow_horizontal = 2
+grow_vertical = 0
+theme_override_styles/panel = SubResource("StyleBoxFlat_stat_pill")
+
+[node name="LabelSpikeStats" type="Label" parent="HUD/ScoreBoard/Inner/PillStats"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+text = "0.00 km/h   •   0.00 m"
+label_settings = SubResource("LabelSettings_stats")
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="BtnCharSelect" type="Button" parent="HUD"]
+anchors_preset = 1
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -265.0
+offset_top = 16.0
+offset_right = -135.0
+offset_bottom = 48.0
+grow_horizontal = 0
+theme_override_styles/normal = SubResource("StyleBoxFlat_settings_btn")
+text = "ĐỔI TƯỚNG (C)"
+
+[node name="BtnSettings" type="Button" parent="HUD"]
+anchors_preset = 1
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -125.0
+offset_top = 16.0
+offset_right = -20.0
+offset_bottom = 48.0
+grow_horizontal = 0
+theme_override_styles/normal = SubResource("StyleBoxFlat_settings_btn")
+text = "CÀI ĐẶT"
+
+[node name="SettingsPanel" type="PanelContainer" parent="HUD"]
+visible = false
+anchors_preset = 1
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -340.0
+offset_top = 60.0
+offset_right = -18.0
+offset_bottom = 275.0
+grow_horizontal = 0
+theme_override_styles/panel = SubResource("StyleBoxFlat_settings_panel")
+
+[node name="VBox" type="VBoxContainer" parent="HUD/SettingsPanel"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="Header" type="HBoxContainer" parent="HUD/SettingsPanel/VBox"]
+layout_mode = 2
+
+[node name="LabelTitle" type="Label" parent="HUD/SettingsPanel/VBox/Header"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "CÀI ĐẶT TRẬN ĐẤU"
+label_settings = SubResource("LabelSettings_settings_title")
+
+[node name="BtnClose" type="Button" parent="HUD/SettingsPanel/VBox/Header"]
+custom_minimum_size = Vector2(28, 28)
+layout_mode = 2
+text = "X"
+
+[node name="LabelDiff" type="Label" parent="HUD/SettingsPanel/VBox"]
+layout_mode = 2
+text = "ĐỘ KHÓ AI (PHÍM 1, 2, 3):"
+label_settings = SubResource("LabelSettings_settings_item")
+
+[node name="DifficultyRow" type="HBoxContainer" parent="HUD/SettingsPanel/VBox"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="BtnEasy" type="Button" parent="HUD/SettingsPanel/VBox/DifficultyRow"]
+custom_minimum_size = Vector2(86, 30)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_styles/normal = SubResource("StyleBoxFlat_btn")
+text = "1: DỄ"
+
+[node name="BtnMedium" type="Button" parent="HUD/SettingsPanel/VBox/DifficultyRow"]
+custom_minimum_size = Vector2(86, 30)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_styles/normal = SubResource("StyleBoxFlat_btn")
+text = "2: TB"
+
+[node name="BtnHard" type="Button" parent="HUD/SettingsPanel/VBox/DifficultyRow"]
+custom_minimum_size = Vector2(86, 30)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_styles/normal = SubResource("StyleBoxFlat_btn")
+text = "3: KHÓ"
+
+[node name="SqueakRow" type="HBoxContainer" parent="HUD/SettingsPanel/VBox"]
+layout_mode = 2
+
+[node name="LabelSqueak" type="Label" parent="HUD/SettingsPanel/VBox/SqueakRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Tiếng rít giày sàn:"
+label_settings = SubResource("LabelSettings_settings_item")
+
+[node name="BtnSqueak" type="Button" parent="HUD/SettingsPanel/VBox/SqueakRow"]
+custom_minimum_size = Vector2(80, 28)
+layout_mode = 2
+theme_override_styles/normal = SubResource("StyleBoxFlat_btn")
+text = "BẬT"
+
+[node name="ControlsBar" type="PanelContainer" parent="HUD"]
+anchors_preset = 7
+anchor_left = 0.5
+anchor_top = 1.0
+anchor_right = 0.5
+anchor_bottom = 1.0
+offset_left = -460.0
+offset_top = -34.0
+offset_right = 460.0
+offset_bottom = -8.0
+grow_horizontal = 2
+grow_vertical = 0
+theme_override_styles/panel = SubResource("StyleBoxFlat_controls")
+
+[node name="LabelControls" type="Label" parent="HUD/ControlsBar"]
+layout_mode = 2
+text = "[A / D] Di chuyển (DD Cứu cầu)   •   [W] Nhảy   •   [J] Bỏ nhỏ   •   [K] Phông   •   [L] Smash   •   [C] Đổi tướng"
+label_settings = SubResource("LabelSettings_controls")
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="LabelBanner" type="Label" parent="HUD"]
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -450.0
+offset_top = -55.0
+offset_right = 450.0
+offset_bottom = 55.0
+grow_horizontal = 2
+grow_vertical = 2
+pivot_offset = Vector2(450, 55)
+text = "PLAYER GIAO CẦU (BẤM J HOẶC K)"
+label_settings = SubResource("LabelSettings_banner")
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="Audio" type="Node" parent="."]
+
+[node name="SFXSmash" type="AudioStreamPlayer" parent="Audio"]
+stream = ExtResource("5_smash")
+volume_db = 4.5
+
+[node name="SFXPong" type="AudioStreamPlayer" parent="Audio"]
+stream = ExtResource("6_phong")
+volume_db = 5.5
+
+[node name="SFXSqueak" type="AudioStreamPlayer" parent="Audio"]
+stream = ExtResource("7_squeak")
+volume_db = 2.0
+
+[node name="SFXElectric" type="AudioStreamPlayer" parent="Audio"]
+stream = ExtResource("10_electric")
+volume_db = 3.5
+
+[node name="SFXAoiBlock" type="AudioStreamPlayer" parent="Audio"]
+stream = ExtResource("11_aoi_block")
+volume_db = 5.0
+
+[node name="SFXString" type="AudioStreamPlayer" parent="Audio"]
+stream = ExtResource("12_string")
+volume_db = 4.5
+
+[node name="SFXFujiWind" type="AudioStreamPlayer" parent="Audio"]
+stream = ExtResource("13_fuji_wind")
+volume_db = 4.0
+
+[node name="SFXChem" type="AudioStreamPlayer" parent="Audio"]
+stream = ExtResource("14_chem_cau")
+volume_db = 6.8
+
+[node name="SFXAoiSlowmo" type="AudioStreamPlayer" parent="Audio"]
+stream = ExtResource("15_aoi_slowmo")
+volume_db = 4.0
+
+[node name="SFXLowBallPlay" type="AudioStreamPlayer" parent="Audio"]
+stream = ExtResource("16_low_ball_play")
+volume_db = 5.0
+
+[node name="BGMLobby" type="AudioStreamPlayer" parent="Audio"]
+stream = ExtResource("17_lobby_theme")
+volume_db = -3.0

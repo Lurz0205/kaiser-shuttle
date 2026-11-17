@@ -1,0 +1,61 @@
+name: Deploy Kaiser Shuttle to GitHub Pages
+
+on:
+  push:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Godot Engine & Templates
+        run: |
+          GODOT_VER="4.7.2"
+          echo "Installing Godot $GODOT_VER..."
+          wget -q https://github.com/godotengine/godot/releases/download/${GODOT_VER}-stable/Godot_v${GODOT_VER}-stable_linux.x86_64.zip
+          unzip -q Godot_v${GODOT_VER}-stable_linux.x86_64.zip
+          sudo mv Godot_v${GODOT_VER}-stable_linux.x86_64 /usr/local/bin/godot
+          sudo chmod +x /usr/local/bin/godot
+          
+          mkdir -p ~/.local/share/godot/export_templates/${GODOT_VER}.stable
+          wget -q https://github.com/godotengine/godot/releases/download/${GODOT_VER}-stable/Godot_v${GODOT_VER}-stable_export_templates.tpz
+          unzip -q Godot_v${GODOT_VER}-stable_export_templates.tpz
+          mv templates/* ~/.local/share/godot/export_templates/${GODOT_VER}.stable/
+          rm -rf templates Godot_v${GODOT_VER}-stable_export_templates.tpz Godot_v${GODOT_VER}-stable_linux.x86_64.zip
+          echo "Godot installed successfully:"
+          godot --version
+
+      - name: Export Web Project
+        run: |
+          mkdir -p build/web
+          godot --headless --export-release "Web" build/web/index.html
+          cp coi-serviceworker.js build/web/coi-serviceworker.js
+
+      - name: Upload GitHub Pages Artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: build/web
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

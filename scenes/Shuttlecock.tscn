@@ -1,0 +1,32 @@
+[gd_scene load_steps=3 format=3 uid="uid://bshuttlecock01"]
+
+[ext_resource type="Script" path="res://scripts/shuttlecock.gd" id="1_script"]
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_1"]
+radius = 12.0
+
+[node name="Shuttlecock" type="Area2D"]
+collision_layer = 2
+collision_mask = 5
+script = ExtResource("1_script")
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+shape = SubResource("CircleShape2D_1")
+
+[node name="Trail2D" type="Line2D" parent="."]
+top_level = true
+width = 6.0
+default_color = Color(1.8, 1.6, 0.6, 0.85)
+
+[node name="LightningTrail" type="Node2D" parent="."]
+top_level = true
+
+[node name="LeafTrail" type="Node2D" parent="."]
+top_level = true
+
+[node name="ShadowNode" type="Node2D" parent="."]
+top_level = true
+
+[node name="ShadowPolygon" type="Polygon2D" parent="ShadowNode"]
+color = Color(0.04, 0.08, 0.12, 0.6)
+polygon = PackedVector2Array(-14, 0, -10, -5, 0, -7, 10, -5, 14, 0, 10, 5, 0, 7, -10, 5)

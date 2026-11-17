@@ -1,0 +1,8 @@
+.godot/
+build/
+*.tmp
+*.exe
+*.pck
+tests/
+scripts/publish_github.py
+
