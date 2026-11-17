@@ -10,11 +10,11 @@
 [ext_resource type="Shader" path="res://shaders/floor_reflection.gdshader" id="8_refl_shader"]
 [ext_resource type="Shader" path="res://shaders/grayscale_impact.gdshader" id="9_gray_shader"]
 [ext_resource type="AudioStream" path="res://assets/audio/electric_charge.wav" id="10_electric"]
-[ext_resource type="AudioStream" path="res://assets/audio/aoi_block.wav" id="11_aoi_block"]
+[ext_resource type="AudioStream" path="res://assets/audio/isabel_block.wav" id="11_isabel_block"]
 [ext_resource type="AudioStream" path="res://assets/audio/string.wav" id="12_string"]
 [ext_resource type="AudioStream" path="res://assets/audio/fuji_wind.wav" id="13_fuji_wind"]
 [ext_resource type="AudioStream" path="res://assets/audio/chem_cau.wav" id="14_chem_cau"]
-[ext_resource type="AudioStream" path="res://assets/audio/aoi_slowmo.wav" id="15_aoi_slowmo"]
+[ext_resource type="AudioStream" path="res://assets/audio/isabel_slowmo.wav" id="15_isabel_slowmo"]
 [ext_resource type="AudioStream" path="res://assets/audio/low_ball_play.wav" id="16_low_ball_play"]
 [ext_resource type="AudioStream" path="res://assets/audio/lobby_theme.ogg" id="17_lobby_theme"]
 
@@ -238,7 +238,7 @@ polygon = PackedVector2Array(190, 485, 1090, 485, 1210, 615, 70, 615)
 
 [node name="NishikawaLightning" type="Node2D" parent="."]
 
-[node name="AoiShield" type="Node2D" parent="."]
+[node name="IsabelShield" type="Node2D" parent="."]
 
 [node name="HUD" type="CanvasLayer" parent="."]
 
@@ -522,8 +522,8 @@ volume_db = 2.0
 stream = ExtResource("10_electric")
 volume_db = 3.5
 
-[node name="SFXAoiBlock" type="AudioStreamPlayer" parent="Audio"]
-stream = ExtResource("11_aoi_block")
+[node name="SFXIsabelBlock" type="AudioStreamPlayer" parent="Audio"]
+stream = ExtResource("11_isabel_block")
 volume_db = 5.0
 
 [node name="SFXString" type="AudioStreamPlayer" parent="Audio"]
@@ -538,8 +538,8 @@ volume_db = 4.0
 stream = ExtResource("14_chem_cau")
 volume_db = 6.8
 
-[node name="SFXAoiSlowmo" type="AudioStreamPlayer" parent="Audio"]
-stream = ExtResource("15_aoi_slowmo")
+[node name="SFXIsabelSlowmo" type="AudioStreamPlayer" parent="Audio"]
+stream = ExtResource("15_isabel_slowmo")
 volume_db = 4.0
 
 [node name="SFXLowBallPlay" type="AudioStreamPlayer" parent="Audio"]
