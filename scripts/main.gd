@@ -95,6 +95,15 @@ const SLOWMO_LIGHTNING_DURATION: float = 1.0
 const BURST_LIGHTNING_DURATION: float = 0.28
 var impact_lightning_branches: Array = []
 
+# Fuji Emerald Gale Vortex Slowmo Effect (Cơn lốc xanh)
+var fuji_slowmo_active: bool = false
+var fuji_slowmo_timer: float = 0.0
+const FUJI_SLOWMO_DURATION: float = 0.48
+var fuji_slowmo_center: Vector2 = Vector2.ZERO
+var fuji_slowmo_start_ticks: int = 0
+var fuji_slowmo_facing: float = 1.0
+var fuji_slowmo_leaves: Array = []
+
 # Takeoff Jump Effects (Hiệu ứng dậm nhảy bùng nổ mặt sàn)
 var jump_takeoff_effects: Array = []
 
@@ -551,7 +560,7 @@ func _process(delta: float) -> void:
 		if nishikawa_lightning:
 			nishikawa_lightning.queue_redraw()
 	
-	# AOI Mirage Shield Animation update (dùng real-time ticks để bung mượt suốt 1.55s slow-mo):
+	# Isabel Mirage Shield Animation update (dùng real-time ticks để bung mượt suốt 1.55s slow-mo):
 	if aoi_shield_active:
 		var elapsed_real = (Time.get_ticks_msec() - aoi_shield_start_ticks) / 1000.0
 		aoi_shield_timer = elapsed_real
@@ -559,6 +568,14 @@ func _process(delta: float) -> void:
 			aoi_shield_active = false
 		if aoi_shield:
 			aoi_shield.queue_redraw()
+	
+	# Fuji Emerald Gale Slow-mo Animation update (Cơn lốc xanh ngưng đọng real-time):
+	if fuji_slowmo_active:
+		var elapsed_real = (Time.get_ticks_msec() - fuji_slowmo_start_ticks) / 1000.0
+		fuji_slowmo_timer = elapsed_real
+		if fuji_slowmo_timer >= FUJI_SLOWMO_DURATION:
+			fuji_slowmo_active = false
+		_redraw_effects()
 	
 	_update_stats_display()
 	
@@ -984,19 +1001,49 @@ func _trigger_fuji_cinematic_slowmo(hit_pos: Vector2, hitter: String = "player")
 		sfx_fuji_wind.pitch_scale = randf_range(0.98, 1.02)
 		sfx_fuji_wind.play()
 		
-	# 2. Cinematic Super Slow-mo tại điểm chạm vợt (GIỮ NGUYÊN MÀU SẮC ĐỒ HỌA, TUYỆT ĐỐI KHÔNG TRẮNG ĐEN)
+	# 2. Khởi tạo hiệu ứng slow-mo Cơn lốc xanh (Emerald Gale Vortex):
+	fuji_slowmo_center = hit_pos
+	fuji_slowmo_start_ticks = Time.get_ticks_msec()
+	fuji_slowmo_timer = 0.0
+	fuji_slowmo_facing = 1.0 if hitter == "player" else -1.0
+	fuji_slowmo_leaves.clear()
+	
+	# Sinh 14 lá trúc bay lượn xoáy ốc quanh tâm chém gió
+	var leaf_cols = [
+		Color(0.25, 0.90, 0.40),
+		Color(0.18, 0.82, 0.35),
+		Color(0.50, 0.98, 0.45),
+		Color(0.20, 0.95, 0.65),
+		Color(0.70, 0.92, 0.30)
+	]
+	for i in range(14):
+		fuji_slowmo_leaves.append({
+			"ang0": randf_range(0, TAU),
+			"dist0": randf_range(16.0, 36.0),
+			"dist_speed": randf_range(70.0, 140.0),
+			"spin_dir": 1.0 if randf() < 0.7 else -1.0,
+			"spin_speed": randf_range(6.0, 12.0),
+			"size": randf_range(8.0, 13.0),
+			"col": leaf_cols[randi() % leaf_cols.size()]
+		})
+	fuji_slowmo_active = true
+	_redraw_effects()
+		
+	# 3. Cinematic Super Slow-mo tại điểm chạm vợt (GIỮ NGUYÊN MÀU SẮC ĐỒ HỌA, TUYỆT ĐỐI KHÔNG TRẮNG ĐEN)
 	if grayscale_rect:
 		grayscale_rect.visible = false
-	shake_amount = 12.0
+	shake_amount = 14.0
 	Engine.time_scale = 0.05
 	if camera:
 		camera.zoom = Vector2(1.08, 1.08)
 		
 	var tree = get_tree()
 	if tree:
-		await tree.create_timer(0.48, true, false, true).timeout
+		await tree.create_timer(FUJI_SLOWMO_DURATION, true, false, true).timeout
 		
-	# 3. KHI HẾT 0.48S SLOW-MO: VUNG VỢT VÀ THỰC SỰ PHÓNG CẦU ĐI!
+	# 4. KHI HẾT 0.48S SLOW-MO: VUNG VỢT VÀ THỰC SỰ PHÓNG CẦU ĐI!
+	fuji_slowmo_active = false
+	_redraw_effects()
 	var hitter_node = player if hitter == "player" else ai_rival
 	if hitter_node:
 		hitter_node.execute_pending_special()
@@ -1892,7 +1939,65 @@ func _on_effects_overlay_draw() -> void:
 			var y_end = y_start - (14.0 + prog * 28.0)
 			effects_overlay.draw_line(Vector2(p_pos.x + off_x, y_start), Vector2(p_pos.x + off_x, y_end), Color(1.0, 1.0, 1.0, alpha * 0.6), 2.0, true)
 	
-	# 10. Floating Combat Text (Popup PERFECT bay nhẹ lên trên)
+	# 10. Fuji Emerald Gale Vortex (Hiệu ứng ngưng đọng slow-mo Cơn lốc xanh)
+	if fuji_slowmo_active:
+		var p_prog = clamp(fuji_slowmo_timer / FUJI_SLOWMO_DURATION, 0.0, 1.0)
+		var alpha = sin(p_prog * PI)
+		var center = fuji_slowmo_center
+		var facing_dir = fuji_slowmo_facing
+		
+		# A. Lốc xoáy ngọc bích tâm điểm (Vortex Eye Aura)
+		var r_eye = 16.0 + p_prog * 24.0
+		effects_overlay.draw_circle(center, r_eye * 0.65, Color(0.85, 2.5, 1.3, alpha * 0.40))
+		effects_overlay.draw_circle(center, r_eye * 1.35, Color(0.20, 1.85, 0.60, alpha * 0.22))
+		
+		# B. Các vòng sóng xung kích gió bão nở rộng (Expanding Wind Pressure Rings)
+		var r_ring1 = 20.0 + p_prog * 85.0
+		effects_overlay.draw_arc(center, r_ring1, 0, TAU, 36, Color(0.30, 2.0, 0.75, alpha * 0.85), 3.0, true)
+		effects_overlay.draw_arc(center, r_ring1 * 0.65, 0, TAU, 28, Color(0.90, 2.6, 1.4, alpha * 0.90), 1.8, true)
+		
+		# C. 3 dải lưỡi gió xoáy lượn vòng (Gale Vortex Blades)
+		var base_spin = p_prog * 14.0 * facing_dir
+		for b in range(3):
+			var ang_start = base_spin + (TAU / 3.0) * b
+			var ang_end = ang_start + PI * 0.75
+			var r_blade = 28.0 + p_prog * 38.0 + b * 6.0
+			effects_overlay.draw_arc(center, r_blade, ang_start, ang_end, 20, Color(0.25, 2.2, 0.70, alpha * 0.90), 3.2, true)
+			effects_overlay.draw_arc(center, r_blade, ang_start + 0.1, ang_end - 0.1, 16, Color(0.90, 2.8, 1.5, alpha * 0.98), 1.5, true)
+			
+		# D. Nhát chém xé gió chéo (Razor Wind Slash Path)
+		var slash_len = 60.0 + p_prog * 95.0
+		var slash_ang = (-0.42 if facing_dir > 0 else -PI + 0.42)
+		var slash_vec = Vector2(cos(slash_ang), sin(slash_ang)) * slash_len
+		var p_start = center - slash_vec * 0.45
+		var p_end = center + slash_vec * 0.75
+		effects_overlay.draw_line(p_start, p_end, Color(0.20, 1.8, 0.55, alpha * 0.55), 7.5, true)
+		effects_overlay.draw_line(p_start, p_end, Color(0.85, 2.6, 1.4, alpha * 0.95), 2.8, true)
+		
+		# E. Bầy lá trúc bay lượn xoáy ốc trong slow-mo (Slow-mo Orbiting Bamboo Leaves)
+		for lf in fuji_slowmo_leaves:
+			var ang = lf["ang0"] + p_prog * lf["spin_speed"] * lf["spin_dir"]
+			var dist = lf["dist0"] + p_prog * lf["dist_speed"]
+			var leaf_pos = center + Vector2(cos(ang), sin(ang)) * dist
+			var leaf_rot = ang + p_prog * 6.0
+			var sz = lf["size"]
+			var col = lf["col"]
+			col.a = alpha * 0.95
+			
+			var cos_r = cos(leaf_rot)
+			var sin_r = sin(leaf_rot)
+			var pts = PackedVector2Array([
+				leaf_pos + Vector2(-sz * 0.7 * cos_r, -sz * 0.7 * sin_r),
+				leaf_pos + Vector2(-sz * 0.25 * cos_r + sz * 0.38 * sin_r, -sz * 0.25 * sin_r - sz * 0.38 * cos_r),
+				leaf_pos + Vector2(sz * 0.45 * cos_r + sz * 0.30 * sin_r, sz * 0.45 * sin_r - sz * 0.30 * cos_r),
+				leaf_pos + Vector2(sz * 1.0 * cos_r, sz * 1.0 * sin_r),
+				leaf_pos + Vector2(sz * 0.45 * cos_r - sz * 0.30 * sin_r, sz * 0.45 * sin_r + sz * 0.30 * cos_r),
+				leaf_pos + Vector2(-sz * 0.25 * cos_r - sz * 0.38 * sin_r, -sz * 0.25 * sin_r + sz * 0.38 * cos_r)
+			])
+			effects_overlay.draw_colored_polygon(pts, col)
+			effects_overlay.draw_polyline(pts, Color(0.9, 2.4, 1.2, alpha * 0.8), 1.0, true)
+	
+	# 11. Floating Combat Text (Popup PERFECT bay nhẹ lên trên)
 	if floating_text_mgr:
 		floating_text_mgr.draw(effects_overlay)
 
