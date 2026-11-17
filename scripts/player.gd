@@ -804,7 +804,8 @@ func _process_ai(delta: float) -> void:
 		return
 	
 	# Vị trí trung tâm hồi về linh hoạt theo thói quen đối thủ (In-Match Adaptation)
-	var dynamic_home_x: float = 920.0
+	# Tâm sân phải chuẩn: (640 + 1140) / 2 = 890.0
+	var dynamic_home_x: float = 890.0
 	if ai_difficulty == 2:
 		# HARD AI: Thích nghi thói quen người chơi trong trận đấu
 		if opp_consecutive_drops >= 2 or opp_drop_ratio >= 0.45 or opp_is_camping_back:
@@ -818,17 +819,17 @@ func _process_ai(delta: float) -> void:
 			# Tiết kiệm thể lực: Đứng chuẩn T-junction (890px), giảm quãng đường chạy
 			dynamic_home_x = 890.0
 		else:
-			dynamic_home_x = 910.0
+			dynamic_home_x = 890.0
 	elif ai_difficulty == 1:
 		# MEDIUM AI: Thích nghi vừa phải
 		if opp_consecutive_drops >= 3 or opp_drop_ratio >= 0.60:
-			dynamic_home_x = 850.0
+			dynamic_home_x = 835.0
 		elif stats and stats.stamina < 40.0:
-			dynamic_home_x = 905.0
+			dynamic_home_x = 890.0
 		else:
-			dynamic_home_x = 920.0
+			dynamic_home_x = 890.0
 	else:
-		dynamic_home_x = 920.0
+		dynamic_home_x = 890.0
 	
 	if not shuttlecock or not shuttlecock.is_active:
 		# Hồi về vị trí giữa sân
