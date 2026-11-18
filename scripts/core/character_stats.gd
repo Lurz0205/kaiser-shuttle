@@ -74,25 +74,25 @@ func reset_torque() -> void:
 ## - Di chuyển chạy: tiêu hao thể lực (-8.0/s)
 ## - Nhịp độ chậm / đứng yên: hồi chậm theo thời gian (+9.0/s) nhưng không vượt quá trần max_stamina_cap
 ## - Khi pha cầu giằng co kéo dài lâu: trần thể lực tối đa tự động giảm dần!
-func update_stamina(delta: float, is_moving: bool, is_slow_tempo: bool, rally_time: float, rally_hits: int) -> void:
-	# Trần thể lực tối đa co lại theo độ dài pha cầu (Rally Drag Exhaustion):
+func update_stamina(delta: float, is_moving: bool, is_slow_tempo: bool, rally_time: float, rally_hits: int, stamina_efficiency: float = 1.0) -> void:
+	# Trần thể lực tối đa co lại hợp lý theo độ dài pha cầu (Rally Drag Exhaustion):
 	# Composure cao giúp duy trì trần thể lực tốt hơn
-	var comp_factor = lerp(1.3, 0.75, (composure - 40.0) / 59.0)
-	var drag_penalty = (float(rally_hits) * 1.35 + rally_time * 0.65) * comp_factor
-	max_stamina_cap = clamp(100.0 - drag_penalty, 35.0, 100.0)
+	var comp_factor = lerp(1.2, 0.70, (composure - 40.0) / 59.0)
+	var drag_penalty = (float(rally_hits) * 0.85 + rally_time * 0.35) * comp_factor * stamina_efficiency
+	max_stamina_cap = clamp(100.0 - drag_penalty, 42.0, 100.0)
 	
 	if is_moving:
-		# Chạy di chuyển tiêu hao thể lực
-		var drain_rate = 8.0 * (1.1 - (agility / 100.0) * 0.2)
+		# Chạy di chuyển tiêu hao thể lực theo hiệu suất bộ pháp
+		var drain_rate = 8.0 * (1.1 - (agility / 100.0) * 0.2) * stamina_efficiency
 		stamina = max(0.0, stamina - delta * drain_rate)
 	elif is_slow_tempo:
-		# Nhịp độ êm dịu (Tension 0) / đứng thở: Hồi chậm dần dần
+		# Nhịp độ êm dịu (Tension 0) / đứng thở: Hồi nhanh dần dần
 		if stamina < max_stamina_cap:
-			stamina = min(max_stamina_cap, stamina + delta * 9.5)
+			stamina = min(max_stamina_cap, stamina + delta * 11.0)
 	else:
-		# Nhịp độ dồn dập nhưng tạm dừng chân: Hồi rất khẽ
+		# Nhịp độ dồn dập nhưng tạm dừng chân đứng vững: Hồi phục tốt
 		if stamina < max_stamina_cap:
-			stamina = min(max_stamina_cap, stamina + delta * 3.5)
+			stamina = min(max_stamina_cap, stamina + delta * 6.0)
 
 
 ## Tiêu hao thể lực theo hành động (Smash, Jump)
