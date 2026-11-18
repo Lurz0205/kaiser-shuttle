@@ -213,10 +213,12 @@ func _ready() -> void:
 	add_child(bg_court)
 	move_child(bg_court, 0)
 	
-	# Đảm bảo gương phản chiếu sàn thi đấu luôn hiển thị sắc nét
+	# Đảm bảo gương phản chiếu sàn thi đấu luôn hiển thị sắc nét trên mọi độ phân giải & Fullscreen
 	var floor_refl = get_node_or_null("FloorReflection")
 	if floor_refl:
 		floor_refl.visible = true
+		_update_floor_reflection()
+		get_viewport().size_changed.connect(_update_floor_reflection)
 	
 	# Tách riêng hiệu ứng động (shockwave, burst, jump takeoff) ra overlay độc lập để không vẽ lại toàn bộ sân vận động
 	effects_overlay = Node2D.new()
@@ -505,6 +507,11 @@ func _update_difficulty_buttons() -> void:
 func _process(delta: float) -> void:
 	# Cố định tâm camera tuyệt đối tại giữa màn hình (tránh mọi lỗi trôi/lệch khung)
 	camera.position = Vector2(640.0, 360.0)
+	
+	# Đồng bộ kích thước phản chiếu sàn ngay tức thì khi chuyển đổi Fullscreen / Maximize
+	var cur_win = Vector2(DisplayServer.window_get_size())
+	if cur_win != _last_window_size and cur_win.x > 0.0 and cur_win.y > 0.0:
+		_update_floor_reflection()
 	
 	_update_hud_stamina_bars()
 	
@@ -1718,6 +1725,30 @@ func _on_match_over_to_menu() -> void:
 	if bgm_lobby and not bgm_lobby.playing:
 		bgm_lobby.volume_db = -3.0
 		bgm_lobby.play()
+
+
+var _last_window_size: Vector2 = Vector2.ZERO
+
+func _update_floor_reflection() -> void:
+	var floor_refl = get_node_or_null("FloorReflection")
+	if not floor_refl or not floor_refl.material:
+		return
+	var vp = get_viewport()
+	if not vp:
+		return
+	var win_size = Vector2(DisplayServer.window_get_size())
+	if win_size.x <= 0.0 or win_size.y <= 0.0:
+		win_size = Vector2(1280.0, 720.0)
+	_last_window_size = win_size
+	
+	# Tính chuẩn xác tuyệt đối tọa độ UV sàn theo chế độ canvas_items & keep aspect:
+	# Cửa sổ nhỏ, Phóng to Maximized, Fullscreen 1080p, 2K, 4K, hay màn hình 16:10 / Ultrawide
+	var scale_factor = min(win_size.x / 1280.0, win_size.y / 720.0)
+	var rendered_h = 720.0 * scale_factor
+	var offset_y = (win_size.y - rendered_h) * 0.5
+	var floor_pixel_y = offset_y + FLOOR_Y * scale_factor
+	var uv_y = clamp(floor_pixel_y / win_size.y, 0.1, 0.95)
+	(floor_refl.material as ShaderMaterial).set_shader_parameter("floor_uv_y", uv_y)
 
 
 func _update_scoreboard() -> void:
