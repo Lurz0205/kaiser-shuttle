@@ -136,9 +136,20 @@ func on_smash_executed(is_boom: bool = false, is_chance_ball: bool = false) -> v
 	else:
 		smash_torque = 0.64
 	
-	# Tiêu hao thể lực tức thì cho cú smash từ thế giằng co bình thường (Neutral)
-	var drain = 24.0 if is_boom else 18.0
+	# Tiêu hao thể lực hợp lý cho cú smash (không phạt quá nặng kẻ tấn công)
+	var drain = 16.0 if is_boom else 11.0
 	consume_stamina_action(drain)
+
+
+## Tiêu hao thể lực và áp lực của người phòng thủ khi đỡ cú Smash uy lực
+func on_smash_defended(quality: float, is_perfect: bool) -> void:
+	if is_perfect:
+		consume_stamina_action(3.0)
+	elif quality >= 0.85:
+		consume_stamina_action(7.0)
+	else:
+		# Đỡ với / chạm mép vợt cú đập cực mạnh: Chấn động cổ tay, tốn thể lực chặn lực
+		consume_stamina_action(12.0)
 
 
 ## Cơ chế "Kinetic Reset": 1 cú Drop êm ái hoặc Clear thả lỏng hồi 100% torque (nhưng TUYỆT ĐỐI không hồi thể lực khi đánh cầu!)
@@ -225,36 +236,34 @@ func should_pop_weak_return(is_incoming_smash: bool) -> bool:
 
 ## Accuracy thấp (< 50%) hoặc Thể lực cạn kiệt (< 35%) sẽ tạo ra lỗi đánh hỏng (rúc lưới, out sân, đánh hụt)
 func check_unforced_blunder(shot_type: String = "") -> String:
-	# Cú bỏ nhỏ (drop) tuyệt đối không rúc lưới gây mất điểm lãng xẹt:
-	# Nếu mệt mỏi / accuracy thấp thì cú bỏ nhỏ sẽ chuyển thành bung cầu non (weak return/chance ball) cho đối thủ
-	if shot_type == "drop":
+	# Cú bỏ nhỏ (drop) tuyệt đối không rúc lưới gây mất điểm lãng xẹt
+	if shot_type == "drop" or shot_type == "tsubame_gaeshi" or shot_type == "mirage_counter":
 		return "none"
 		
 	var is_smash_shot = (shot_type == "smash" or shot_type == "kill_smash" or shot_type == "boom_smash")
-	var acc_p = clamp((50.0 - accuracy) / 50.0, 0.0, 1.0) if accuracy < 50.0 else 0.0
-	var sta_p = clamp((35.0 - stamina) / 35.0, 0.0, 1.0) if stamina < 35.0 else 0.0
+	# Chỉ kích hoạt nguy cơ đánh hỏng khi thể lực hoặc accuracy ở mức cạn kiệt nguy hiểm (< 25% accuracy hoặc < 18% thể lực)
+	var acc_p = clamp((25.0 - accuracy) / 25.0, 0.0, 1.0) if accuracy < 25.0 else 0.0
+	var sta_p = clamp((18.0 - stamina) / 18.0, 0.0, 1.0) if stamina < 18.0 else 0.0
 	
 	if acc_p <= 0.0 and sta_p <= 0.0:
 		return "none"
 	
 	var err_chance = 0.0
 	if is_smash_shot:
-		# SMASH ĐÒI HỎI THỂ LỰC & CHÍNH XÁC CỰC LỚN:
-		# Khi thể lực và accuracy đều đỏ cạn, tỉ lệ hỏng smash lên tới 75%! Không thể đập liên tục 10 quả mà không hỏng!
-		err_chance = (acc_p * 0.40) + (sta_p * 0.45)
+		err_chance = (acc_p * 0.20) + (sta_p * 0.18)
 	else:
-		err_chance = (acc_p * 0.22) + (sta_p * 0.18)
+		err_chance = (acc_p * 0.12) + (sta_p * 0.10)
 		
 	if randf() > err_chance:
 		return "none"
 	
 	var roll = randf()
-	if roll < 0.45:
-		return "net"   # Không qua lưới (rúc lưới)
-	elif roll < 0.80:
+	if roll < 0.12:
+		return "net"   # Tỉ lệ rúc lưới cực thấp (12%), tránh cảm giác tự hủy ức chế
+	elif roll < 0.75:
 		return "out"   # Out sân (bay vọt qua biên)
 	else:
-		return "whiff" # Đánh hụt (vung vợt trượt / mép vợt)
+		return "whiff" # Đánh mép khung vợt
 
 
 ## Hệ số nhân tốc độ smash dựa trên Torque và Thể lực hiện tại
