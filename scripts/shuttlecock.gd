@@ -202,20 +202,9 @@ func launch_to_target_2d(from_pt: Vector2, target_pt: Vector2, shot_type: String
 			# ĐẬP DỨT ĐIỂM CẦU NON CỰC NHANH (0.16s - 0.22s):
 			flight_duration = clamp(dist_x / (v_base * 1.15), 0.16, 0.22)
 		else:
-			# ĐẬP CẦU TỐC ĐỘ CAO XÉ GIÓ (0.24s - 0.35s)
-			flight_duration = clamp(dist_x / (v_base * 0.95), 0.24, 0.35)
+			# ĐẬP CẦU TỐC ĐỘ CAO XÉ GIÓ (0.30s - 0.46s)
+			flight_duration = clamp(dist_x / (v_base * 0.72), 0.30, 0.46)
 		h_apex = h_start
-		
-		# Quỹ đạo cắm thẳng xuống sàn, bảo đảm luôn vượt qua lưới an toàn ít nhất 18px:
-		var dist_net = abs(t_res.net_x - from_pt.x)
-		smash_u_net = clamp(dist_net / max(dist_x, 1.0), 0.05, 0.95)
-		var h_line_at_net = h_start * (1.0 - smash_u_net)
-		var min_safe_net_h = t_res.net_height + 18.0
-		if h_line_at_net < min_safe_net_h:
-			smash_net_boost = min_safe_net_h - h_line_at_net
-		else:
-			smash_net_boost = 0.0
-		smash_h_net = max(min_safe_net_h, h_line_at_net)
 		is_ground_smash = false
 				
 	elif shot_type == "drop":
@@ -331,13 +320,7 @@ func _calc_height_at(p: float) -> float:
 	var t_res = tuning if tuning else GameTuning.new()
 	
 	if is_smash:
-		var base_h = h_start * (1.0 - u)
-		if smash_net_boost > 0.0:
-			var denom = smash_u_net * (1.0 - smash_u_net)
-			if denom > 0.001:
-				var shape = (u * (1.0 - u)) / denom
-				return max(0.0, base_h + shape * smash_net_boost)
-		return max(0.0, base_h)
+		return max(0.0, h_start * (1.0 - u))
 		
 	elif current_shot_type == "tsubame_gaeshi":
 		# Đường bay Én lượn: Parabol Bezier mượt mà C-vô hạn lướt sát mặt lưới không một góc gập
