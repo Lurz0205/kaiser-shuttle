@@ -2310,107 +2310,117 @@ func _draw() -> void:
 	var calf_ang_r = joint_thigh_r - facing * joint_knee_flex_r
 	var foot_r = knee_r + Vector2(sin(calf_ang_r), cos(calf_ang_r)) * 26.0
 	
-	# LAYER 1: VÙNG KHUẤT PHÍA SAU (ĐẰNG SAU THÂN NGƯỜI)
-	# -------------------------------------------------------------------------
-	# 1. Chân sau (Back Leg)
-	draw_tapered_limb(hip_l, knee_l, 7.0, 5.0, col_shorts_back) # Thigh
-	draw_circle(knee_l, 5.0, col_shorts_back, true, -1.0, true)  # Knee Joint
-	draw_tapered_limb(knee_l, foot_l, 4.6, 3.8, col_skin_back)   # Calf / Shin
-	draw_capsule_segment(foot_l - Vector2(0, 5), foot_l, 3.8, Color(0.75, 0.75, 0.78)) # Sock
-	_draw_shoe(foot_l, facing, col_accent_back)                 # Athletic Shoe
-	
-	# 2. Tay sau / Tay không cầm vợt (Off-Arm - Nằm hẳn ở phía sau thân)
+	# 2. Cánh tay sau (Off-Arm - Nằm hẳn ở phía sau thân)
 	var shoulder_off = shoulder_pos + Vector2(-facing * 7.0, 2.0)
 	var elbow_off = shoulder_off + Vector2(sin(joint_upper_off), cos(joint_upper_off)) * 21.0
 	var hand_off = elbow_off + Vector2(sin(joint_fore_off), cos(joint_fore_off)) * 19.0
-	draw_capsule_segment(shoulder_off, shoulder_off + (elbow_off - shoulder_off) * 0.45, 5.0, col_jersey_back) # Ống tay sau
-	draw_tapered_limb(shoulder_off, elbow_off, 4.8, 4.0, col_skin_back) # Bicep sau
-	draw_circle(elbow_off, 4.0, col_skin_back, true, -1.0, true)         # Khuỷu tay sau
-	draw_tapered_limb(elbow_off, hand_off, 4.0, 3.6, col_skin_back)     # Cẳng tay sau
-	draw_circle(hand_off, 4.2, col_skin_back, true, -1.0, true)          # Bàn tay sau
-	
-	# LAYER 2: THÂN NGƯỜI & ĐẦU (NẰM Ở GIỮA, ĐÈ LÊN TAY SAU VÀ CHÂN SAU)
-	# -------------------------------------------------------------------------
-	# Quần đùi (Pelvis block)
-	var pelvis_pts = PackedVector2Array([
-		hip_pos + Vector2(-10, -4),
-		hip_pos + Vector2(10, -4),
-		hip_pos + Vector2(11, 10),
-		hip_pos + Vector2(-11, 10)
-	])
-	draw_colored_polygon(pelvis_pts, col_shorts)
-	
-	# Áo thi đấu (Torso Jersey Block)
-	var torso_normal = Vector2(-facing * cos(joint_torso), -sin(joint_torso))
-	var p_sh_r = shoulder_pos + torso_normal * 12.0
-	var p_sh_l = shoulder_pos - torso_normal * 12.0
-	var p_hip_r = hip_pos + torso_normal * 9.0
-	var p_hip_l = hip_pos - torso_normal * 9.0
-	var jersey_pts = PackedVector2Array([p_sh_l, p_sh_r, p_hip_r, p_hip_l])
-	if facing < 0.0:
-		jersey_pts.reverse()
-	draw_colored_polygon(jersey_pts, col_jersey)
-	draw_polyline(jersey_pts, Color(1.0, 1.0, 1.0, 0.3), 1.5, true)
-	# Sọc thể thao áo
-	draw_line(shoulder_pos, hip_pos, col_accent, 3.5, true)
-	
-	# Đầu & Tóc thể thao
-	draw_capsule_segment(shoulder_pos, head_pos, 4.0, col_skin) # Cổ
-	draw_circle(head_pos, 11.5, col_skin, true, -1.0, true)      # Khuôn mặt
-	# Băng đô thể thao (Headband)
-	draw_line(head_pos + Vector2(-10, -3), head_pos + Vector2(10, -3), col_accent, 4.0, true)
-	# Tóc thể thao vuốt nhọn
-	var hair_poly = PackedVector2Array([
-		head_pos + Vector2(-facing * 11, -3),
-		head_pos + Vector2(-facing * 15, -11),
-		head_pos + Vector2(-facing * 8, -17),
-		head_pos + Vector2(0, -16),
-		head_pos + Vector2(facing * 8, -14),
-		head_pos + Vector2(facing * 11, -3),
-		head_pos + Vector2(0, -6)
-	])
-	if facing < 0.0:
-		hair_poly.reverse()
-	draw_colored_polygon(hair_poly, col_shorts)
-	# Mắt nhìn tập trung
-	draw_circle(head_pos + Vector2(facing * 6.5, -1.5), 2.2, Color(0.1, 0.12, 0.15), true, -1.0, true)
-	
-	# LAYER 3: VÙNG NỔI BẬT PHÍA TRƯỚC (ĐÈ LÊN THÂN NGƯỜI)
-	# -------------------------------------------------------------------------
-	# 1. Chân trước (Front Leg)
-	draw_tapered_limb(hip_r, knee_r, 8.5, 6.0, col_shorts) # Thigh
-	draw_circle(knee_r, 6.0, col_shorts, true, -1.0, true)  # Knee Joint
-	draw_tapered_limb(knee_r, foot_r, 5.5, 4.2, col_skin)   # Muscular Calf / Shin
-	draw_capsule_segment(foot_r - Vector2(0, 6), foot_r, 4.2, Color(0.95, 0.95, 0.95)) # White Sock
-	_draw_shoe(foot_r, facing, col_accent)                 # Athletic Shoe
-	
-	# 2. Tay trước / Tay cầm vợt (Racket Arm - Nổi bật đè trước ngực và thân)
-	var shoulder_racket = shoulder_pos + Vector2(facing * 6.0, 0.0)
-	var elbow_racket = shoulder_racket + Vector2(sin(joint_upper_racket), cos(joint_upper_racket)) * 23.0
-	var hand_racket = elbow_racket + Vector2(sin(joint_fore_racket), cos(joint_fore_racket)) * 21.0
-	
-	# Ống tay áo thi đấu phía trước
-	draw_capsule_segment(shoulder_racket, shoulder_racket + (elbow_racket - shoulder_racket) * 0.45, 6.5, col_jersey)
-	draw_tapered_limb(shoulder_racket, elbow_racket, 5.8, 5.0, col_skin) # Bắp tay vạm vỡ
-	draw_circle(elbow_racket, 5.0, col_skin, true, -1.0, true)           # Khớp khuỷu tay
-	draw_tapered_limb(elbow_racket, hand_racket, 5.0, 4.4, col_skin)     # Cẳng tay trước
-	draw_circle(hand_racket, 5.2, col_skin, true, -1.0, true)            # Bàn tay nắm vợt
-	# Băng cổ tay nổi bật (Wristband)
-	draw_line(hand_racket - (hand_racket - elbow_racket).normalized() * 5.0, hand_racket, col_accent, 5.0, true)
-	
+
+	# Cánh tay trước (Racket Arm - Nổi bật đè trước ngực và thân)
+	var shoulder_racket = shoulder_pos + Vector2(facing * 7.0, 2.0)
+	var elbow_racket = shoulder_racket + Vector2(sin(joint_upper_racket), cos(joint_upper_racket)) * 21.0
+	var hand_racket = elbow_racket + Vector2(sin(joint_fore_racket), cos(joint_fore_racket)) * 19.0
+
 	# 3. Cây vợt cầu lông (Badminton Racket)
 	# Vector hướng cán vợt: facing lật hướng X hoàn toàn đối xứng giữa Player và AI
 	var racket_dir = Vector2(facing * cos(joint_racket_angle), sin(joint_racket_angle)).normalized()
-	var grip_end = hand_racket - racket_dir * 8.0
-	var shaft_end = hand_racket + racket_dir * 32.0
-	var head_center = shaft_end + racket_dir * 18.0
 	
-	# Cán cầm vợt (Grip wrap)
-	draw_line(grip_end, hand_racket + racket_dir * 4.0, Color(0.95, 0.95, 0.95), 4.5, true)
-	# Thân đũa vợt (Carbon Shaft)
-	draw_line(hand_racket + racket_dir * 4.0, shaft_end, Color(0.25, 0.3, 0.38), 3.0, true)
-	# Khung mặt vợt (Isometric Oval Head)
-	_draw_racket_head(head_center, racket_dir.angle(), col_racket)
+	var is_nishikawa = stats and (stats.character_id == "nishikawa" or stats.special_skill_id == "golden_smash")
+	if is_nishikawa:
+		_draw_textured_nishikawa(
+			hip_pos, shoulder_pos, head_pos,
+			hip_l, knee_l, foot_l,
+			hip_r, knee_r, foot_r,
+			shoulder_off, elbow_off, hand_off,
+			shoulder_racket, elbow_racket, hand_racket,
+			racket_dir
+		)
+	else:
+		# LAYER 1: VÙNG KHUẤT PHÍA SAU (ĐẰNG SAU THÂN NGƯỜI)
+		# -------------------------------------------------------------------------
+		# 1. Chân sau (Back Leg)
+		draw_tapered_limb(hip_l, knee_l, 7.0, 5.0, col_shorts_back) # Thigh
+		draw_circle(knee_l, 5.0, col_shorts_back, true, -1.0, true)  # Knee Joint
+		draw_tapered_limb(knee_l, foot_l, 4.6, 3.8, col_skin_back)   # Calf / Shin
+		draw_capsule_segment(foot_l - Vector2(0, 5), foot_l, 3.8, Color(0.75, 0.75, 0.78)) # Sock
+		_draw_shoe(foot_l, facing, col_accent_back)                 # Athletic Shoe
+		
+		# 2. Tay sau / Tay không cầm vợt (Off-Arm - Nằm hẳn ở phía sau thân)
+		draw_capsule_segment(shoulder_off, shoulder_off + (elbow_off - shoulder_off) * 0.45, 5.0, col_jersey_back) # Ống tay sau
+		draw_tapered_limb(shoulder_off, elbow_off, 4.8, 4.0, col_skin_back) # Bicep sau
+		draw_circle(elbow_off, 4.0, col_skin_back, true, -1.0, true)         # Khuỷu tay sau
+		draw_tapered_limb(elbow_off, hand_off, 4.0, 3.6, col_skin_back)     # Cẳng tay sau
+		draw_circle(hand_off, 4.2, col_skin_back, true, -1.0, true)          # Bàn tay sau
+		
+		# LAYER 2: THÂN NGƯỜI & ĐẦU (NẰM Ở GIỮA, ĐÈ LÊN TAY SAU VÀ CHÂN SAU)
+		# -------------------------------------------------------------------------
+		# Quần đùi (Pelvis block)
+		var pelvis_pts = PackedVector2Array([
+			hip_pos + Vector2(-10, -4),
+			hip_pos + Vector2(10, -4),
+			hip_pos + Vector2(11, 10),
+			hip_pos + Vector2(-11, 10)
+		])
+		draw_colored_polygon(pelvis_pts, col_shorts)
+		
+		# Áo thi đấu (Torso Jersey Block)
+		var torso_normal = Vector2(-facing * cos(joint_torso), -sin(joint_torso))
+		var p_sh_r = shoulder_pos + torso_normal * 12.0
+		var p_sh_l = shoulder_pos - torso_normal * 12.0
+		var p_hip_r = hip_pos + torso_normal * 9.0
+		var p_hip_l = hip_pos - torso_normal * 9.0
+		var jersey_pts = PackedVector2Array([p_sh_l, p_sh_r, p_hip_r, p_hip_l])
+		if facing < 0.0:
+			jersey_pts.reverse()
+		draw_colored_polygon(jersey_pts, col_jersey)
+		draw_polyline(jersey_pts, Color(1.0, 1.0, 1.0, 0.3), 1.5, true)
+		# Sọc thể thao áo
+		draw_line(shoulder_pos, hip_pos, col_accent, 3.5, true)
+		
+		# Đầu & Tóc thể thao
+		draw_capsule_segment(shoulder_pos, head_pos, 4.0, col_skin) # Cổ
+		draw_circle(head_pos, 11.5, col_skin, true, -1.0, true)      # Khuôn mặt
+		# Băng đô thể thao (Headband)
+		draw_line(head_pos + Vector2(-10, -3), head_pos + Vector2(10, -3), col_accent, 4.0, true)
+		# Tóc thể thao vuốt nhọn
+		var hair_poly = PackedVector2Array([
+			head_pos + Vector2(-facing * 11, -3),
+			head_pos + Vector2(-facing * 15, -11),
+			head_pos + Vector2(-facing * 8, -17),
+			head_pos + Vector2(0, -16),
+			head_pos + Vector2(facing * 8, -14),
+			head_pos + Vector2(facing * 11, -3),
+			head_pos + Vector2(0, -6)
+		])
+		if facing < 0.0:
+			hair_poly.reverse()
+		draw_colored_polygon(hair_poly, col_shorts)
+		# Mắt nhìn tập trung
+		draw_circle(head_pos + Vector2(facing * 6.5, -1.5), 2.2, Color(0.1, 0.12, 0.15), true, -1.0, true)
+		
+		# LAYER 3: VÙNG NỔI BẬT PHÍA TRƯỚC (ĐÈ LÊN THÂN NGƯỜI)
+		# -------------------------------------------------------------------------
+		# 1. Chân trước (Front Leg)
+		draw_tapered_limb(hip_r, knee_r, 8.5, 6.0, col_shorts) # Thigh
+		draw_circle(knee_r, 6.0, col_shorts, true, -1.0, true)  # Knee Joint
+		draw_tapered_limb(knee_r, foot_r, 5.5, 4.2, col_skin)   # Muscular Calf / Shin
+		draw_capsule_segment(foot_r - Vector2(0, 6), foot_r, 4.2, Color(0.95, 0.95, 0.95)) # White Sock
+		_draw_shoe(foot_r, facing, col_accent)                 # Athletic Shoe
+		
+		# 2. Tay trước / Tay cầm vợt (Racket Arm - Nổi bật đè trước ngực và thân)
+		draw_capsule_segment(shoulder_racket, shoulder_racket + (elbow_racket - shoulder_racket) * 0.45, 6.5, col_jersey)
+		draw_tapered_limb(shoulder_racket, elbow_racket, 5.8, 5.0, col_skin) # Bắp tay vạm vỡ
+		draw_circle(elbow_racket, 5.0, col_skin, true, -1.0, true)           # Khớp khuỷu tay
+		draw_tapered_limb(elbow_racket, hand_racket, 5.0, 4.4, col_skin)     # Cẳng tay trước
+		draw_circle(hand_racket, 5.2, col_skin, true, -1.0, true)            # Bàn tay nắm vợt
+		draw_line(hand_racket - (hand_racket - elbow_racket).normalized() * 5.0, hand_racket, col_accent, 5.0, true)
+		
+		# 3. Cây vợt cầu lông hình học
+		var grip_end = hand_racket - racket_dir * 8.0
+		var shaft_end = hand_racket + racket_dir * 32.0
+		var head_center = shaft_end + racket_dir * 18.0
+		draw_line(grip_end, hand_racket + racket_dir * 4.0, Color(0.95, 0.95, 0.95), 4.5, true)
+		draw_line(hand_racket + racket_dir * 4.0, shaft_end, Color(0.25, 0.3, 0.38), 3.0, true)
+		_draw_racket_head(head_center, racket_dir.angle(), col_racket)
 	
 	# 4. Vệt gió chém khi vung vợt (Wind Slash Effect)
 	if is_swinging:
@@ -2505,3 +2515,127 @@ func draw_ellipse_shape(center: Vector2, rx: float, ry: float, col: Color) -> vo
 		var ang = (TAU / segs) * i
 		pts.append(center + Vector2(cos(ang) * rx, sin(ang) * ry))
 	draw_colored_polygon(pts, col)
+
+
+# ==========================================================
+# 2D MODULAR SKELETAL RIG (THE SPIKE STYLE - NISHIKAWA)
+# ==========================================================
+static var tex_nishi_head: Texture2D = preload("res://assets/characters/nishikawa/head.png")
+static var tex_nishi_torso: Texture2D = preload("res://assets/characters/nishikawa/torso.png")
+static var tex_nishi_pelvis: Texture2D = preload("res://assets/characters/nishikawa/pelvis.png")
+static var tex_nishi_arm_upper: Texture2D = preload("res://assets/characters/nishikawa/arm_upper.png")
+static var tex_nishi_arm_fore: Texture2D = preload("res://assets/characters/nishikawa/arm_fore.png")
+static var tex_nishi_hand: Texture2D = preload("res://assets/characters/nishikawa/hand.png")
+static var tex_nishi_thigh: Texture2D = preload("res://assets/characters/nishikawa/thigh.png")
+static var tex_nishi_shin: Texture2D = preload("res://assets/characters/nishikawa/shin.png")
+static var tex_nishi_shoe: Texture2D = preload("res://assets/characters/nishikawa/shoe.png")
+static var tex_nishi_racket: Texture2D = preload("res://assets/characters/nishikawa/racket.png")
+
+
+func _draw_textured_bone(tex: Texture2D, p1: Vector2, p2: Vector2, width_scale: float = 1.0, pivot_ratio_y: float = 0.08, tint: Color = Color.WHITE) -> void:
+	if not tex:
+		return
+	var diff = p2 - p1
+	var bone_len = diff.length()
+	if bone_len < 0.001:
+		return
+	var angle = diff.angle()
+	var tex_w = tex.get_width()
+	var tex_h = tex.get_height()
+	var s_y = bone_len / max(tex_h * 0.88, 1.0)
+	var s_x = s_y * width_scale * facing
+	draw_set_transform(p1, angle - PI * 0.5, Vector2(s_x, s_y))
+	draw_texture(tex, Vector2(-tex_w * 0.5, -tex_h * pivot_ratio_y), tint)
+	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+
+
+func _draw_textured_nishikawa(
+	hip_pos: Vector2, shoulder_pos: Vector2, head_pos: Vector2,
+	hip_l: Vector2, knee_l: Vector2, foot_l: Vector2,
+	hip_r: Vector2, knee_r: Vector2, foot_r: Vector2,
+	shoulder_off: Vector2, elbow_off: Vector2, hand_off: Vector2,
+	shoulder_racket: Vector2, elbow_racket: Vector2, hand_racket: Vector2,
+	racket_dir: Vector2
+) -> void:
+	var tint_back = Color(0.72, 0.72, 0.78, 1.0)
+	
+	# LAYER 1: BACK LIMBS (ĐẰNG SAU THÂN)
+	_draw_textured_bone(tex_nishi_thigh, hip_l, knee_l, 1.0, 0.08, tint_back)
+	_draw_textured_bone(tex_nishi_shin, knee_l, foot_l, 1.0, 0.05, tint_back)
+	
+	# Back Shoe
+	if tex_nishi_shoe:
+		var shoe_w = tex_nishi_shoe.get_width()
+		var shoe_h = tex_nishi_shoe.get_height()
+		var shoe_s = 22.0 / shoe_w
+		draw_set_transform(foot_l, 0.0, Vector2(shoe_s * facing, shoe_s))
+		draw_texture(tex_nishi_shoe, Vector2(-shoe_w * 0.35, -shoe_h * 0.25), tint_back)
+		draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+	
+	# Back Arm
+	_draw_textured_bone(tex_nishi_arm_upper, shoulder_off, elbow_off, 1.0, 0.08, tint_back)
+	_draw_textured_bone(tex_nishi_arm_fore, elbow_off, hand_off, 1.0, 0.06, tint_back)
+	
+	# LAYER 2: PELVIS, TORSO, HEAD (THÂN VÀ ĐẦU)
+	# Pelvis / Shorts
+	if tex_nishi_pelvis:
+		var pel_w = tex_nishi_pelvis.get_width()
+		var pel_h = tex_nishi_pelvis.get_height()
+		var pel_s = 25.0 / pel_h
+		draw_set_transform(hip_pos, 0.0, Vector2(pel_s * facing, pel_s))
+		draw_texture(tex_nishi_pelvis, Vector2(-pel_w * 0.5, -pel_h * 0.35))
+		draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+	
+	# Torso / Jersey
+	if tex_nishi_torso:
+		var tor_w = tex_nishi_torso.get_width()
+		var tor_h = tex_nishi_torso.get_height()
+		var tor_s = 46.0 / tor_h
+		draw_set_transform(hip_pos + Vector2(0, 4), joint_torso * 0.3, Vector2(tor_s * facing, tor_s))
+		draw_texture(tex_nishi_torso, Vector2(-tor_w * 0.5, -tor_h * 0.95))
+		draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+	
+	# Head
+	if tex_nishi_head:
+		var head_w = tex_nishi_head.get_width()
+		var head_h = tex_nishi_head.get_height()
+		var head_s = 32.0 / head_h
+		draw_set_transform(head_pos, joint_torso * 0.2, Vector2(head_s * facing, head_s))
+		draw_texture(tex_nishi_head, Vector2(-head_w * 0.45, -head_h * 0.55))
+		draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+	
+	# LAYER 3: FRONT LIMBS & RACKET (NỔI BẬT PHÍA TRƯỚC)
+	_draw_textured_bone(tex_nishi_thigh, hip_r, knee_r, 1.0, 0.08)
+	_draw_textured_bone(tex_nishi_shin, knee_r, foot_r, 1.0, 0.05)
+	
+	# Front Shoe
+	if tex_nishi_shoe:
+		var shoe_w = tex_nishi_shoe.get_width()
+		var shoe_h = tex_nishi_shoe.get_height()
+		var shoe_s = 22.0 / shoe_w
+		draw_set_transform(foot_r, 0.0, Vector2(shoe_s * facing, shoe_s))
+		draw_texture(tex_nishi_shoe, Vector2(-shoe_w * 0.35, -shoe_h * 0.25))
+		draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+	
+	# Front Arm
+	_draw_textured_bone(tex_nishi_arm_upper, shoulder_racket, elbow_racket, 1.0, 0.08)
+	_draw_textured_bone(tex_nishi_arm_fore, elbow_racket, hand_racket, 1.0, 0.06)
+	
+	# Hand
+	if tex_nishi_hand:
+		var hand_w = tex_nishi_hand.get_width()
+		var hand_h = tex_nishi_hand.get_height()
+		var hand_s = 14.0 / hand_h
+		draw_set_transform(hand_racket, 0.0, Vector2(hand_s * facing, hand_s))
+		draw_texture(tex_nishi_hand, Vector2(-hand_w * 0.5, -hand_h * 0.5))
+		draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+	
+	# Badminton Racket
+	if tex_nishi_racket:
+		var r_w = tex_nishi_racket.get_width()
+		var r_h = tex_nishi_racket.get_height()
+		var r_s = 62.0 / r_h
+		var r_angle = racket_dir.angle() - PI * 0.5
+		draw_set_transform(hand_racket, r_angle, Vector2(r_s * facing, r_s))
+		draw_texture(tex_nishi_racket, Vector2(-r_w * 0.5, -r_h * 0.85))
+		draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
