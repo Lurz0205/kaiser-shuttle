@@ -136,20 +136,31 @@ func on_smash_executed(is_boom: bool = false, is_chance_ball: bool = false) -> v
 	else:
 		smash_torque = 0.64
 	
-	# Tiêu hao thể lực hợp lý cho cú smash (không phạt quá nặng kẻ tấn công)
-	var drain = 16.0 if is_boom else 11.0
+	# Tiêu hao thể lực cho cú smash (18.0 thường, 24.0 boom smash)
+	var drain = 24.0 if is_boom else 18.0
 	consume_stamina_action(drain)
 
 
-## Tiêu hao thể lực và áp lực của người phòng thủ khi đỡ cú Smash uy lực
-func on_smash_defended(quality: float, is_perfect: bool) -> void:
+## Tiêu hao thể lực của người phòng thủ khi đỡ cú Smash:
+## Dựa vào mức độ thăng bằng, độ chính xác và thể lực hiện tại:
+## Nếu defender đang có thể lực, balance và accuracy cao -> chỉ tốn thể lực bình thường (2.5 - 3.0). Kẻ spam smash sẽ tự thua do cạn thể lực!
+## Nếu defender đang bị dồn ép (balance thấp, accuracy thấp, mệt mỏi) hoặc timing kém -> mới chịu hao thể lực nặng hơn.
+func on_smash_defended(quality: float, is_perfect: bool, defender_balance: float = 100.0) -> void:
 	if is_perfect:
+		consume_stamina_action(2.5)
+		return
+		
+	var is_solid = (defender_balance >= 65.0 and accuracy >= 65.0 and stamina >= 50.0 and quality >= 0.80)
+	if is_solid:
+		# Tư thế vững vàng, chỉ số tốt: Đỡ smash nhẹ nhàng (3.0 thể lực), bên spam đập sẽ tự kiệt sức
 		consume_stamina_action(3.0)
-	elif quality >= 0.85:
-		consume_stamina_action(7.0)
 	else:
-		# Đỡ với / chạm mép vợt cú đập cực mạnh: Chấn động cổ tay, tốn thể lực chặn lực
-		consume_stamina_action(12.0)
+		# Người phòng thủ đang bị thất thế / mất thăng bằng / mệt mỏi:
+		var vulnerability = clamp((100.0 - defender_balance) / 100.0 * 0.5 + (100.0 - accuracy) / 100.0 * 0.5, 0.0, 1.0)
+		var drain = lerp(4.0, 8.5, vulnerability)
+		if quality < 0.75:
+			drain += 2.0
+		consume_stamina_action(drain)
 
 
 ## Cơ chế "Kinetic Reset": 1 cú Drop êm ái hoặc Clear thả lỏng hồi 100% torque (nhưng TUYỆT ĐỐI không hồi thể lực khi đánh cầu!)
@@ -222,16 +233,18 @@ func get_hitbox_scale() -> float:
 	return lerp(0.58, 1.0, clamp(accuracy / 100.0, 0.0, 1.0))
 
 
-## Accuracy thấp hoặc Thể lực cạn kiệt có tỉ lệ bung Cầu Non (Weak Return / Chance Ball) tăng dần
-func should_pop_weak_return(is_incoming_smash: bool) -> bool:
+## Accuracy thấp hoặc Thể lực cạn kiệt hoặc Mất thăng bằng mới có tỉ lệ bung Cầu Non (Weak Return / Chance Ball)
+func should_pop_weak_return(is_incoming_smash: bool, defender_balance: float = 100.0) -> bool:
+	# Nếu người phòng thủ đang vững vàng (balance cao, accuracy cao, thể lực tốt): TUYỆT ĐỐI KHÔNG bung cầu non!
+	if defender_balance >= 60.0 and accuracy >= 50.0 and stamina >= 35.0:
+		return false
 	var acc_p = clamp((50.0 - accuracy) / 50.0, 0.0, 1.0) if accuracy < 50.0 else 0.0
 	var sta_p = clamp((30.0 - stamina) / 30.0, 0.0, 1.0) if stamina < 30.0 else 0.0
-	if acc_p <= 0.0 and sta_p <= 0.0:
-		return false
-	var base_chance = (acc_p * 0.28) + (sta_p * 0.32)
+	var bal_p = clamp((50.0 - defender_balance) / 50.0, 0.0, 1.0) if defender_balance < 50.0 else 0.0
+	var base_chance = (acc_p * 0.25) + (sta_p * 0.25) + (bal_p * 0.20)
 	if is_incoming_smash:
-		base_chance += 0.15
-	return randf() < clamp(base_chance, 0.0, 0.70)
+		base_chance += 0.10
+	return randf() < clamp(base_chance, 0.0, 0.55)
 
 
 ## Accuracy thấp (< 50%) hoặc Thể lực cạn kiệt (< 35%) sẽ tạo ra lỗi đánh hỏng (rúc lưới, out sân, đánh hụt)
