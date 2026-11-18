@@ -19,8 +19,8 @@ const NET_X: float = 640.0
 const NET_HEIGHT: float = 110.0 # Lưới nâng cao lên 110px ngang tầm cổ vận động viên
 const LEFT_OUT_X: float = 140.0
 const RIGHT_OUT_X: float = 1140.0
-const SHORT_SERVICE_LEFT: float = 450.0
-const SHORT_SERVICE_RIGHT: float = 830.0
+const SHORT_SERVICE_LEFT: float = 495.0
+const SHORT_SERVICE_RIGHT: float = 785.0
 const FLOOR_Y: float = 550.0
 
 # Camera Shake & Impact Frame
@@ -780,11 +780,11 @@ func _execute_serve(server: String, shot_type: String = "clear") -> void:
 	var from_pos = Vector2(player.global_position.x + 30.0, FLOOR_Y - 35.0) if server == "player" else Vector2(ai_rival.global_position.x - 30.0, FLOOR_Y - 35.0)
 	var target_pos: Vector2
 	if server == "player":
-		# Khi giao ngắn (drop): target 860px (vượt qua vạch SHORT_SERVICE_RIGHT 830px)
-		target_pos = Vector2(1040.0, FLOOR_Y) if shot_type == "clear" else Vector2(860.0, FLOOR_Y)
+		# Khi giao ngắn (drop): target 815px (vượt qua vạch SHORT_SERVICE_RIGHT 785px)
+		target_pos = Vector2(1070.0, FLOOR_Y) if shot_type == "clear" else Vector2(815.0, FLOOR_Y)
 	else:
-		# Khi AI giao ngắn: target 420px (vượt qua vạch SHORT_SERVICE_LEFT 450px)
-		target_pos = Vector2(240.0, FLOOR_Y) if shot_type == "clear" else Vector2(420.0, FLOOR_Y)
+		# Khi AI giao ngắn: target 465px (vượt qua vạch SHORT_SERVICE_LEFT 495px)
+		target_pos = Vector2(210.0, FLOOR_Y) if shot_type == "clear" else Vector2(465.0, FLOOR_Y)
 	
 	shuttlecock.is_serve = true
 	shuttlecock.last_hitter = server
@@ -1350,19 +1350,81 @@ func _on_aoi_shield_draw() -> void:
 		aoi_shield.draw_circle(spark_pos, spark_r, Color(0.75, 0.95, 1.0, alpha * 0.90))
 
 
-func _show_landing_callout(pos: Vector2, is_in: bool) -> void:
-	var callout = Label.new()
-	callout.text = "[ IN ]" if is_in else "[ OUT ]"
-	callout.modulate = Color(0.25, 1.2, 0.45, 1.0) if is_in else Color(1.2, 0.25, 0.25, 1.0)
-	callout.add_theme_font_size_override("font_size", 22)
-	callout.position = Vector2(pos.x - 30.0, FLOOR_Y - 45.0)
-	callout.z_index = 85
-	add_child(callout)
+func _show_landing_callout(pos: Vector2, status: String, subtitle: String = "") -> void:
+	# status: "IN", "OUT", "FAULT"
+	var container = PanelContainer.new()
+	container.z_index = 95
 	
+	var style = StyleBoxFlat.new()
+	style.corner_radius_top_left = 8
+	style.corner_radius_top_right = 8
+	style.corner_radius_bottom_left = 8
+	style.corner_radius_bottom_right = 8
+	style.set_content_margin_all(5)
+	style.content_margin_left = 14
+	style.content_margin_right = 14
+	style.border_width_left = 2
+	style.border_width_top = 2
+	style.border_width_right = 2
+	style.border_width_bottom = 2
+	
+	var title_col = Color(0.25, 1.25, 0.5) # IN (Xanh ngọc rực rỡ)
+	var bg_col = Color(0.04, 0.16, 0.08, 0.92)
+	var border_col = Color(0.3, 1.1, 0.6, 0.95)
+	
+	if status == "OUT":
+		title_col = Color(1.25, 0.25, 0.25) # OUT (Đỏ rực)
+		bg_col = Color(0.18, 0.04, 0.04, 0.92)
+		border_col = Color(1.0, 0.35, 0.35, 0.95)
+	elif status == "FAULT":
+		title_col = Color(1.25, 0.85, 0.2) # FAULT (Vàng hổ phách)
+		bg_col = Color(0.18, 0.12, 0.03, 0.92)
+		border_col = Color(1.0, 0.85, 0.3, 0.95)
+		
+	style.bg_color = bg_col
+	style.border_color = border_col
+	container.add_theme_stylebox_override("panel", style)
+	
+	var vbox = VBoxContainer.new()
+	vbox.add_theme_constant_override("separation", 1)
+	vbox.alignment = BoxContainer.ALIGNMENT_CENTER
+	
+	var lbl_title = Label.new()
+	lbl_title.text = status
+	lbl_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	lbl_title.modulate = title_col
+	lbl_title.add_theme_font_size_override("font_size", 20)
+	lbl_title.add_theme_constant_override("outline_size", 4)
+	lbl_title.add_theme_color_override("font_outline_color", Color(0.02, 0.02, 0.05, 0.95))
+	vbox.add_child(lbl_title)
+	
+	if subtitle != "":
+		var lbl_sub = Label.new()
+		lbl_sub.text = subtitle
+		lbl_sub.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		lbl_sub.modulate = Color(0.95, 0.98, 1.0, 0.85)
+		lbl_sub.add_theme_font_size_override("font_size", 10)
+		lbl_sub.add_theme_constant_override("outline_size", 2)
+		lbl_sub.add_theme_color_override("font_outline_color", Color(0.0, 0.0, 0.0, 0.9))
+		vbox.add_child(lbl_sub)
+		
+	container.add_child(vbox)
+	
+	# Canh giữa tại vị trí tiếp đất của quả cầu
+	var spawn_x = clamp(pos.x - 45.0, 45.0, 1180.0)
+	var spawn_y = FLOOR_Y - 55.0
+	container.position = Vector2(spawn_x, spawn_y)
+	container.scale = Vector2(0.65, 0.65)
+	container.pivot_offset = Vector2(45.0, 22.0)
+	add_child(container)
+	
+	# Pop-up animation nảy thể thao hiện đại:
 	var tween = create_tween().set_parallel(true)
-	tween.tween_property(callout, "position:y", FLOOR_Y - 75.0, 0.85).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
-	tween.tween_property(callout, "modulate:a", 0.0, 0.85).set_delay(0.25)
-	tween.chain().tween_callback(callout.queue_free)
+	tween.tween_property(container, "scale", Vector2(1.05, 1.05), 0.16).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	tween.tween_property(container, "position:y", spawn_y - 25.0, 0.85).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	tween.chain().tween_property(container, "scale", Vector2(1.0, 1.0), 0.1)
+	tween.tween_property(container, "modulate:a", 0.0, 0.85).set_delay(0.35)
+	tween.chain().tween_callback(container.queue_free)
 
 
 func _on_shuttlecock_landed(pos: Vector2, _floor_3d: Vector3 = Vector3.ZERO) -> void:
@@ -1384,40 +1446,40 @@ func _on_shuttlecock_landed(pos: Vector2, _floor_3d: Vector3 = Vector3.ZERO) -> 
 	if is_serve_in_progress:
 		is_serve_in_progress = false
 		if current_server == "player":
-			# Người chơi phát cầu: phải qua vạch SHORT_SERVICE_RIGHT (830px) và không ra ngoài
+			# Người chơi phát cầu: phải qua vạch SHORT_SERVICE_RIGHT (785px) và không ra ngoài
 			if pos.x < SHORT_SERVICE_RIGHT:
 				point_winner = "ai"
 				reason = "GIAO CẦU CHƯA QUA VẠCH! ĐIỂM CHO RIVAL AI"
-				_show_landing_callout(pos, false)
+				_show_landing_callout(pos, "FAULT", "CHƯA QUA VẠCH")
 			elif pos.x > RIGHT_OUT_X:
 				point_winner = "ai"
 				reason = "GIAO CẦU NGOÀI BIÊN! ĐIỂM CHO RIVAL AI"
-				_show_landing_callout(pos, false)
+				_show_landing_callout(pos, "OUT", "NGOÀI SÂN")
 			else:
 				point_winner = "player"
 				reason = "ACE! ĐIỂM GIAO CẦU CHO PLAYER!"
-				_show_landing_callout(pos, true)
+				_show_landing_callout(pos, "IN", "+1 POINT")
 		else:
-			# AI phát cầu: phải qua vạch SHORT_SERVICE_LEFT (450px) và không ra ngoài
+			# AI phát cầu: phải qua vạch SHORT_SERVICE_LEFT (495px) và không ra ngoài
 			if pos.x > SHORT_SERVICE_LEFT:
 				point_winner = "player"
 				reason = "GIAO CẦU CHƯA QUA VẠCH! ĐIỂM CHO PLAYER"
-				_show_landing_callout(pos, false)
+				_show_landing_callout(pos, "FAULT", "CHƯA QUA VẠCH")
 			elif pos.x < LEFT_OUT_X:
 				point_winner = "player"
 				reason = "GIAO CẦU NGOÀI BIÊN! ĐIỂM CHO PLAYER"
-				_show_landing_callout(pos, false)
+				_show_landing_callout(pos, "OUT", "NGOÀI SÂN")
 			else:
 				point_winner = "ai"
 				reason = "ACE! ĐIỂM GIAO CẦU CHO RIVAL AI!"
-				_show_landing_callout(pos, true)
+				_show_landing_callout(pos, "IN", "+1 POINT")
 		
 		_award_point(point_winner, reason)
 		return
 	
 	# 2. RALLY BÌNH THƯỜNG
 	if shuttlecock.is_net_fault:
-		_show_landing_callout(pos, false)
+		_show_landing_callout(pos, "FAULT", "CHƯA QUA LƯỚI")
 		if shuttlecock.last_hitter == "player":
 			point_winner = "ai"
 			reason = "CẦU KHÔNG QUA LƯỚI! ĐIỂM CHO RIVAL AI"
@@ -1425,7 +1487,7 @@ func _on_shuttlecock_landed(pos: Vector2, _floor_3d: Vector3 = Vector3.ZERO) -> 
 			point_winner = "player"
 			reason = "CẦU KHÔNG QUA LƯỚI! ĐIỂM CHO PLAYER"
 	elif pos.x < LEFT_OUT_X or pos.x > RIGHT_OUT_X:
-		_show_landing_callout(pos, false)
+		_show_landing_callout(pos, "OUT", "NGOÀI SÂN")
 		if shuttlecock.last_hitter == "player":
 			point_winner = "ai"
 			reason = "NGOÀI BIÊN! ĐIỂM CHO RIVAL AI"
@@ -1434,7 +1496,7 @@ func _on_shuttlecock_landed(pos: Vector2, _floor_3d: Vector3 = Vector3.ZERO) -> 
 			reason = "NGOÀI BIÊN! ĐIỂM CHO PLAYER"
 	else:
 		# In court
-		_show_landing_callout(pos, true)
+		_show_landing_callout(pos, "IN", "+1 POINT")
 		if pos.x < NET_X:
 			point_winner = "ai"
 			reason = "ĐIỂM CHO RIVAL AI!"
@@ -1450,11 +1512,20 @@ func _on_shuttlecock_hit_net() -> void:
 		return
 	shake_amount = max(shake_amount, 3.0)
 	
+	# Khóa ngay lập tức việc vung vợt đánh cầu của cả 2 bên khi cầu đã vướng lưới:
+	shuttlecock.is_net_fault = true
+	if player:
+		player.can_hit = false
+	if ai_rival:
+		ai_rival.can_hit = false
+	
+	_show_landing_callout(shuttlecock.global_position, "FAULT", "CẦU MẮC LƯỚI")
+	
 	if is_serve_in_progress:
 		is_serve_in_progress = false
 		current_state = MatchState.POINT_OVER
 		var winner = "ai" if current_server == "player" else "player"
-		_award_point(winner, "GIAO CAU MAC LUOI! DIEM CHO %s" % ("RIVAL" if winner == "ai" else "PLAYER"))
+		_award_point(winner, "GIAO CẦU MẮC LƯỚI! ĐIỂM CHO %s" % ("RIVAL" if winner == "ai" else "PLAYER"))
 		return
 	
 	get_tree().create_timer(0.35).timeout.connect(func():
