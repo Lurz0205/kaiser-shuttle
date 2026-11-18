@@ -303,15 +303,19 @@ func _physics_process(delta: float) -> void:
 	
 	# TỰ ĐỘNG CỨU CẦU KHI BAY NGƯỜI (AUTOMATIC DIVE RESCUE):
 	# Nếu bay người tới vị trí cầu và chạm vào hitbox cứu cầu thì tự động xúc đỡ cầu ngay lập tức!
+	# CẤM ĐÁNH CẦU KHI CẦU Ở PHẦN SÂN ĐỐI PHƯƠNG HOẶC LỖI LƯỚI (NET FAULT):
 	if is_diving and not dive_has_hit and can_hit and shuttlecock and shuttlecock.is_active:
+		var net_x_val = tuning.net_x if tuning else 640.0
 		var s_pt = shuttlecock.global_position
-		var db_box = get_dive_rescue_box_global()
-		if db_box.grow(20.0).has_point(s_pt):
-			var perf_box = get_dive_rescue_perfect_box_global()
-			var is_perf = perf_box.grow(12.0).has_point(s_pt)
-			var q = 1.0 if is_perf else 0.70
-			dive_has_hit = true
-			_execute_dive_rescue({"can_hit": true, "zone": "dive", "quality": q, "is_perfect": is_perf})
+		var is_on_my_side = (court_side == "player" and s_pt.x <= net_x_val) or (court_side == "ai" and s_pt.x >= net_x_val)
+		if not shuttlecock.is_net_fault and is_on_my_side:
+			var db_box = get_dive_rescue_box_global()
+			if db_box.grow(20.0).has_point(s_pt):
+				var perf_box = get_dive_rescue_perfect_box_global()
+				var is_perf = perf_box.grow(12.0).has_point(s_pt)
+				var q = 1.0 if is_perf else 0.70
+				dive_has_hit = true
+				_execute_dive_rescue({"can_hit": true, "zone": "dive", "quality": q, "is_perfect": is_perf})
 	
 	# Input Buffer: Kiểm tra đón đầu phím bấm trong cửa sổ 160ms
 	if not is_ai and input_buffer_timer > 0.0:
@@ -1421,8 +1425,20 @@ func get_hit_status() -> Dictionary:
 	if not shuttlecock or not shuttlecock.is_active or not can_hit:
 		return {"can_hit": false, "zone": "none", "quality": 0.0, "is_perfect": false}
 	
-	var is_air = not is_on_ground() and global_position.y < current_ground_y - 35.0
+	# QUY TẮC LUẬT CẦU LÔNG: CHỈ CHO PHÉP ĐÁNH CẦU TRONG PHẠM VI NỬA SÂN CỦA MÌNH!
+	# Tuyệt đối cấm thò vợt / hitbox sang phần sân đối phương qua lưới (Over-the-net fault).
+	# Cầu đã cắm lưới / lỗi lưới (is_net_fault) thì tuyệt đối cấm đánh tiếp!
+	var net_x_val = tuning.net_x if tuning else 640.0
+	if shuttlecock.is_net_fault:
+		return {"can_hit": false, "zone": "none", "quality": 0.0, "is_perfect": false}
+	
 	var s_pt = shuttlecock.global_position
+	if court_side == "player" and s_pt.x > net_x_val:
+		return {"can_hit": false, "zone": "none", "quality": 0.0, "is_perfect": false}
+	elif court_side == "ai" and s_pt.x < net_x_val:
+		return {"can_hit": false, "zone": "none", "quality": 0.0, "is_perfect": false}
+	
+	var is_air = not is_on_ground() and global_position.y < current_ground_y - 35.0
 	
 	# Mở rộng vùng kiểm tra 20px theo kích thước thực của quả cầu (đầu bần + lông vũ)
 	# Ngay khi bất kỳ góc nào của quả cầu chạm vào mép hitbox là sáng lên và cho phép đánh ngay lập tức!
@@ -1534,6 +1550,13 @@ func _execute_counter_turnaround_hit(hit_status: Dictionary = {}) -> void:
 func _execute_hit(shot_type: String, hit_status: Dictionary = {}) -> void:
 	if hit_status.is_empty():
 		hit_status = get_hit_status()
+		
+	# Cấm tuyệt đối đánh cầu khi cầu ở bên kia lưới hoặc đã lỗi lưới
+	var boundary_net_x = tuning.net_x if tuning else 640.0
+	if shuttlecock and shuttlecock.is_active:
+		var s_x = shuttlecock.global_position.x
+		if shuttlecock.is_net_fault or (court_side == "player" and s_x > boundary_net_x) or (court_side == "ai" and s_x < boundary_net_x):
+			return
 		
 	# KHI ĐANG BAY NGƯỜI CỨU CẦU: LUÔN THỰC HIỆN CÚ CỨU CẦU BỎ NHỎ
 	if is_diving or is_sliding:
