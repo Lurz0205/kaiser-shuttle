@@ -51,8 +51,12 @@ var opp_consecutive_drops: int = 0 # Đếm số quả drop liên tiếp của n
 var opp_consecutive_clears: int = 0
 var opp_consecutive_smashes: int = 0
 var opp_is_camping_back: bool = false # Người chơi có đang đứng im ở sân sau không
+var opp_is_camping_front: bool = false # Người chơi có đang ôm lưới không
+var opp_is_stationary: bool = false # Người chơi lười di chuyển đứng tại chỗ
 var opp_camping_back_counter: int = 0
 var opp_drop_ratio: float = 0.0 # Tỉ lệ spam drop trong các pha gần nhất
+var opp_clear_ratio: float = 0.0 # Tỉ lệ spam clear trong các pha gần nhất
+var opp_smash_ratio: float = 0.0 # Tỉ lệ smash trong các pha gần nhất
 var ai_last_shot_chosen: String = "" # Cú đánh gần nhất AI đã tung ra (để mix up trước/sau)
 
 # Rally Tension & Shot Speed scaling
@@ -221,8 +225,12 @@ func reset_in_match_learning() -> void:
 	opp_consecutive_clears = 0
 	opp_consecutive_smashes = 0
 	opp_is_camping_back = false
+	opp_is_camping_front = false
+	opp_is_stationary = false
 	opp_camping_back_counter = 0
 	opp_drop_ratio = 0.0
+	opp_clear_ratio = 0.0
+	opp_smash_ratio = 0.0
 	ai_last_shot_chosen = ""
 
 
@@ -255,17 +263,34 @@ func record_opponent_shot(shot_type: String, hitter_pos_x: float) -> void:
 		opp_consecutive_smashes = 0
 		
 	var drop_count = 0
+	var clear_count = 0
+	var smash_count = 0
 	for s in opp_recent_shots:
 		if s == "drop" or s == "tsubame_gaeshi":
 			drop_count += 1
-	opp_drop_ratio = float(drop_count) / float(max(1, opp_recent_shots.size()))
+		elif s == "clear" or s == "underhand_lift":
+			clear_count += 1
+		elif s == "smash" or s == "boom_smash" or s == "kill_smash":
+			smash_count += 1
+	var total_shots = max(1, opp_recent_shots.size())
+	opp_drop_ratio = float(drop_count) / float(total_shots)
+	opp_clear_ratio = float(clear_count) / float(total_shots)
+	opp_smash_ratio = float(smash_count) / float(total_shots)
 	
-	# Người chơi đứng ở sân sau (hitter_pos_x < 390.0)
-	if hitter_pos_x < 390.0:
-		opp_camping_back_counter += 1
+	# Người chơi đứng ở sân sau (hitter_pos_x < 370.0)
+	if hitter_pos_x < 370.0:
+		opp_camping_back_counter = min(5, opp_camping_back_counter + 1)
 	else:
 		opp_camping_back_counter = max(0, opp_camping_back_counter - 1)
 	opp_is_camping_back = (opp_camping_back_counter >= 2)
+	
+	# Người chơi đứng ôm sát lưới (hitter_pos_x > 470.0)
+	opp_is_camping_front = (hitter_pos_x > 470.0)
+	
+	# Nhận diện người chơi đứng yên lười di chuyển (< 45px dịch chuyển giữa 2 quả đánh gần nhất)
+	if opp_recent_pos_x.size() >= 2:
+		var last_dist = abs(opp_recent_pos_x[0] - opp_recent_pos_x[1])
+		opp_is_stationary = (last_dist < 45.0)
 
 
 func _physics_process(delta: float) -> void:
@@ -293,10 +318,16 @@ func _physics_process(delta: float) -> void:
 		_process_player_input(delta)
 		
 	# Cập nhật Thể lực & Giảm tốc độ di chuyển từ 100% về 50% khi thể lực còn từ 25% tới 0%:
-	var is_moving_footwork = is_on_ground() and abs(velocity.x) > 15.0
+	var is_moving_footwork = is_on_ground() and abs(velocity.x) > 22.0
 	var is_slow_tempo = (current_tension_level == 0)
 	if stats:
-		stats.update_stamina(delta, is_moving_footwork, is_slow_tempo, rally_time, rally_hits)
+		var stamina_eff = 1.0
+		if is_ai:
+			if ai_difficulty == 2:
+				stamina_eff = 0.55 # Hard AI: Bộ pháp thanh thoát chuyên nghiệp, tiết kiệm 45% thể lực di chuyển
+			elif ai_difficulty == 1:
+				stamina_eff = 0.78 # Medium AI: Tiết kiệm 22% thể lực di chuyển
+		stats.update_stamina(delta, is_moving_footwork, is_slow_tempo, rally_time, rally_hits, stamina_eff)
 		var stamina_speed_mult = stats.get_speed_multiplier()
 		velocity.x *= stamina_speed_mult
 		stats.update_accuracy(delta, balance, current_tension_level)
@@ -808,28 +839,37 @@ func _process_ai(delta: float) -> void:
 		return
 	
 	# Vị trí trung tâm hồi về linh hoạt theo thói quen đối thủ (In-Match Adaptation)
-	# Tâm sân phải chuẩn: (640 + 1140) / 2 = 890.0
+	# Tâm sân chuẩn AI: (640 + 1140) / 2 = 890.0
 	var dynamic_home_x: float = 890.0
 	if ai_difficulty == 2:
 		# HARD AI: Thích nghi thói quen người chơi trong trận đấu
-		if opp_consecutive_drops >= 2 or opp_drop_ratio >= 0.45 or opp_is_camping_back:
-			# Người chơi có thói quen spam bỏ nhỏ / đứng im sân sau: AI dâng cao (815px) đón đầu
-			# Tiết kiệm thể lực di chuyển và chặn đứng exploit
-			dynamic_home_x = 815.0
-		elif opp_consecutive_clears >= 2:
-			# Người chơi liên tục phông sâu: AI lùi nhẹ đón bật nhảy đập
-			dynamic_home_x = 945.0
-		elif stats and stats.stamina < 50.0:
-			# Tiết kiệm thể lực: Đứng chuẩn T-junction (890px), giảm quãng đường chạy
-			dynamic_home_x = 890.0
+		if opp_consecutive_clears >= 1 or opp_clear_ratio >= 0.45:
+			# Người chơi có xu hướng phông sâu: AI chủ động đứng lùi 915px đón bật nhảy SMASH dứt điểm!
+			dynamic_home_x = 915.0
+		elif opp_consecutive_drops >= 2 or opp_drop_ratio >= 0.45:
+			# Người chơi spam bỏ nhỏ: AI dâng lên 855px đón đầu, không dâng quá sâu tránh hổng sân sau
+			dynamic_home_x = 855.0
+		elif opp_is_camping_front:
+			# Người chơi đứng ôm sát lưới: AI giữ khoảng cách 910px
+			dynamic_home_x = 910.0
+		elif opp_is_camping_back:
+			# Người chơi đứng sân sau: AI giữ vị trí T-junction 885px
+			dynamic_home_x = 885.0
 		else:
-			dynamic_home_x = 890.0
+			if ai_last_shot_chosen == "drop":
+				dynamic_home_x = 860.0
+			elif ai_last_shot_chosen == "clear" or ai_last_shot_chosen == "underhand_lift":
+				dynamic_home_x = 905.0
+			elif ai_last_shot_chosen == "smash":
+				dynamic_home_x = 855.0
+			else:
+				dynamic_home_x = 890.0
 	elif ai_difficulty == 1:
 		# MEDIUM AI: Thích nghi vừa phải
-		if opp_consecutive_drops >= 3 or opp_drop_ratio >= 0.60:
-			dynamic_home_x = 835.0
-		elif stats and stats.stamina < 40.0:
-			dynamic_home_x = 890.0
+		if opp_consecutive_clears >= 2:
+			dynamic_home_x = 910.0
+		elif opp_consecutive_drops >= 2:
+			dynamic_home_x = 860.0
 		else:
 			dynamic_home_x = 890.0
 	else:
@@ -845,14 +885,15 @@ func _process_ai(delta: float) -> void:
 	var s_pos = shuttlecock.global_position
 	var s_vel = shuttlecock.velocity
 	
-	# 1. KHI AI VỪA ĐÁNH XONG (CẦU ĐANG BAY SANG SÂN NGƯỜI CHƠI): AI HỒI VỀ VỊ TRÍ CHIẾN THUẬT
+	# 1. KHI CẦU ĐANG BAY SANG SÂN NGƯỜI CHƠI (AI HỒI VỀ VỊ TRÍ CHIẾN THUẬT & HỒI PHỤC THỂ LỰC):
 	if shuttlecock.last_hitter == "ai" or not can_hit or s_vel.x < -10.0:
 		ai_has_reacted = false
 		ai_reaction_timer = 0.0
 		var diff_home = dynamic_home_x - global_position.x
-		if abs(diff_home) > 15.0:
-			velocity.x = sign(diff_home) * move_speed_x * 0.75
+		if abs(diff_home) > 28.0:
+			velocity.x = sign(diff_home) * move_speed_x * 0.70
 		else:
+			# Đã ở đúng vị trí chiến thuật: DỪNG LẠI THỞ ĐỂ HỒI PHỤC THỂ LỰC!
 			velocity.x = 0.0
 		return
 	
@@ -983,10 +1024,9 @@ func _process_ai(delta: float) -> void:
 	
 	# 4. AI CHỦ ĐỘNG BẬT NHẢY SMASH (JUMP SMASH INTERCEPTION)
 	# Không nhảy nếu AI phán đoán cầu bay Out!
-	# Và KIỂM TRA THỂ LỰC & ACCURACY:
-	# AI KHÓ (Hard): Bậc thầy kiểm soát thể lực, nếu Stamina < 48% thì tuyệt đối dừng nhảy đập phông thường
-	# để bảo toàn thể lực trong các pha cầu bền bỉ, chỉ bật nhảy khi có cơ hội cầu non (Chance Ball)!
-	var is_exhausted = stats and (stats.stamina < (48.0 if ai_difficulty == 2 else 25.0) or stats.accuracy < 35.0)
+	# KIỂM TRA THỂ LỰC & ACCURACY THỰC TẾ:
+	# Chỉ ngừng nhảy khi thể lực cạn kiệt ở mức nguy hiểm (< 16% với Hard, < 14% với Medium)
+	var is_exhausted = stats and (stats.stamina < (16.0 if ai_difficulty == 2 else 14.0) or stats.accuracy < 22.0)
 	if is_on_ground() and can_hit and not ai_judges_out and not is_exhausted and not shuttlecock.is_smash and not shuttlecock.is_boom_smash and not shuttlecock.is_kill_smash:
 		var is_chance_ball_drop = (shuttlecock.is_weak_return or shuttlecock.current_shot_type == "weak_return")
 		var is_high_clear = (shuttlecock.current_shot_type == "clear" or shuttlecock.current_shot_type == "underhand_lift")
@@ -994,11 +1034,9 @@ func _process_ai(delta: float) -> void:
 		
 		if is_chance_ball_drop:
 			# ĐÓN BẬT NHẢY DỨT ĐIỂM CẦU NON (CHANCE BALL JUMP SMASH):
-			# AI phải đã tới sát vị trí đón đầu giữa sân (cách target_x <= 16px) và cầu đã tới cự ly chuẩn ngang (dist_x <= 55px)
-			# và quả cầu đang rơi xuống trong tầm với bật nhảy chuẩn (Y từ 210 đến 330, vận tốc Y đi xuống)
-			var is_near_intercept_spot = abs(global_position.x - target_x) <= 16.0
-			var is_aligned_x = dist_x_shuttle <= 55.0 and is_near_intercept_spot
-			var is_dropping_in_overhead = (s_pos.y >= 210.0 and s_pos.y <= 330.0 and shuttlecock.velocity.y > 0.0)
+			var is_near_intercept_spot = abs(global_position.x - target_x) <= 24.0
+			var is_aligned_x = dist_x_shuttle <= 62.0 and is_near_intercept_spot
+			var is_dropping_in_overhead = (s_pos.y >= 200.0 and s_pos.y <= 340.0 and shuttlecock.velocity.y > 0.0)
 			
 			if is_aligned_x and is_dropping_in_overhead:
 				var jump_chance = 0.98 if ai_difficulty >= 1 else 0.80
@@ -1006,22 +1044,28 @@ func _process_ai(delta: float) -> void:
 					velocity.y = JUMP_FORCE
 					jump_taken.emit(Vector2(global_position.x, current_ground_y), facing)
 					if stats:
-						stats.consume_stamina_action(5.0)
+						stats.consume_stamina_action(3.0)
 		elif is_high_clear and ai_difficulty > 0:
-			# ĐÓN BẬT NHẢY ĐẬP PHÔNG CẦU CAO SÂU (CLEAR / LIFT JUMP SMASH):
-			# AI Hard chỉ nhảy nếu thể lực dồi dào (> 52%)
-			var ai_stamina_ok = (stats.stamina >= 52.0) if (ai_difficulty == 2 and stats) else true
-			var is_close_x = dist_x_shuttle <= 75.0
-			var is_in_range_x = (s_pos.x > 760.0 and s_pos.x < 1120.0)
-			var is_dropping_overhead = (s_pos.y >= 190.0 and s_pos.y <= 320.0 and shuttlecock.velocity.y > 0.0)
+			# BẬT NHẢY ĐẬP TRỪNG PHẠT PHÔNG CẦU (CLEAR INTERCEPTION JUMP SMASH):
+			# AI Hard sẵn sàng bật nhảy đập dứt điểm ngay cả ở thể lực trung bình (>= 16%), không để đối thủ rảnh tay phông cầu!
+			var ai_stamina_ok = (stats.stamina >= 16.0) if (ai_difficulty == 2 and stats) else (stats.stamina >= 14.0 if stats else true)
+			var is_close_x = dist_x_shuttle <= 85.0
+			var is_in_range_x = (s_pos.x > 730.0 and s_pos.x < 1130.0)
+			var is_dropping_overhead = (s_pos.y >= 180.0 and s_pos.y <= 340.0 and shuttlecock.velocity.y > 0.0)
 			
 			if ai_stamina_ok and is_close_x and is_in_range_x and is_dropping_overhead:
-				var jump_chance = 0.88 if ai_difficulty == 2 else 0.50
+				# Nếu người chơi có thói quen spam phông cầu hoặc đứng lùi sâu: Hard AI tăng tỉ lệ nhảy đập lên 94%!
+				var jump_chance = 0.55
+				if ai_difficulty == 2:
+					jump_chance = 0.94 if (opp_consecutive_clears >= 1 or opp_is_camping_back or opp_clear_ratio >= 0.40) else 0.82
+				elif ai_difficulty == 1:
+					jump_chance = 0.72 if (opp_consecutive_clears >= 2 or opp_is_camping_back) else 0.52
+				
 				if randf() < jump_chance:
 					velocity.y = JUMP_FORCE
 					jump_taken.emit(Vector2(global_position.x, current_ground_y), facing)
 					if stats:
-						stats.consume_stamina_action(5.0)
+						stats.consume_stamina_action(3.5)
 	
 	# 5. AI KIỂM TRA ĐÁNH CẦU & CHỌN ĐÒN ĐÁNH CHIẾN THUẬT (SMART SHOT SELECTION)
 	var hit_status = get_hit_status()
@@ -1152,17 +1196,16 @@ func _process_ai(delta: float) -> void:
 				
 		var is_high_clear_lob = (shuttlecock.current_shot_type == "clear" or shuttlecock.current_shot_type == "underhand_lift")
 		
-		# CHIẾN THUẬT TIẾT KIỆM THỂ LỰC TRONG PHA CẦU DÀI:
-		# Khi Stamina thấp, AI chủ động phông sâu cao vút (Clear / Lift) về cuối sân đối thủ,
-		# buộc người chơi phải lùi xa, đồng thời kéo dài thời gian bay để AI kịp hồi phục thể lực (+9/s khi đứng yên/di chuyển chậm)
-		if (ai_difficulty == 2 and stats and stats.stamina < 50.0) or (ai_difficulty == 1 and stats and stats.stamina < 35.0):
+		# CHIẾN THUẬT TIẾT KIỆM THỂ LỰC & KẾT LIỄU PHA CẦU:
+		# Chỉ chủ động bung bổng hồi sức khi thể lực ở mức cạn kiệt hiểm nghèo (< 14%) VÀ đối thủ không có sơ hở
+		if stats and stats.stamina < 14.0 and not opp_is_vulnerable and not player_is_front:
 			if zone == "underhand":
 				_execute_hit("underhand_lift", hit_status)
 			else:
 				_execute_hit("clear", hit_status)
 			return
 		
-		# A. NẾU AI ĐANG TRÊN KHÔNG (CHỦ ĐỘNG NHẢY ĐẬP CẦU BỔNG):
+		# A. NẾU AI ĐANG TRÊN KHÔNG (CHỦ ĐỘNG BẬT NHẢY SMASH CẦU BỔNG):
 		if in_air:
 			if stats and stats.can_use_special():
 				if stats.character_id == "nishikawa":
@@ -1171,56 +1214,69 @@ func _process_ai(delta: float) -> void:
 				elif stats.character_id == "fuji" and (player_is_back or opp_is_camping_back):
 					_execute_hit("drop", hit_status)
 					return
-			if is_high_clear_lob and s_h >= 150.0:
-				if is_exhausted:
-					# Thể lực hoặc Accuracy cạn kiệt: Đánh Clear để hồi phục
+			if is_high_clear_lob and s_h >= 140.0:
+				if is_exhausted and not opp_is_vulnerable:
+					# Thể lực hoặc Accuracy cạn kiệt: Đánh Clear để kéo dài nhịp hồi phục
 					_execute_hit("clear", hit_status)
 					return
 				elif ai_difficulty == 2: # KHÓ:
 					# Phán đoán chiến thuật đỉnh cao:
 					# - Nếu người chơi mất thăng bằng hoặc đang dâng lên lưới: SMASH dứt điểm ngay!
-					# - Nếu người chơi đang đứng chôn chân ở sân sau (player_is_back / opp_is_camping_back):
-					#   AI Hard không đập thẳng vào người chơi mà chém bỏ nhỏ (Drop) sát lưới ép người chơi phải chạy 200px!
-					if opp_is_vulnerable or player_is_front:
+					# - Nếu người chơi đang đứng chôn chân ở sân sau (player_is_back / opp_is_camping_back / spam clear):
+					#   AI Hard trừng phạt bằng:
+					#   + 55% SMASH DỐC NỬA SÂN (Mid-court steep smash): Bắn cầu cắm thẳng trước mặt 150px, ép chạy/bay người!
+					#   + 45% CHÉM BỎ NHỎ SÁT LƯỚI (Tight slice drop): Ép đối thủ phải bứt tốc 280px lên lưới!
+					#   TUYỆT ĐỐI KHÔNG đập thẳng vào vợt người chơi hoặc phông bổng trả lại cho đối thủ spam!
+					if opp_is_vulnerable or player_is_front or opp_is_camping_front:
 						_execute_hit("smash", hit_status)
-					elif player_is_back or opp_is_camping_back:
-						if randf() < 0.85:
-							_execute_hit("drop", hit_status)
-						else:
+					elif player_is_back or opp_is_camping_back or opp_consecutive_clears >= 1 or opp_clear_ratio >= 0.40:
+						if randf() < 0.55:
 							_execute_hit("smash", hit_status)
+						else:
+							_execute_hit("drop", hit_status)
 					else:
 						# Người chơi ở giữa sân: Phối hợp smash 65%, drop 35%
 						_execute_hit("smash" if randf() < 0.65 else "drop", hit_status)
 				elif ai_difficulty == 1: # TRUNG BÌNH:
-					if opp_is_vulnerable or player_is_front:
-						_execute_hit("smash" if randf() < 0.80 else "clear", hit_status)
-					elif player_is_back or opp_is_camping_back:
-						_execute_hit("drop" if randf() < 0.60 else "smash", hit_status)
-					else:
+					if opp_is_vulnerable or player_is_front or opp_is_camping_front:
+						_execute_hit("smash" if randf() < 0.85 else "clear", hit_status)
+					elif player_is_back or opp_is_camping_back or opp_consecutive_clears >= 2:
 						var r = randf()
 						if r < 0.50:
 							_execute_hit("smash", hit_status)
-						elif r < 0.80:
-							_execute_hit("clear", hit_status)
-						else:
+						elif r < 0.85:
 							_execute_hit("drop", hit_status)
+						else:
+							_execute_hit("clear", hit_status)
+					else:
+						var r = randf()
+						if r < 0.55:
+							_execute_hit("smash", hit_status)
+						elif r < 0.75:
+							_execute_hit("drop", hit_status)
+						else:
+							_execute_hit("clear", hit_status)
 				else: # DỄ:
 					_execute_hit("clear" if randf() > 0.4 else "drop", hit_status)
 			else:
-				# Không phải cầu bổng để đập: Chỉ đánh Drop hoặc Clear
-				_execute_hit("drop" if randf() < 0.45 else "clear", hit_status)
+				# Cầu bay nhanh tầm trung: Đập hoặc bỏ nhỏ
+				_execute_hit("smash" if randf() < 0.60 else "drop", hit_status)
 			return
 		
 		# B. NẾU AI ĐANG Ở DƯỚI ĐẤT:
-		# TUYỆT ĐỐI KHÔNG DÙNG SMASH KHI ĐỨNG DƯỚI ĐẤT
-		# Chỉ đánh Phông cầu (Clear), Bỏ nhỏ (Drop), hoặc Bung bổng (Lift):
 		if zone == "overhead":
 			if ai_difficulty == 2:
-				# HARD AI: Điều hướng người chơi tối đa (Chạy 4 góc)
-				if player_is_front:
+				# HARD AI: Điều hướng người chơi tối đa (Chạy con thoi trước - sau)
+				if player_is_front or opp_is_camping_front:
+					# Người chơi ở lưới: Đẩy sâu về đáy sân (Clear) ép đối thủ chạy 350px lùi!
 					_execute_hit("clear", hit_status)
-				elif player_is_back or opp_is_camping_back:
-					_execute_hit("drop", hit_status)
+				elif player_is_back or opp_is_camping_back or opp_consecutive_clears >= 1 or opp_clear_ratio >= 0.40:
+					# Người chơi đứng sân sau / spam Clear:
+					# Chém bỏ nhỏ sát lưới ép chạy 280px lên lưới (70%) hoặc đập cắm dốc tấn công (30%)!
+					if randf() < 0.70:
+						_execute_hit("drop", hit_status)
+					else:
+						_execute_hit("smash", hit_status)
 				else:
 					# Người chơi ở giữa sân: Luân phiên kéo dãn trước/sau
 					if ai_last_shot_chosen == "drop":
@@ -1228,12 +1284,12 @@ func _process_ai(delta: float) -> void:
 					else:
 						_execute_hit("drop", hit_status)
 			elif ai_difficulty == 1:
-				if player_is_front:
+				if player_is_front or opp_is_camping_front:
 					_execute_hit("clear", hit_status)
-				elif player_is_back or opp_is_camping_back:
-					_execute_hit("drop" if randf() < 0.75 else "clear", hit_status)
+				elif player_is_back or opp_is_camping_back or opp_consecutive_clears >= 2:
+					_execute_hit("drop" if randf() < 0.80 else "clear", hit_status)
 				else:
-					_execute_hit("clear" if randf() < 0.60 else "drop", hit_status)
+					_execute_hit("clear" if randf() < 0.55 else "drop", hit_status)
 			else: # DỄ
 				if player_is_front:
 					_execute_hit("clear", hit_status)
@@ -1244,19 +1300,18 @@ func _process_ai(delta: float) -> void:
 				
 		elif zone == "underhand":
 			# CẦU Ở TẦM THẤP (DƯỚI LƯỚI / TRƯỚC LƯỚI / VỚT CẦU):
-			# ĐÂY LÀ ĐIỂM CỐT LÕI ĐỂ BẺ GÃY TRICK LỎ SPAM DROP!
+			# BẺ GÃY TRICK LỎ SPAM DROP VÀ ĐIỀU HƯỚNG NGƯỜI CHƠI
 			if ai_difficulty == 2:
 				# HARD AI:
-				if player_is_back or opp_is_camping_back or opp_consecutive_drops >= 2:
-					# Người chơi đang đứng im sân sau: AI TUYỆT ĐỐI KHÔNG BUNG BỔNG (LIFT) VỀ TẬN CHÂN NGƯỜI CHƠI NỮA!
-					# 95% AI thực hiện cú chém vớt bỏ nhỏ sát lưới (Drop) ép người chơi phải chạy 200px lên lưới!
-					if randf() < 0.95:
+				if player_is_front or opp_is_camping_front:
+					# Người chơi vừa lao lên lưới: Bung bổng sâu tận góc sân sau (Lift) ép đối thủ giật lùi 350px!
+					_execute_hit("underhand_lift", hit_status)
+				elif player_is_back or opp_is_camping_back or opp_consecutive_drops >= 1 or opp_drop_ratio >= 0.40:
+					# Người chơi đang đứng im sân sau: Vê cầu sát lưới (Drop), ép người chơi phải chạy 280px lên lưới!
+					if randf() < 0.90:
 						_execute_hit("drop", hit_status)
 					else:
 						_execute_hit("underhand_lift", hit_status)
-				elif player_is_front:
-					# Người chơi vừa lao lên lưới: Bung bổng sâu tận góc sân sau (Lift) để người chơi phải giật lùi!
-					_execute_hit("underhand_lift", hit_status)
 				else:
 					# Người chơi ở giữa: Luân chuyển kéo dãn đội hình
 					if ai_last_shot_chosen == "drop":
@@ -1265,16 +1320,16 @@ func _process_ai(delta: float) -> void:
 						_execute_hit("drop", hit_status)
 			elif ai_difficulty == 1:
 				# MEDIUM AI:
-				if player_is_back or opp_is_camping_back or opp_consecutive_drops >= 3:
-					# 70% bỏ nhỏ sát lưới ép di chuyển, 30% bung bổng
-					if randf() < 0.70:
+				if player_is_front or opp_is_camping_front:
+					_execute_hit("underhand_lift", hit_status)
+				elif player_is_back or opp_is_camping_back or opp_consecutive_drops >= 2:
+					# 75% bỏ nhỏ sát lưới ép di chuyển, 25% bung bổng
+					if randf() < 0.75:
 						_execute_hit("drop", hit_status)
 					else:
 						_execute_hit("underhand_lift", hit_status)
-				elif player_is_front:
-					_execute_hit("underhand_lift", hit_status)
 				else:
-					_execute_hit("underhand_lift" if randf() < 0.60 else "drop", hit_status)
+					_execute_hit("underhand_lift" if randf() < 0.55 else "drop", hit_status)
 			else:
 				# EASY AI: Giữ nguyên cơ chế cơ bản
 				if s_pos.x < 780.0:
@@ -1765,7 +1820,11 @@ func _execute_hit(shot_type: String, hit_status: Dictionary = {}) -> void:
 			var dist_to_net = abs(net_x_val - from_2d.x)
 			var is_near = dist_to_net < 220.0
 			
-			if is_near:
+			if is_ai:
+				# AI BỎ NHỎ HIỂM HÓC: Sát mép lưới (net_x = 640), rơi ở 545.0 - 565.0px
+				# Buộc người chơi dù đứng ở baseline hay giữa sân đều phải bứt tốc 280px lên cứu
+				target_x = randf_range(545.0, 565.0) if ai_difficulty == 2 else randf_range(530.0, 560.0)
+			elif is_near:
 				# VÊ CẦU SÁT LƯỚI:
 				if facing > 0:
 					# Player đánh sang sân AI (X > 640)
@@ -1773,7 +1832,6 @@ func _execute_hit(shot_type: String, hit_status: Dictionary = {}) -> void:
 					target_x += aim_x_offset * 0.20
 					target_x = max(target_x, net_x_val + 55.0)
 				else:
-					# AI đánh sang sân Player (X < 640)
 					target_x = 565.0 if is_perfect else 525.0
 					target_x -= aim_x_offset * 0.20
 					target_x = min(target_x, net_x_val - 55.0)
@@ -1823,9 +1881,23 @@ func _execute_hit(shot_type: String, hit_status: Dictionary = {}) -> void:
 					target_x = 510.0 - aim_x_offset * 0.3
 		else:
 			actual_shot = "smash"
-			var base_smash_x = 1000.0 if is_air else 960.0
-			var final_smash_x = base_smash_x if facing > 0 else (1280.0 - base_smash_x)
-			target_x = final_smash_x + facing * (aim_x_offset * 0.35)
+			if is_ai:
+				var opp_pos_x = opponent_player.global_position.x if opponent_player else 300.0
+				if opp_pos_x < 370.0:
+					# Người chơi lùi sâu ở sân sau / spam phông cầu:
+					# ĐẬP CẮM DỐC NỬA SÂN (Steep smash to mid-court): Rơi ở 430px - 475px!
+					# Cách người chơi 130-180px, với tốc độ smash 190+ km/h thì người chơi đứng yên sẽ KHÔNG THỂ đỡ được!
+					target_x = randf_range(430.0, 475.0)
+				elif opp_pos_x > 460.0:
+					# Người chơi đang dâng lưới: ĐẬP BẮN SÂU ĐÁY SÂN sau lưng đối thủ!
+					target_x = randf_range(200.0, 245.0)
+				else:
+					# Người chơi ở giữa sân: Đập biến hóa lệch vị trí
+					target_x = 480.0 if randf() < 0.55 else 225.0
+			else:
+				var base_smash_x = 1000.0 if is_air else 960.0
+				var final_smash_x = base_smash_x if facing > 0 else (1280.0 - base_smash_x)
+				target_x = final_smash_x + facing * (aim_x_offset * 0.35)
 		
 		# RÀNG BUỘC SMASH TUYỆT ĐỐI NẰM AN TOÀN TRONG SÂN (Cách vạch biên ít nhất 70px):
 		if facing > 0:
@@ -1843,7 +1915,10 @@ func _execute_hit(shot_type: String, hit_status: Dictionary = {}) -> void:
 	else: # shot_type == "clear" hoặc "underhand_lift"
 		if is_underhand or shot_type == "underhand_lift":
 			actual_shot = "underhand_lift"
-			if is_incoming_smash and shuttlecock and (shuttlecock.is_kill_smash or shuttlecock.current_shot_type == "kill_smash"):
+			if is_ai:
+				# AI hất bổng sâu về góc đáy sân đối thủ (170 - 195px):
+				target_x = randf_range(170.0, 195.0) if ai_difficulty == 2 else randf_range(175.0, 225.0)
+			elif is_incoming_smash and shuttlecock and (shuttlecock.is_kill_smash or shuttlecock.current_shot_type == "kill_smash"):
 				# CÚ HẤT LẬT KÈO (CLUTCH COUNTER LIFT):
 				# Hất vút sâu tít đáy sân đối thủ khiến bên vừa đập bị vặn sườn (an toàn trong biên)!
 				target_x = 1105.0 if facing > 0 else 175.0
@@ -1861,7 +1936,10 @@ func _execute_hit(shot_type: String, hit_status: Dictionary = {}) -> void:
 				target_x = base_lift_x + facing * (aim_x_offset * 0.35)
 		else:
 			actual_shot = "clear"
-			if is_perfect:
+			if is_ai:
+				# AI phông cầu sâu vút về cuối sân đối thủ (170 - 195px):
+				target_x = randf_range(170.0, 195.0) if ai_difficulty == 2 else randf_range(175.0, 220.0)
+			elif is_perfect:
 				# CÚ PHÔNG CẦU PERFECT: Bay sâu tít cuối sân, TUYỆT ĐỐI KHÔNG BAO GIỜ OUT!
 				var base_clear_x = 1105.0 if facing > 0 else 175.0
 				target_x = base_clear_x + facing * (aim_x_offset * 0.25)
