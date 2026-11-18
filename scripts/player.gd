@@ -1047,19 +1047,33 @@ func _process_ai(delta: float) -> void:
 					if stats:
 						stats.consume_stamina_action(3.0)
 		elif is_high_clear and ai_difficulty > 0:
-			# BẬT NHẢY ĐẬP TRỪNG PHẠT PHÔNG CẦU (CLEAR INTERCEPTION JUMP SMASH):
-			var ai_stamina_ok = (stats.stamina >= 20.0) if stats else true
-			var is_close_x = dist_x_shuttle <= 85.0
+			# BẬT NHẢY ĐẬP CẦU BỔNG CÓ CHỌN LỌC (CHIẾN THUẬT TIẾT KIỆM THỂ LỰC):
+			var opp_pos_x = opponent_player.global_position.x if opponent_player else 360.0
+			var opp_is_near_net = (opp_pos_x > 430.0)
+			var opp_is_vulnerable = opponent_player and ((opponent_player.balance < 60.0) or opponent_player.is_getting_up or opponent_player.is_diving)
+			
+			# AI CHỈ BẬT NHẢY ĐẬP KHI:
+			# 1. Thể lực còn dồi dào (> 52% Hard, > 65% Medium)
+			# 2. Chưa vừa mới đập ở nhịp trước (consecutive_smashes == 0) để tránh spam tự kiệt sức!
+			# 3. Đối thủ KHÔNG đứng rình sẵn ở sát lưới với đầy đủ thăng bằng (đối thủ đứng lưới thì chuẩn bị Clear qua đầu, không nhảy đập)!
+			var min_sta_jump = 52.0 if ai_difficulty == 2 else 65.0
+			var ai_stamina_ok = (stats.stamina >= min_sta_jump) if stats else true
+			var not_over_smashing = (stats.consecutive_smashes == 0) if stats else true
+			var can_jump_tactically = (ai_stamina_ok and not_over_smashing and not opp_is_near_net) or opp_is_vulnerable
+			
+			var is_close_x = dist_x_shuttle <= 80.0
 			var is_in_range_x = (s_pos.x > 730.0 and s_pos.x < 1130.0)
-			# Nhảy đúng tầm (y: 140 - 280) để đón tiếp xúc cầu ở độ cao lớn nhất:
 			var is_dropping_overhead = (s_pos.y >= 140.0 and s_pos.y <= 280.0 and shuttlecock.velocity.y > 0.0)
 			
-			if ai_stamina_ok and is_close_x and is_in_range_x and is_dropping_overhead:
-				var jump_chance = 0.50
-				if ai_difficulty == 2:
-					jump_chance = 0.88 if (opp_consecutive_clears >= 1 or opp_is_camping_back or opp_clear_ratio >= 0.40) else 0.70
+			if can_jump_tactically and is_close_x and is_in_range_x and is_dropping_overhead:
+				var jump_chance = 0.35
+				if opp_is_vulnerable:
+					jump_chance = 0.85 # Đối thủ sơ hở: Nhảy smash trừng phạt ngay!
+				elif ai_difficulty == 2:
+					# Hard AI: Chỉ nhảy đập khi người chơi đang lùi sâu ở đáy sân (x < 370px)
+					jump_chance = 0.50 if (opp_pos_x < 370.0) else 0.20
 				elif ai_difficulty == 1:
-					jump_chance = 0.65 if (opp_consecutive_clears >= 2 or opp_is_camping_back) else 0.45
+					jump_chance = 0.35 if (opp_pos_x < 370.0) else 0.15
 				
 				if randf() < jump_chance:
 					velocity.y = JUMP_FORCE
@@ -1219,44 +1233,52 @@ func _process_ai(delta: float) -> void:
 					_execute_hit("clear", hit_status)
 					return
 				elif ai_difficulty == 2: # KHÓ:
-					# Phán đoán chiến thuật đỉnh cao:
-					# - Nếu người chơi mất thăng bằng hoặc đang dâng lên lưới: SMASH dứt điểm ngay!
-					# - Nếu người chơi đang đứng chôn chân ở sân sau (player_is_back / opp_is_camping_back / spam clear):
-					#   AI Hard trừng phạt bằng:
-					#   + 55% SMASH DỐC NỬA SÂN (Mid-court steep smash): Bắn cầu cắm thẳng trước mặt 150px, ép chạy/bay người!
-					#   + 45% CHÉM BỎ NHỎ SÁT LƯỚI (Tight slice drop): Ép đối thủ phải bứt tốc 280px lên lưới!
-					#   TUYỆT ĐỐI KHÔNG đập thẳng vào vợt người chơi hoặc phông bổng trả lại cho đối thủ spam!
-					if opp_is_vulnerable or player_is_front or opp_is_camping_front:
+					# Phán đoán chiến thuật AI HARD:
+					# 1. Nếu đối thủ sơ hở (balance < 60, đang ngã/cứu cầu): SMASH trừng phạt dứt điểm!
+					# 2. Nếu đối thủ đứng gần lưới (player_is_front) với thể lực vững:
+					#    TUYỆT ĐỐI KHÔNG ĐẬP vào vợt đối phương! PHẢI PHÔNG BỔNG SÂU VỀ ĐÁY SÂN (CLEAR) để ép đối thủ chạy lùi 300px!
+					# 3. Nếu AI vừa mới đập (consecutive_smashes >= 1) hoặc thể lực AI < 52%:
+					#    Đánh CLEAR hoặc DROP để hồi phục, không tự sát thể lực!
+					# 4. Nếu đối thủ đang spam Clear liên tục (opp_consecutive_clears >= 2):
+					#    Bỏ nhỏ sát lưới kéo đối thủ lên (60%) hoặc Phông sâu góc xa (40%), không cắm đầu đập!
+					if opp_is_vulnerable:
 						_execute_hit("smash", hit_status)
-					elif player_is_back or opp_is_camping_back or opp_consecutive_clears >= 1 or opp_clear_ratio >= 0.40:
-						if randf() < 0.55:
-							_execute_hit("smash", hit_status)
-						else:
-							_execute_hit("drop", hit_status)
-					else:
-						# Người chơi ở giữa sân: Phối hợp smash 65%, drop 35%
-						_execute_hit("smash" if randf() < 0.65 else "drop", hit_status)
-				elif ai_difficulty == 1: # TRUNG BÌNH:
-					if opp_is_vulnerable or player_is_front or opp_is_camping_front:
-						_execute_hit("smash" if randf() < 0.85 else "clear", hit_status)
-					elif player_is_back or opp_is_camping_back or opp_consecutive_clears >= 2:
+					elif player_is_front or opp_is_camping_front:
+						_execute_hit("clear" if randf() < 0.85 else "drop", hit_status)
+					elif (stats and (stats.consecutive_smashes >= 1 or stats.stamina < 52.0)):
+						_execute_hit("clear" if randf() < 0.65 else "drop", hit_status)
+					elif opp_consecutive_clears >= 2:
 						var r = randf()
-						if r < 0.50:
-							_execute_hit("smash", hit_status)
+						if r < 0.60:
+							_execute_hit("drop", hit_status)
 						elif r < 0.85:
-							_execute_hit("drop", hit_status)
-						else:
-							_execute_hit("clear", hit_status)
-					else:
-						var r = randf()
-						if r < 0.55:
 							_execute_hit("smash", hit_status)
-						elif r < 0.75:
-							_execute_hit("drop", hit_status)
 						else:
 							_execute_hit("clear", hit_status)
+					elif player_is_back or opp_is_camping_back:
+						_execute_hit("drop" if randf() < 0.55 else "smash", hit_status)
+					else:
+						_execute_hit("drop" if randf() < 0.45 else ("smash" if randf() < 0.60 else "clear"), hit_status)
+				elif ai_difficulty == 1: # TRUNG BÌNH:
+					if opp_is_vulnerable:
+						_execute_hit("smash" if randf() < 0.80 else "clear", hit_status)
+					elif player_is_front or opp_is_camping_front:
+						_execute_hit("clear" if randf() < 0.70 else "drop", hit_status)
+					elif (stats and (stats.consecutive_smashes >= 1 or stats.stamina < 60.0)):
+						_execute_hit("clear" if randf() < 0.70 else "drop", hit_status)
+					elif opp_consecutive_clears >= 2:
+						_execute_hit("drop" if randf() < 0.55 else "clear", hit_status)
+					elif player_is_back or opp_is_camping_back:
+						_execute_hit("drop" if randf() < 0.50 else ("smash" if randf() < 0.50 else "clear"), hit_status)
+					else:
+						_execute_hit("clear" if randf() < 0.45 else ("drop" if randf() < 0.60 else "smash"), hit_status)
 				else: # DỄ:
-					_execute_hit("clear" if randf() > 0.4 else "drop", hit_status)
+					if opp_is_vulnerable:
+						_execute_hit("smash" if randf() < 0.50 else "clear", hit_status)
+					elif player_is_front:
+						_execute_hit("clear", hit_status)
+					else:
+						_execute_hit("clear" if randf() > 0.40 else "drop", hit_status)
 			else:
 				# Cầu bay nhanh tầm trung hoặc độ cao chưa đạt chuẩn đập (s_h < 140px): Phông sâu hoặc Bỏ nhỏ
 				_execute_hit("clear" if randf() < 0.60 else "drop", hit_status)
