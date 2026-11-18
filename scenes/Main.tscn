@@ -141,9 +141,8 @@ shadow_size = 6
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_refl"]
 shader = ExtResource("8_refl_shader")
-shader_parameter/floor_y = 550.0
-shader_parameter/reflection_strength = 0.35
-shader_parameter/blur_level = 1.2
+shader_parameter/floor_uv_y = 0.76388889
+shader_parameter/reflection_strength = 0.38
 shader_parameter/floor_tint = Color(0.2, 0.58, 0.32, 1)
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_gray"]
@@ -234,7 +233,7 @@ position = Vector2(390, 480)
 
 [node name="FloorReflection" type="Polygon2D" parent="."]
 material = SubResource("ShaderMaterial_refl")
-polygon = PackedVector2Array(190, 485, 1090, 485, 1210, 615, 70, 615)
+polygon = PackedVector2Array(0, 545, 1280, 545, 1280, 720, 0, 720)
 
 [node name="NishikawaLightning" type="Node2D" parent="."]
 
