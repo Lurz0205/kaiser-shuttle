@@ -2324,7 +2324,7 @@ func _draw() -> void:
 	# Vector hướng cán vợt: facing lật hướng X hoàn toàn đối xứng giữa Player và AI
 	var racket_dir = Vector2(facing * cos(joint_racket_angle), sin(joint_racket_angle)).normalized()
 	
-	var is_nishikawa = stats and (stats.character_id == "nishikawa" or stats.special_skill_id == "golden_smash")
+	var is_nishikawa = false # Tạm tắt textured rig để render chuẩn lại các bộ phận theo đúng tham khảo The Spike
 	if is_nishikawa:
 		_draw_textured_nishikawa(
 			hip_pos, shoulder_pos, head_pos,
