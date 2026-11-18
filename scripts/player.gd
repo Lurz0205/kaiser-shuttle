@@ -1169,11 +1169,9 @@ func _process_ai(delta: float) -> void:
 		# TUYỆT ĐỐI KHÔNG RÚC LƯỚI KHI ĐỠ HOẶC BỎ NHỎ -> Biến thành bung cầu non (Chance Ball) cho người chơi
 		# ==========================================================
 		var ai_acc_fault = stats.accuracy if stats else 100.0
-		if ai_acc_fault < 50.0 and ai_pressure_model and ai_pressure_model.should_net_fault(ai_difficulty, ai_acc_fault):
-			if in_air and zone == "overhead":
-				_execute_fault_smash_into_net(hit_status)
-			else:
-				_execute_hit("weak_return", hit_status)
+		if ai_acc_fault < 35.0 and ai_pressure_model and ai_pressure_model.should_net_fault(ai_difficulty, ai_acc_fault):
+			# Khi bị dồn ép cực độ và accuracy cạn kiệt: Bung cầu non (Chance Ball) cho người chơi kết liễu
+			_execute_hit("weak_return", hit_status)
 			return
 		
 		# ==========================================================
@@ -1657,11 +1655,10 @@ func _execute_hit(shot_type: String, hit_status: Dictionary = {}) -> void:
 	# RÀNG BUỘC SMASH TUYỆT ĐỐI (KỂ CẢ PLAYER VÀ AI, TRỪ KHI NISHIKAWA KÍCH HOẠT ĐẶC QUYỀN FLOW SMASH):
 	if not is_nishikawa_golden_smash and (shot_type == "smash" or shot_type == "boom_smash" or shot_type == "kill_smash"):
 		var s_h = current_ground_y - shuttlecock.global_position.y
-		var is_valid_smash = is_chance_ball or (is_air and s_h >= 120.0) or (s_h >= 130.0)
-		if not is_valid_smash or (not is_chance_ball and (shuttlecock.is_smash or shuttlecock.is_boom_smash or shuttlecock.is_kill_smash)):
-			# Không đủ điều kiện đập (cầu thường / cầu thấp / phản smash): ĐẬP VÀO LƯỚI!
-			_execute_fault_smash_into_net(hit_status)
-			return
+		var is_valid_smash = is_chance_ball or (is_air and s_h >= 100.0) or (s_h >= 115.0)
+		if not is_valid_smash:
+			# Không đủ độ cao để đập dốc: Chuyển mượt mà thành cú Clear phông sâu (KHÔNG BAO GIỜ TỰ HỦY RÚC LƯỚI)
+			shot_type = "clear"
 			
 	can_hit = false
 	if opponent_player:
@@ -1675,50 +1672,51 @@ func _execute_hit(shot_type: String, hit_status: Dictionary = {}) -> void:
 	var is_perfect = true if is_nishikawa_golden_smash else hit_status.get("is_perfect", false)
 	var is_underhand = (hit_status.get("zone", "") == "underhand")
 	
-	# ĐỠ CẦU SMASH: Đánh giá Timing tốt / xấu và tác động lên Accuracy & Balance:
+	# ĐỠ CẦU SMASH: Đánh giá Timing tốt / xấu và tác động lên Accuracy & Balance & Thể lực:
 	if is_incoming_smash:
 		var is_kill = shuttlecock and (shuttlecock.is_kill_smash or shuttlecock.current_shot_type == "kill_smash")
 		var is_nishikawa_attacker = opponent_player and opponent_player.stats and (opponent_player.stats.character_id == "nishikawa" or opponent_player.stats.special_skill_id == "golden_smash")
+		
+		# TIÊU HAO THỂ LỰC PHÒNG THỦ KHI CHỐNG ĐỠ CÚ SMASH TỐC ĐỘ CAO:
+		if stats:
+			stats.on_smash_defended(quality, is_perfect)
+			
 		if is_nishikawa_attacker:
 			if shot_type == "mirage_counter":
-				# ĐỠ BẰNG ISABEL BLOCK (MIRAGE COUNTER):
-				# Chịu trừ 30% thể lực từ uy lực sấm sét của Nishikawa trước,
-				# sau đó mới được hồi lại +20% thể lực từ khiên Mirage Shield!
 				if stats:
 					stats.consume_stamina_action(30.0)
 			else:
-				# CÚ ĐẬP LÔI ĐÌNH CỦA NISHIKAWA ĐÁNH TRÚNG NGƯỜI ĐỠ THƯỜNG:
-				# Giảm 50% Accuracy và 30% Thể lực của người đỡ (chấn động cổ tay cực mạnh)!
 				if stats:
-					stats.consume_stamina_action(30.0)
-					stats.accuracy = max(0.0, stats.accuracy - 50.0)
+					stats.consume_stamina_action(25.0)
+					stats.accuracy = max(0.0, stats.accuracy - 45.0)
 				balance = max(10.0, balance - 35.0)
 		elif is_kill:
 			if is_perfect or quality >= 0.85:
-				# NẾU MAY MẮN / CĂN CHUẨN ĐỠ ĐƯỢC KILL SMASH: LẬT KÈO!
-				# Bên đập vừa lao lên lưới bị trừng phạt thăng bằng nặng nề:
 				if opponent_player:
 					opponent_player.balance = max(25.0, opponent_player.balance - 30.0)
 				balance = min(100.0, balance + 10.0)
 			else:
-				# Đỡ ẩu quả Kill Smash sấm sét: văng rúc lưới!
+				# Đỡ ẩu quả Kill Smash dứt điểm: Hỏng rúc lưới!
 				_execute_fault_smash_into_net(hit_status)
 				return
-		elif is_perfect or quality >= 0.88:
-			# TIMING TỐT: Clean block / absorption, hấp thụ lực tốt, không giảm accuracy
+		elif is_perfect:
+			# PERFECT BLOCK: Đỡ hoàn hảo, thăng bằng vững chắc
 			balance = min(100.0, balance + 5.0)
-		elif quality >= 0.65:
-			# TIMING TRUNG BÌNH: Cổ tay chịu rung chấn, giảm nhẹ vừa phải Accuracy (không làm tụt quá nhanh sau 2-3 quả)
+		elif quality >= 0.80:
+			# TIMING KHÁ: Giảm nhẹ accuracy & balance
 			if stats:
-				var pen = randf_range(5.0, 9.0)
+				var pen = randf_range(6.0, 10.0)
 				stats.accuracy = max(5.0, stats.accuracy - pen)
 				balance = max(35.0, balance - 15.0)
 		else:
-			# TIMING XẤU: Bị ép góc / chạm mép khung vợt -> Rung lắc nặng, Accuracy rơi tự do!
+			# TIMING XẤU / VỚI TAY ĐỠ SMASH (quality < 0.80):
+			# Chấn động mạnh! 50% BUNG CẦU NON (Weak Return / Chance Ball) ngay giữa sân cho bên tấn công dứt điểm!
 			if stats:
-				var pen = randf_range(20.0, 30.0)
+				var pen = randf_range(18.0, 28.0)
 				stats.accuracy = max(0.0, stats.accuracy - pen)
-				balance = max(15.0, balance - 32.0)
+				balance = max(10.0, balance - 30.0)
+			if randf() < 0.50 and not is_perfect:
+				shot_type = "weak_return"
 	
 	if is_wall_auto_counter:
 		shot_type = "mirage_counter"
@@ -1764,9 +1762,12 @@ func _execute_hit(shot_type: String, hit_status: Dictionary = {}) -> void:
 		shot_whiffed.emit()
 		return
 	elif blunder == "net":
-		# KHÔNG QUA LƯỚI: rúc lưới!
-		_execute_fault_smash_into_net(hit_status)
-		return
+		# Cầu đi sệt / cắm non, nếu thể lực chưa cạn kiệt thì biến thành cầu non (Chance Ball) cho đối thủ dứt điểm
+		if stats and stats.stamina > 10.0:
+			shot_type = "weak_return"
+		else:
+			_execute_fault_smash_into_net(hit_status)
+			return
 	var is_blunder_out = (blunder == "out")
 	
 	var from_2d = shuttlecock.global_position
