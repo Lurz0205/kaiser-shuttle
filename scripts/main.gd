@@ -137,6 +137,12 @@ var btn_bgm_match: Button = null
 var slider_bgm_match: HSlider = null
 var lbl_bgm_vol_match: Label = null
 
+# Virtual Mobile Controls (Touchpad + Circular Buttons J, K, L)
+const VirtualTouchPadClass = preload("res://scripts/ui/virtual_touch_pad.gd")
+var virtual_touch_pad: Control = null
+var touch_controls_enabled: bool = true
+var btn_touch_toggle: Button = null
+
 # Audio (Smash, Phong, Rít giày, Sấm sét, Isabel Block & Slowmo, Dây vợt net, Gió Fuji, Chém cầu sau sân, Trọng tài)
 @onready var sfx_smash: AudioStreamPlayer = $Audio/SFXSmash
 @onready var sfx_phong: AudioStreamPlayer = $Audio/SFXPong
@@ -250,7 +256,7 @@ func _ready() -> void:
 	if amb_stream is AudioStreamWAV:
 		(amb_stream as AudioStreamWAV).loop_mode = AudioStreamWAV.LOOP_FORWARD
 	amb_player.stream = amb_stream
-	amb_player.volume_db = -24.0
+	amb_player.volume_db = -14.0
 	amb_player.bus = "Master"
 	add_child(amb_player)
 	amb_player.play()
@@ -312,6 +318,24 @@ func _ready() -> void:
 			)
 			vol_row.add_child(slider_bgm_match)
 			vbox.add_child(vol_row)
+			
+			var touch_row = HBoxContainer.new()
+			var lbl_touch = Label.new()
+			lbl_touch.text = "Phím cảm ứng ảo:"
+			lbl_touch.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			touch_row.add_child(lbl_touch)
+			
+			btn_touch_toggle = Button.new()
+			btn_touch_toggle.custom_minimum_size = Vector2(80, 28)
+			btn_touch_toggle.text = "BẬT"
+			btn_touch_toggle.pressed.connect(func():
+				touch_controls_enabled = not touch_controls_enabled
+				_update_settings_ui()
+				if virtual_touch_pad:
+					virtual_touch_pad.visible = touch_controls_enabled and (not main_menu or not main_menu.visible)
+			)
+			touch_row.add_child(btn_touch_toggle)
+			vbox.add_child(touch_row)
 		
 	_update_settings_ui()
 	_setup_hud_stamina_bars()
@@ -329,6 +353,14 @@ func _ready() -> void:
 	main_menu.start_match_requested.connect(_on_menu_start_match)
 	main_menu.start_pvp_match_requested.connect(_on_menu_start_pvp_match)
 	main_menu.settings_updated.connect(_on_menu_settings_updated)
+	
+	# Khởi tạo Touchpad di chuyển (kéo qua lại) & Cụm phím ảo J, K, L (Vector Logo)
+	virtual_touch_pad = VirtualTouchPadClass.new()
+	virtual_touch_pad.name = "VirtualTouchPad"
+	virtual_touch_pad.set_target_player(player)
+	virtual_touch_pad.shot_triggered.connect(_on_touch_shot_triggered)
+	$HUD.add_child(virtual_touch_pad)
+	virtual_touch_pad.visible = false
 	
 	if btn_char_select:
 		btn_char_select.pressed.connect(func():
@@ -375,6 +407,8 @@ func _set_in_game_hud_visible(show: bool) -> void:
 		stamina_bar_bg_player.visible = show
 	if stamina_bar_bg_ai:
 		stamina_bar_bg_ai.visible = show
+	if virtual_touch_pad:
+		virtual_touch_pad.visible = show and touch_controls_enabled
 
 
 func _play_sfx_string() -> void:
@@ -463,6 +497,8 @@ func _on_menu_start_match(p_id: String, r_id: String, diff: int, target_points: 
 	if match_over_dialog:
 		match_over_dialog.visible = false
 	_set_in_game_hud_visible(true)
+	if virtual_touch_pad:
+		virtual_touch_pad.set_target_player(player)
 	if player:
 		match p_id:
 			"nishikawa": player.stats = CharacterStats.create_nishikawa()
@@ -551,6 +587,8 @@ func _on_menu_start_pvp_match(room_code: String, is_host: bool, local_char: Stri
 	if match_over_dialog:
 		match_over_dialog.visible = false
 	_set_in_game_hud_visible(true)
+	if virtual_touch_pad:
+		virtual_touch_pad.set_target_player(player)
 	
 	# TRONG PVP: CẢ 2 NGƯỜI CHƠI ĐỀU LUÔN ĐIỀU KHIỂN NHÂN VẬT SÂN TRÁI CỦA MÌNH ($Player)
 	# ĐỐI THỦ LUÔN HIỆN Ở SÂN PHẢI ($AIRival) VÀ BỊ KHÓA HOÀN TOÀN BÀN PHÍM (is_remote_puppet = true)
@@ -847,6 +885,10 @@ func _update_settings_ui() -> void:
 		lbl_bgm_vol_match.text = "Âm lượng nhạc: %d%%" % int(round(bgm_match_volume * 100.0))
 	if slider_bgm_match and abs(slider_bgm_match.value - bgm_match_volume) > 0.01:
 		slider_bgm_match.value = bgm_match_volume
+		
+	if btn_touch_toggle:
+		btn_touch_toggle.text = "BẬT" if touch_controls_enabled else "TẮT"
+		btn_touch_toggle.modulate = Color(1.2, 3.2, 1.2) if touch_controls_enabled else Color(1.8, 0.6, 0.6)
 
 
 func _apply_match_bgm() -> void:
@@ -1077,23 +1119,38 @@ func _process_serve_state() -> void:
 		return
 	if is_umpire_speaking:
 		return
+	var touch_shot = player.touch_shot_pressed if player else ""
 	if is_pvp_active:
 		if current_server == "player" and net_manager:
-			if Input.is_key_pressed(KEY_K):
+			if Input.is_key_pressed(KEY_K) or touch_shot == "clear":
+				if player: player.touch_shot_pressed = ""
 				_execute_serve("player", "clear")
 				net_manager.send_packet({"t": "serve", "shot_type": "clear"})
-			elif Input.is_key_pressed(KEY_J):
+			elif Input.is_key_pressed(KEY_J) or touch_shot == "drop":
+				if player: player.touch_shot_pressed = ""
 				_execute_serve("player", "drop")
 				net_manager.send_packet({"t": "serve", "shot_type": "drop"})
 		return
 	else:
 		if current_server == "player":
-			if Input.is_key_pressed(KEY_K):
-				# High Deep Serve to opponent baseline
+			if Input.is_key_pressed(KEY_K) or touch_shot == "clear":
+				if player: player.touch_shot_pressed = ""
 				_execute_serve("player", "clear")
-			elif Input.is_key_pressed(KEY_J):
-				# Short Serve skimming over net
+			elif Input.is_key_pressed(KEY_J) or touch_shot == "drop":
+				if player: player.touch_shot_pressed = ""
 				_execute_serve("player", "drop")
+
+
+func _on_touch_shot_triggered(shot_type: String) -> void:
+	if main_menu and main_menu.visible:
+		return
+	if is_umpire_speaking or is_serve_in_progress:
+		return
+	if current_state == MatchState.SERVE and current_server == "player":
+		if shot_type == "clear" or shot_type == "drop":
+			_execute_serve("player", shot_type)
+			if is_pvp_active and net_manager:
+				net_manager.send_packet({"t": "serve", "shot_type": shot_type})
 
 
 func _setup_serve(server: String) -> void:
@@ -2220,6 +2277,8 @@ func _show_match_over_dialog(champ: String) -> void:
 		lbl_sub.text = "THỂ THỨC: %s (CHẠM %d ĐIỂM) • BWF RULES" % [mode_str, target_match_points]
 		
 	match_over_dialog.visible = true
+	if virtual_touch_pad:
+		virtual_touch_pad.visible = false
 
 
 func _on_match_over_play_again() -> void:

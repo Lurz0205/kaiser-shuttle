@@ -89,6 +89,11 @@ var prev_key_a_raw: bool = false
 
 # Kinematics & Animation
 var walk_phase: float = 0.0
+
+# Mobile Virtual Touch Controls
+var touch_move_axis: float = 0.0 # [-1.0 -> 1.0] from drag touchpad
+var touch_jump_pressed: bool = false
+var touch_shot_pressed: String = "" # "drop", "clear", "smash"
 var is_swinging: bool = false
 var swing_timer: float = 0.0
 var swing_prog: float = 0.0
@@ -738,15 +743,20 @@ func _process_player_input(delta: float) -> void:
 			move_x -= 1.0
 		if cur_d_raw:
 			move_x += 1.0
+		if abs(touch_move_axis) > 0.05:
+			move_x += touch_move_axis
+		move_x = clamp(move_x, -1.0, 1.0)
 		
 		velocity.x = move_x * move_speed_x
 		
-		# Jump: Space, W, or Up
-		if (Input.is_key_pressed(KEY_SPACE) or Input.is_key_pressed(KEY_W) or Input.is_key_pressed(KEY_UP)) and is_on_ground():
+		# Jump: Space, W, Up, or touch_jump_pressed
+		var jump_input = (Input.is_key_pressed(KEY_SPACE) or Input.is_key_pressed(KEY_W) or Input.is_key_pressed(KEY_UP) or touch_jump_pressed)
+		if jump_input and is_on_ground():
 			velocity.y = JUMP_FORCE
 			jump_taken.emit(Vector2(global_position.x, current_ground_y), facing)
 			if stats:
 				stats.consume_stamina_action(5.0)
+		touch_jump_pressed = false
 	
 	# Swing / Shot trigger: Player can ALWAYS swing anytime!
 	var cur_j = Input.is_key_pressed(KEY_J)
@@ -754,12 +764,13 @@ func _process_player_input(delta: float) -> void:
 	var cur_l = Input.is_key_pressed(KEY_L) or Input.is_key_pressed(KEY_ENTER)
 	
 	var shot_pressed = ""
-	if cur_j and not prev_key_j:
+	if (cur_j and not prev_key_j) or touch_shot_pressed == "drop":
 		shot_pressed = "drop"
-	elif cur_k and not prev_key_k:
+	elif (cur_k and not prev_key_k) or touch_shot_pressed == "clear":
 		shot_pressed = "clear"
-	elif cur_l and not prev_key_l:
+	elif (cur_l and not prev_key_l) or touch_shot_pressed == "smash":
 		shot_pressed = "smash"
+	touch_shot_pressed = ""
 		
 	prev_key_j = cur_j
 	prev_key_k = cur_k
