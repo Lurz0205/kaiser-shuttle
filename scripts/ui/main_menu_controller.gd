@@ -10,7 +10,7 @@ const CustomIcon = preload("res://scripts/ui/custom_icon.gd")
 
 signal start_match_requested(player_char: String, rival_char: String, difficulty: int, target_points: int, match_sets: int)
 signal start_pvp_match_requested(room_code: String, is_host: bool, player_char: String, target_points: int, match_sets: int)
-signal settings_updated(squeak: bool)
+signal settings_updated(squeak: bool, bgm_enabled: bool, bgm_vol: float)
 
 enum MenuState {
 	TITLE,
@@ -51,6 +51,8 @@ var pvp_sets_btns: Dictionary = {}
 
 # Settings parameters
 var squeak_enabled: bool = true
+var bgm_match_enabled: bool = true
+var bgm_match_volume: float = 0.30
 
 # UI Panels
 var title_panel: Control
@@ -414,9 +416,9 @@ func _build_ui() -> void:
 	add_child(settings_panel)
 	
 	var set_box = PanelContainer.new()
-	set_box.custom_minimum_size = Vector2(460, 320)
-	set_box.size = Vector2(460, 320)
-	set_box.position = Vector2(410, 200)
+	set_box.custom_minimum_size = Vector2(490, 390)
+	set_box.size = Vector2(490, 390)
+	set_box.position = Vector2(395, 165)
 	set_box.add_theme_stylebox_override("panel", sb_setup)
 	settings_panel.add_child(set_box)
 	
@@ -451,10 +453,53 @@ func _build_ui() -> void:
 		squeak_enabled = not squeak_enabled
 		btn_sq.text = "BẬT" if squeak_enabled else "TẮT"
 		btn_sq.modulate = Color(0.3, 0.9, 0.4) if squeak_enabled else Color(0.7, 0.7, 0.7)
-		settings_updated.emit(squeak_enabled)
+		settings_updated.emit(squeak_enabled, bgm_match_enabled, bgm_match_volume)
 	)
 	squeak_row.add_child(btn_sq)
 	set_vbox.add_child(squeak_row)
+	
+	# Toggle BGM Match
+	var bgm_row = HBoxContainer.new()
+	var lbl_bgm = Label.new()
+	lbl_bgm.text = "Nhạc nền trong trận đấu (Match BGM):"
+	lbl_bgm.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	lbl_bgm.add_theme_font_size_override("font_size", 13)
+	bgm_row.add_child(lbl_bgm)
+	
+	var btn_bgm = _create_clean_button("BẬT", Color(0.3, 0.9, 0.4), Vector2(80, 30), 12)
+	btn_bgm.name = "BtnBgm"
+	btn_bgm.pressed.connect(func():
+		bgm_match_enabled = not bgm_match_enabled
+		btn_bgm.text = "BẬT" if bgm_match_enabled else "TẮT"
+		btn_bgm.modulate = Color(0.3, 0.9, 0.4) if bgm_match_enabled else Color(0.7, 0.7, 0.7)
+		settings_updated.emit(squeak_enabled, bgm_match_enabled, bgm_match_volume)
+	)
+	bgm_row.add_child(btn_bgm)
+	set_vbox.add_child(bgm_row)
+	
+	# BGM Volume Slider
+	var bgm_vol_row = HBoxContainer.new()
+	var lbl_bgm_vol = Label.new()
+	lbl_bgm_vol.name = "LabelBgmVol"
+	lbl_bgm_vol.text = "Âm lượng nhạc nền: %d%%" % int(round(bgm_match_volume * 100.0))
+	lbl_bgm_vol.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	lbl_bgm_vol.add_theme_font_size_override("font_size", 13)
+	bgm_vol_row.add_child(lbl_bgm_vol)
+	
+	var slider_bgm = HSlider.new()
+	slider_bgm.name = "SliderBgm"
+	slider_bgm.custom_minimum_size = Vector2(160, 24)
+	slider_bgm.min_value = 0.0
+	slider_bgm.max_value = 1.0
+	slider_bgm.step = 0.05
+	slider_bgm.value = bgm_match_volume
+	slider_bgm.value_changed.connect(func(val: float):
+		bgm_match_volume = val
+		lbl_bgm_vol.text = "Âm lượng nhạc nền: %d%%" % int(round(val * 100.0))
+		settings_updated.emit(squeak_enabled, bgm_match_enabled, bgm_match_volume)
+	)
+	bgm_vol_row.add_child(slider_bgm)
+	set_vbox.add_child(bgm_vol_row)
 	
 	var set_close_row = HBoxContainer.new()
 	set_close_row.alignment = BoxContainer.ALIGNMENT_CENTER

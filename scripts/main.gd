@@ -131,6 +131,11 @@ var pvp_local_char: String = "nishikawa"
 @onready var btn_medium: Button = $HUD/SettingsPanel/VBox/DifficultyRow/BtnMedium
 @onready var btn_hard: Button = $HUD/SettingsPanel/VBox/DifficultyRow/BtnHard
 @onready var btn_squeak: Button = $HUD/SettingsPanel/VBox/SqueakRow/BtnSqueak
+var bgm_match_enabled: bool = true
+var bgm_match_volume: float = 0.30
+var btn_bgm_match: Button = null
+var slider_bgm_match: HSlider = null
+var lbl_bgm_vol_match: Label = null
 
 # Audio (Smash, Phong, Rít giày, Sấm sét, Isabel Block & Slowmo, Dây vợt net, Gió Fuji, Chém cầu sau sân, Trọng tài)
 @onready var sfx_smash: AudioStreamPlayer = $Audio/SFXSmash
@@ -266,6 +271,48 @@ func _ready() -> void:
 			_update_settings_ui()
 		)
 		
+	# Bổ sung hàng BGM vào in-game SettingsPanel
+	if settings_panel:
+		settings_panel.offset_bottom = 370.0
+		var vbox = settings_panel.get_node_or_null("VBox")
+		if vbox:
+			var bgm_row = HBoxContainer.new()
+			var lbl_bgm = Label.new()
+			lbl_bgm.text = "Nhạc nền trận đấu:"
+			lbl_bgm.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			bgm_row.add_child(lbl_bgm)
+			
+			btn_bgm_match = Button.new()
+			btn_bgm_match.custom_minimum_size = Vector2(80, 28)
+			btn_bgm_match.text = "BẬT"
+			btn_bgm_match.pressed.connect(func():
+				bgm_match_enabled = not bgm_match_enabled
+				_update_settings_ui()
+				_apply_match_bgm()
+			)
+			bgm_row.add_child(btn_bgm_match)
+			vbox.add_child(bgm_row)
+			
+			var vol_row = HBoxContainer.new()
+			lbl_bgm_vol_match = Label.new()
+			lbl_bgm_vol_match.text = "Âm lượng nhạc: 30%"
+			lbl_bgm_vol_match.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			vol_row.add_child(lbl_bgm_vol_match)
+			
+			slider_bgm_match = HSlider.new()
+			slider_bgm_match.custom_minimum_size = Vector2(110, 24)
+			slider_bgm_match.min_value = 0.0
+			slider_bgm_match.max_value = 1.0
+			slider_bgm_match.step = 0.05
+			slider_bgm_match.value = bgm_match_volume
+			slider_bgm_match.value_changed.connect(func(val: float):
+				bgm_match_volume = val
+				_update_settings_ui()
+				_apply_match_bgm()
+			)
+			vol_row.add_child(slider_bgm_match)
+			vbox.add_child(vol_row)
+		
 	_update_settings_ui()
 	_setup_hud_stamina_bars()
 	
@@ -288,9 +335,7 @@ func _ready() -> void:
 			_set_in_game_hud_visible(false)
 			main_menu.switch_state(MainMenuController.MenuState.MATCH_SETUP)
 			main_menu.visible = true
-			if bgm_lobby and not bgm_lobby.playing:
-				bgm_lobby.volume_db = -3.0
-				bgm_lobby.play()
+			_apply_menu_bgm()
 		)
 		
 	if label_player_badge and player and player.stats:
@@ -468,20 +513,16 @@ func _on_menu_start_match(p_id: String, r_id: String, diff: int, target_points: 
 	_setup_serve("player")
 	_play_umpire_opening_call("player")
 		
-	# Dừng nhạc sảnh chờ khi vào trận (fade-out 0.8s)
-	if bgm_lobby and bgm_lobby.playing:
-		var tween = create_tween()
-		tween.tween_property(bgm_lobby, "volume_db", -35.0, 0.8)
-		tween.finished.connect(func():
-			if bgm_lobby:
-				bgm_lobby.stop()
-				bgm_lobby.volume_db = -3.0
-		)
+	# Bật hoặc tắt nhạc nền trận đấu theo thiết lập
+	_apply_match_bgm()
 
 
-func _on_menu_settings_updated(sq: bool) -> void:
+func _on_menu_settings_updated(sq: bool, bgm_en: bool = true, bgm_vol: float = 0.30) -> void:
 	squeak_enabled = sq
+	bgm_match_enabled = bgm_en
+	bgm_match_volume = bgm_vol
 	_update_settings_ui()
+	_apply_match_bgm()
 
 func _create_char_stats(char_id: String) -> CharacterStats:
 	match char_id:
@@ -568,14 +609,8 @@ func _on_menu_start_pvp_match(room_code: String, is_host: bool, local_char: Stri
 	_setup_serve("player")
 	_show_banner("BẠN ĐANG Ở SÂN TRÁI - ĐỐI THỦ Ở SÂN PHẢI!", Color(0.2, 0.9, 0.8))
 	
-	if bgm_lobby and bgm_lobby.playing:
-		var tween = create_tween()
-		tween.tween_property(bgm_lobby, "volume_db", -35.0, 0.8)
-		tween.finished.connect(func():
-			if bgm_lobby:
-				bgm_lobby.stop()
-				bgm_lobby.volume_db = -3.0
-		)
+	# Bật hoặc tắt nhạc nền trận đấu theo thiết lập
+	_apply_match_bgm()
 
 func _on_network_packet_received(data: Dictionary) -> void:
 	if not is_pvp_active:
@@ -804,6 +839,47 @@ func _update_settings_ui() -> void:
 		
 	if btn_settings:
 		btn_settings.modulate = Color(3.2, 2.6, 0.5) if (settings_panel and settings_panel.visible) else Color(1.0, 1.0, 1.0)
+
+	if btn_bgm_match:
+		btn_bgm_match.text = "BẬT" if bgm_match_enabled else "TẮT"
+		btn_bgm_match.modulate = Color(1.2, 3.2, 1.2) if bgm_match_enabled else Color(1.8, 0.6, 0.6)
+	if lbl_bgm_vol_match:
+		lbl_bgm_vol_match.text = "Âm lượng nhạc: %d%%" % int(round(bgm_match_volume * 100.0))
+	if slider_bgm_match and abs(slider_bgm_match.value - bgm_match_volume) > 0.01:
+		slider_bgm_match.value = bgm_match_volume
+
+
+func _apply_match_bgm() -> void:
+	if not bgm_lobby:
+		return
+	if bgm_match_enabled:
+		var target_db = linear_to_db(clamp(bgm_match_volume, 0.001, 1.0))
+		if not bgm_lobby.playing:
+			bgm_lobby.volume_db = target_db
+			bgm_lobby.play()
+		else:
+			var tw = create_tween()
+			tw.tween_property(bgm_lobby, "volume_db", target_db, 0.5)
+	else:
+		if bgm_lobby.playing:
+			var tw = create_tween()
+			tw.tween_property(bgm_lobby, "volume_db", -40.0, 0.5)
+			tw.finished.connect(func():
+				if bgm_lobby and not bgm_match_enabled:
+					bgm_lobby.stop()
+			)
+
+
+func _apply_menu_bgm() -> void:
+	if not bgm_lobby:
+		return
+	var target_db = -3.0
+	if not bgm_lobby.playing:
+		bgm_lobby.volume_db = target_db
+		bgm_lobby.play()
+	else:
+		var tw = create_tween()
+		tw.tween_property(bgm_lobby, "volume_db", target_db, 0.5)
 
 
 func _update_difficulty_buttons() -> void:
@@ -2180,9 +2256,7 @@ func _on_match_over_to_menu() -> void:
 	_set_in_game_hud_visible(false)
 	main_menu.switch_state(MainMenuController.MenuState.MATCH_SETUP)
 	main_menu.visible = true
-	if bgm_lobby and not bgm_lobby.playing:
-		bgm_lobby.volume_db = -3.0
-		bgm_lobby.play()
+	_apply_menu_bgm()
 
 
 var _last_window_size: Vector2 = Vector2.ZERO

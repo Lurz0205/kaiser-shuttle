@@ -1728,19 +1728,32 @@ func _execute_hit(shot_type: String, hit_status: Dictionary = {}) -> void:
 		var is_nishikawa_attacker = opponent_player and opponent_player.stats and (opponent_player.stats.character_id == "nishikawa" or opponent_player.stats.special_skill_id == "golden_smash")
 		
 		# TIÊU HAO THỂ LỰC PHÒNG THỦ KHI CHỐNG ĐỠ CÚ SMASH:
-		# Nếu defender đang có thể lực, accuracy và balance cao -> chỉ tốn thể lực bình thường (2.5 - 3.0)
-		if stats:
+		# Khi Isabel kích hoạt Mirage Counter: Khiên ảo ảnh triệt tiêu lực ép, không tốn thể lực phòng thủ
+		if stats and shot_type != "mirage_counter" and not is_wall_auto_counter:
 			stats.on_smash_defended(quality, is_perfect, balance)
 			
 		if is_nishikawa_attacker:
-			if shot_type == "mirage_counter":
-				if stats:
-					stats.consume_stamina_action(30.0)
+			if shot_type == "mirage_counter" or is_wall_auto_counter:
+				# Isabel kích hoạt Mirage Counter hóa giải đòn Smash của Nishikawa:
+				# Isabel hồi 20% thể lực và tăng accuracy (xử lý ở đoạn mirage_counter)
+				# Kẻ tấn công Nishikawa bị phản chấn 20% tổng thể lực, KHÔNG trừ accuracy (được cộng):
+				if opponent_player and opponent_player.stats:
+					opponent_player.stats.consume_stamina_action(20.0) # 20% tổng thể lực
+					opponent_player.stats.accuracy = min(100.0, opponent_player.stats.accuracy + 10.0)
+					opponent_player.balance = max(25.0, opponent_player.balance - 30.0)
 			else:
+				# Bị Nishikawa đập trúng: Sát thương 30% TỔNG thể lực (30.0), và trừ 50% accuracy ĐANG CÓ
 				if stats:
-					stats.consume_stamina_action(25.0)
-					stats.accuracy = max(0.0, stats.accuracy - 45.0)
+					stats.consume_stamina_action(30.0) # 30% tổng thể lực
+					stats.accuracy = max(0.0, stats.accuracy * 0.50) # Trừ 50% accuracy đang có
 				balance = max(10.0, balance - 35.0)
+		elif is_wall_auto_counter or shot_type == "mirage_counter":
+			# Đánh vào Isabel có skill (Mirage Counter):
+			# Kẻ tấn công bị phản chấn: chỉ trừ 20% tổng thể lực (20.0), KHÔNG trừ accuracy (thậm chí được cộng +10)
+			if opponent_player and opponent_player.stats:
+				opponent_player.stats.consume_stamina_action(20.0) # 20% tổng thể lực
+				opponent_player.stats.accuracy = min(100.0, opponent_player.stats.accuracy + 10.0) # Không trừ accuracy mà được cộng
+				opponent_player.balance = max(25.0, opponent_player.balance - 30.0)
 		elif is_kill:
 			if is_perfect or quality >= 0.85:
 				if opponent_player:
@@ -1804,6 +1817,17 @@ func _execute_hit(shot_type: String, hit_status: Dictionary = {}) -> void:
 					shot_type = "weak_return"
 	
 	# KIỂM TRA LỖI ĐÁNH HỎNG (UNFORCED BLUNDER) KHI ACCURACY < 50% HOẶC STAMINA < 35%:
+	# ==========================================================
+	# ĐỠ CÚ PHẢN ĐÒN MIRAGE COUNTER CỦA ISABEL:
+	# - Đỡ cú đánh của Isabel: chỉ trừ thể lực (20% tổng thể lực), KHÔNG trừ accuracy mà còn được cộng (+10 accuracy).
+	# ==========================================================
+	var is_incoming_mirage = not is_incoming_smash and shuttlecock and (shuttlecock.current_shot_type == "mirage_counter" or shuttlecock.is_mirage_counter)
+	if is_incoming_mirage and shot_type != "mirage_counter":
+		if stats:
+			stats.consume_stamina_action(20.0) # 20% tổng thể lực
+			stats.accuracy = min(100.0, stats.accuracy + 10.0) # Không trừ accuracy mà được cộng
+		balance = max(20.0, balance - 20.0)
+
 	var blunder = "none"
 	if stats and not is_perfect and not is_wall_auto_counter and not is_nishikawa_golden_smash and shot_type != "mirage_counter":
 		blunder = stats.check_unforced_blunder(shot_type)
