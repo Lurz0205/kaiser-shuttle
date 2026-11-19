@@ -596,12 +596,19 @@ func _on_network_packet_received(data: Dictionary) -> void:
 
 			var ball_data = data.get("ball", {})
 			if ball_data is Dictionary and shuttlecock:
+				var is_act = bool(ball_data.get("act", false))
 				shuttlecock.global_position.x = lerp(shuttlecock.global_position.x, float(ball_data.get("x", shuttlecock.global_position.x)), 0.70)
 				shuttlecock.global_position.y = lerp(shuttlecock.global_position.y, float(ball_data.get("y", shuttlecock.global_position.y)), 0.70)
 				shuttlecock.velocity.x = float(ball_data.get("vx", 0.0))
 				shuttlecock.velocity.y = float(ball_data.get("vy", 0.0))
-				shuttlecock.is_active = bool(ball_data.get("act", false))
+				shuttlecock.is_active = is_act
 				shuttlecock.is_serve = bool(ball_data.get("srv", false))
+
+				if is_act:
+					player.is_serving_phase = false
+					ai_rival.is_serving_phase = false
+					current_state = MatchState.RALLY
+					is_serve_in_progress = false
 
 		"shot_fx":
 			var shot_type = str(data.get("shot_type", "clear"))
@@ -633,9 +640,12 @@ func _on_network_packet_received(data: Dictionary) -> void:
 			current_server = "player" if i_am_server else "ai"
 			current_state = MatchState.SERVE
 			is_serve_in_progress = true
+			player.can_hit = true
 			if i_am_server:
+				player.is_serving_phase = true
 				_show_banner("LƯỢT BẠN PHÁT CẦU (BẤM J HOẶC K)", Color(0.95, 0.85, 0.2))
 			else:
+				player.is_serving_phase = false
 				_show_banner("ĐỐI THỦ ĐANG PHÁT CẦU...", Color(0.7, 0.8, 0.9))
 
 		"match_over":
@@ -989,8 +999,16 @@ func _process_serve_state() -> void:
 	if is_pvp_active:
 		if current_server == "player" and net_manager:
 			if Input.is_key_pressed(KEY_K):
+				player.is_serving_phase = false
+				ai_rival.is_serving_phase = false
+				current_state = MatchState.RALLY
+				is_serve_in_progress = false
 				net_manager.send_packet({"t": "serve", "shot_type": "clear"})
 			elif Input.is_key_pressed(KEY_J):
+				player.is_serving_phase = false
+				ai_rival.is_serving_phase = false
+				current_state = MatchState.RALLY
+				is_serve_in_progress = false
 				net_manager.send_packet({"t": "serve", "shot_type": "drop"})
 		return
 	else:
@@ -1758,6 +1776,8 @@ func _show_landing_callout(pos: Vector2, status: String, subtitle: String = "") 
 
 
 func _on_shuttlecock_landed(pos: Vector2, _floor_3d: Vector3 = Vector3.ZERO) -> void:
+	if is_pvp_active:
+		return
 	if current_state != MatchState.RALLY:
 		return
 	
@@ -1838,6 +1858,8 @@ func _on_shuttlecock_landed(pos: Vector2, _floor_3d: Vector3 = Vector3.ZERO) -> 
 
 
 func _on_shuttlecock_hit_net() -> void:
+	if is_pvp_active:
+		return
 	if current_state != MatchState.RALLY:
 		return
 	shake_amount = max(shake_amount, 3.0)
@@ -1870,6 +1892,8 @@ func _on_shuttlecock_hit_net() -> void:
 
 
 func _award_point(winner: String, reason: String) -> void:
+	if is_pvp_active:
+		return
 	if winner == "player":
 		score_player += 1
 		if player and player.stats:

@@ -1518,6 +1518,12 @@ func get_dive_rescue_perfect_box_global() -> Rect2:
 
 
 func get_hit_status() -> Dictionary:
+	# In network mode, reset can_hit whenever ball enters our court side
+	if shuttlecock and shuttlecock.is_network_client and shuttlecock.is_active:
+		var net_x_val = tuning.net_x if tuning else 640.0
+		if court_side == "player" and shuttlecock.global_position.x <= net_x_val:
+			can_hit = true
+
 	if not shuttlecock or not shuttlecock.is_active or not can_hit:
 		return {"can_hit": false, "zone": "none", "quality": 0.0, "is_perfect": false}
 	

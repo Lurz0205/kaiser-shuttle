@@ -307,13 +307,15 @@ function launchShuttle(room, fromPt, targetPt, shotType, hitter, isServe = false
     const dx = targetPt.x - fromPt.x;
     const dist = Math.max(Math.abs(dx), 30.0);
 
-    let duration = 1.0;
+    let duration = 1.6;
     if (shotType === 'smash' || isSmash) {
-        duration = Math.max(0.24, Math.min(0.40, dist / 2200.0));
+        duration = Math.max(0.32, Math.min(0.48, dist / 2000.0));
     } else if (shotType === 'drop') {
-        duration = Math.max(0.55, Math.min(0.85, dist / 850.0));
+        duration = Math.max(0.95, Math.min(1.25, dist / 600.0));
+    } else if (isServe) {
+        duration = shotType === 'drop' ? 1.15 : 1.70;
     } else {
-        duration = Math.max(0.85, Math.min(1.20, dist / 750.0));
+        duration = Math.max(1.30, Math.min(1.75, dist / 500.0));
     }
 
     room.ball = {
@@ -483,8 +485,8 @@ setInterval(() => {
                 continue;
             }
 
-            // Check Floor Landing
-            if (p >= 1.0 || b.y >= FLOOR_Y) {
+            // Check Floor Landing (Only after completing full flight trajectory)
+            if (p >= 1.0) {
                 b.y = FLOOR_Y;
 
                 // Line check
