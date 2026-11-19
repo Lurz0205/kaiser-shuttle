@@ -935,7 +935,7 @@ func _build_pvp_panel(sb_setup: StyleBoxFlat) -> void:
 	vbox.add_child(status_bar)
 	
 	pvp_status_lbl = Label.new()
-	pvp_status_lbl.text = "Trạng thái: Sẵn sàng kết nối"
+	pvp_status_lbl.text = "Trạng thái: Sẵn sàng kết nối WebSocket Server"
 	pvp_status_lbl.add_theme_font_size_override("font_size", 13)
 	pvp_status_lbl.modulate = Color(0.85, 0.90, 0.95)
 	status_bar.add_child(pvp_status_lbl)
@@ -945,6 +945,48 @@ func _build_pvp_panel(sb_setup: StyleBoxFlat) -> void:
 	pvp_ping_lbl.add_theme_font_size_override("font_size", 13)
 	pvp_ping_lbl.modulate = Color(0.20, 0.85, 0.50)
 	status_bar.add_child(pvp_ping_lbl)
+
+	# Server URL Config Row
+	var server_cfg_row = HBoxContainer.new()
+	server_cfg_row.alignment = BoxContainer.ALIGNMENT_CENTER
+	server_cfg_row.add_theme_constant_override("separation", 10)
+	vbox.add_child(server_cfg_row)
+
+	var lbl_srv = Label.new()
+	lbl_srv.text = "SERVER:"
+	lbl_srv.add_theme_font_size_override("font_size", 11)
+	lbl_srv.modulate = Color(0.7, 0.75, 0.85)
+	server_cfg_row.add_child(lbl_srv)
+
+	var input_srv = LineEdit.new()
+	input_srv.text = net_manager.server_url if net_manager else "wss://kaiser-shuttle-server.onrender.com"
+	input_srv.custom_minimum_size = Vector2(340, 28)
+	input_srv.add_theme_font_size_override("font_size", 11)
+	input_srv.text_submitted.connect(func(new_url):
+		if net_manager:
+			net_manager.set_custom_server_url(new_url)
+	)
+	input_srv.focus_exited.connect(func():
+		if net_manager:
+			net_manager.set_custom_server_url(input_srv.text)
+	)
+	server_cfg_row.add_child(input_srv)
+
+	var btn_localhost = _create_clean_button("LOCALHOST", Color(0.8, 0.8, 0.8), Vector2(85, 26), 10)
+	btn_localhost.pressed.connect(func():
+		input_srv.text = "ws://127.0.0.1:8080"
+		if net_manager:
+			net_manager.set_custom_server_url("ws://127.0.0.1:8080")
+	)
+	server_cfg_row.add_child(btn_localhost)
+
+	var btn_render = _create_clean_button("RENDER CLOUD", Color(0.3, 0.8, 0.9), Vector2(100, 26), 10)
+	btn_render.pressed.connect(func():
+		input_srv.text = "wss://kaiser-shuttle-server.onrender.com"
+		if net_manager:
+			net_manager.set_custom_server_url("wss://kaiser-shuttle-server.onrender.com")
+	)
+	server_cfg_row.add_child(btn_render)
 	
 	# Action buttons & Countdown row
 	var action_center = VBoxContainer.new()
@@ -1015,10 +1057,10 @@ func _on_host_create_room() -> void:
 	if pvp_host_code_lbl:
 		pvp_host_code_lbl.text = "MÃ PHÒNG: " + pvp_current_code
 	if pvp_status_lbl:
-		pvp_status_lbl.text = "Đang mở phòng [%s]... Hãy gửi mã cho đối thủ!" % pvp_current_code
+		pvp_status_lbl.text = "Đang mở phòng [%s] trên WebSocket Server... Hãy gửi mã cho đối thủ!" % pvp_current_code
 		pvp_status_lbl.modulate = Color(0.95, 0.85, 0.3)
 	if net_manager:
-		net_manager.host_room(pvp_current_code)
+		net_manager.host_room(pvp_current_code, pvp_selected_char, pvp_selected_points, pvp_selected_sets)
 
 func _on_guest_join_room() -> void:
 	if not pvp_room_input: return
@@ -1033,10 +1075,10 @@ func _on_guest_join_room() -> void:
 	if btn_pvp_start: btn_pvp_start.visible = false
 	if pvp_countdown_lbl: pvp_countdown_lbl.visible = false
 	if pvp_status_lbl:
-		pvp_status_lbl.text = "Đang kết nối tới phòng [%s]..." % code
+		pvp_status_lbl.text = "Đang kết nối tới phòng [%s] trên WebSocket Server..." % code
 		pvp_status_lbl.modulate = Color(0.3, 0.7, 1.0)
 	if net_manager:
-		net_manager.join_room(code)
+		net_manager.join_room(code, pvp_selected_char)
 
 func _on_net_status_changed(st: String) -> void:
 	if not pvp_status_lbl: return
@@ -1044,7 +1086,7 @@ func _on_net_status_changed(st: String) -> void:
 		"hosting":
 			pvp_status_lbl.text = "Phòng [%s] đang mở. Đang chờ đối thủ vào..." % pvp_current_code
 		"connecting":
-			pvp_status_lbl.text = "Đang kết nối tới phòng [%s] qua WebRTC P2P..." % pvp_current_code
+			pvp_status_lbl.text = "Đang kết nối tới phòng [%s] qua WebSocket Server..." % pvp_current_code
 		"disconnected":
 			pvp_status_lbl.text = "Kết nối đã ngắt."
 			pvp_status_lbl.modulate = Color(1.0, 0.4, 0.4)
@@ -1079,19 +1121,14 @@ func _on_host_press_start_match() -> void:
 	if btn_pvp_start:
 		btn_pvp_start.visible = false
 	if net_manager:
-		net_manager.send_packet({
-			"t": "lobby_start",
-			"pts": pvp_selected_points,
-			"sets": pvp_selected_sets,
-			"char": pvp_selected_char
-		})
+		net_manager.start_match(pvp_selected_points, pvp_selected_sets)
 	_start_pvp_countdown()
 
 func _on_net_packet_received(data: Dictionary) -> void:
 	var t = str(data.get("t", ""))
-	if t == "lobby_start":
-		pvp_selected_points = int(data.get("pts", 11))
-		pvp_selected_sets = int(data.get("sets", 1))
+	if t == "lobby_start" or t == "countdown_start":
+		pvp_selected_points = int(data.get("pts", pvp_selected_points))
+		pvp_selected_sets = int(data.get("sets", pvp_selected_sets))
 		_start_pvp_countdown()
 
 func _start_pvp_countdown() -> void:
@@ -1115,4 +1152,4 @@ func _on_net_peer_disconnected(reason: String) -> void:
 
 func _on_net_ping_updated(ping: int) -> void:
 	if pvp_ping_lbl:
-		pvp_ping_lbl.text = "Ping: %d ms (%s)" % [ping, "P2P SIÊU TỐC" if ping < 60 else "ỔN ĐỊNH"]
+		pvp_ping_lbl.text = "Ping: %d ms (%s)" % [ping, "SIÊU MƯỢT" if ping < 60 else "ỔN ĐỊNH"]

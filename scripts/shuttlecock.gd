@@ -9,6 +9,7 @@ signal hit_net()
 # ==========================================================
 
 @export var tuning: GameTuning
+@export var is_network_client: bool = false
 
 var is_active: bool = false
 var is_smash: bool = false
@@ -463,10 +464,11 @@ func _physics_process(delta: float) -> void:
 			is_boom_smash = false
 			is_active = false
 			is_net_fault = true
-			hit_net.emit()
+			if not is_network_client:
+				hit_net.emit()
+				landed.emit(global_position)
 			if landing_indicator:
 				landing_indicator.visible = false
-			landed.emit(global_position)
 			return
 	
 	# Chạm sàn (Floor Landing Check)
@@ -479,7 +481,8 @@ func _physics_process(delta: float) -> void:
 			landing_indicator.visible = false
 		if lightning_trail:
 			lightning_trail.queue_redraw()
-		landed.emit(global_position)
+		if not is_network_client:
+			landed.emit(global_position)
 	
 	_sync_shadow()
 	_update_trail()

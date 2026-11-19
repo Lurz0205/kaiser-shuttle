@@ -412,6 +412,9 @@ func _on_menu_start_match(p_id: String, r_id: String, diff: int, target_points: 
 	score_ai = 0
 	current_server = "player"
 	
+	if shuttlecock:
+		shuttlecock.is_network_client = false
+	
 	if match_over_dialog:
 		match_over_dialog.visible = false
 	_set_in_game_hud_visible(true)
@@ -501,6 +504,9 @@ func _on_menu_start_pvp_match(room_code: String, is_host: bool, local_char: Stri
 	score_ai = 0
 	current_server = "player"
 	
+	if shuttlecock:
+		shuttlecock.is_network_client = true
+	
 	if match_over_dialog:
 		match_over_dialog.visible = false
 	_set_in_game_hud_visible(true)
@@ -576,6 +582,67 @@ func _on_network_packet_received(data: Dictionary) -> void:
 		return
 	var t = str(data.get("t", ""))
 	match t:
+		"tick":
+			# Both players receive p1 (local left) and p2 (opponent right) from server
+			var p2_data = data.get("p2", {})
+			if p2_data is Dictionary and ai_rival:
+				ai_rival.global_position.x = lerp(ai_rival.global_position.x, float(p2_data.get("x", ai_rival.global_position.x)), 0.65)
+				ai_rival.global_position.y = lerp(ai_rival.global_position.y, float(p2_data.get("y", ai_rival.global_position.y)), 0.65)
+				ai_rival.velocity.x = float(p2_data.get("vx", 0.0))
+				ai_rival.velocity.y = float(p2_data.get("vy", 0.0))
+				ai_rival.facing = float(p2_data.get("f", -1.0))
+				ai_rival.is_swinging = bool(p2_data.get("sw", false))
+				ai_rival.is_diving = bool(p2_data.get("dv", false))
+
+			var ball_data = data.get("ball", {})
+			if ball_data is Dictionary and shuttlecock:
+				shuttlecock.global_position.x = lerp(shuttlecock.global_position.x, float(ball_data.get("x", shuttlecock.global_position.x)), 0.70)
+				shuttlecock.global_position.y = lerp(shuttlecock.global_position.y, float(ball_data.get("y", shuttlecock.global_position.y)), 0.70)
+				shuttlecock.velocity.x = float(ball_data.get("vx", 0.0))
+				shuttlecock.velocity.y = float(ball_data.get("vy", 0.0))
+				shuttlecock.is_active = bool(ball_data.get("act", false))
+				shuttlecock.is_serve = bool(ball_data.get("srv", false))
+
+		"shot_fx":
+			var shot_type = str(data.get("shot_type", "clear"))
+			var is_smash = bool(data.get("is_smash", false))
+			if is_smash and sfx_smash:
+				sfx_smash.play()
+			elif sfx_phong:
+				sfx_phong.play()
+
+		"point_scored":
+			var winner_role = str(data.get("winner", "p1"))
+			var reason = str(data.get("reason", "ĐIỂM TRỰC TIẾP"))
+			var is_my_point = (winner_role == "p1" and is_pvp_host) or (winner_role == "p2" and not is_pvp_host)
+			
+			score_player = int(data.get("p1_pts", score_player)) if is_pvp_host else int(data.get("p2_pts", score_player))
+			score_ai = int(data.get("p2_pts", score_ai)) if is_pvp_host else int(data.get("p1_pts", score_ai))
+			sets_won_player = int(data.get("p1_sets", sets_won_player)) if is_pvp_host else int(data.get("p2_sets", sets_won_player))
+			sets_won_ai = int(data.get("p2_sets", sets_won_ai)) if is_pvp_host else int(data.get("p1_sets", sets_won_ai))
+			
+			_update_scoreboard()
+			if is_my_point:
+				_show_banner("ĐIỂM CHO BẠN! - " + reason, Color(0.2, 1.0, 0.4), true, 1.5)
+			else:
+				_show_banner("ĐIỂM ĐỐI THỦ! - " + reason, Color(1.0, 0.4, 0.4), true, 1.5)
+
+		"serve_ready":
+			var srv_role = str(data.get("server", "p1"))
+			var i_am_server = (srv_role == "p1" and is_pvp_host) or (srv_role == "p2" and not is_pvp_host)
+			current_server = "player" if i_am_server else "ai"
+			current_state = MatchState.SERVE
+			is_serve_in_progress = true
+			if i_am_server:
+				_show_banner("LƯỢT BẠN PHÁT CẦU (BẤM J HOẶC K)", Color(0.95, 0.85, 0.2))
+			else:
+				_show_banner("ĐỐI THỦ ĐANG PHÁT CẦU...", Color(0.7, 0.8, 0.9))
+
+		"match_over":
+			var match_winner = str(data.get("winner", "p1"))
+			var i_won = (match_winner == "p1" and is_pvp_host) or (match_winner == "p2" and not is_pvp_host)
+			_show_match_over_dialog("player" if i_won else "ai")
+
 		"init":
 			if not is_pvp_host:
 				var host_char = str(data.get("char", "nishikawa"))
@@ -822,49 +889,17 @@ func _process(delta: float) -> void:
 			fuji_slowmo_active = false
 		_redraw_effects()
 	
-	# WebRTC P2P Multiplayer Sync (Mirrored 100% independent low-latency)
+	# Authoritative WebSocket PvP Multiplayer Sync (Mirrored 100% independent low-latency)
 	if is_pvp_active and net_manager:
-		if is_pvp_host:
-			# Host sends Authoritative state (mirrored for Guest):
-			net_manager.send_packet({
-				"t": "h_sync",
-				# Opponent for Guest is Host's player mirrored:
-				"ox": 1280.0 - player.global_position.x,
-				"oy": player.global_position.y,
-				"ovx": -player.velocity.x,
-				"ovy": player.velocity.y,
-				"of": -player.facing,
-				"osw": player.is_swinging,
-				"odv": player.is_diving,
-				# Shuttlecock mirrored for Guest:
-				"bx": 1280.0 - shuttlecock.global_position.x,
-				"by": shuttlecock.global_position.y,
-				"bvx": -shuttlecock.velocity.x,
-				"bvy": shuttlecock.velocity.y,
-				"brot": -shuttlecock.rotation,
-				"bact": shuttlecock.is_active,
-				"bsrv": is_serve_in_progress,
-				"blast": ("opponent" if shuttlecock.last_hitter == "player" else "player"),
-				# Scores (Guest is p1 on Guest screen):
-				"p1_pts": score_ai,
-				"p2_pts": score_player,
-				"s1_sets": sets_won_ai,
-				"s2_sets": sets_won_player,
-				"srv": ("player" if current_server == "ai" else "opponent"),
-				"st": current_state
-			})
-		else:
-			# Guest sends Guest's player mirrored for Host:
-			net_manager.send_packet({
-				"t": "g_pos",
-				"ox": 1280.0 - player.global_position.x,
-				"oy": player.global_position.y,
-				"ovx": -player.velocity.x,
-				"ovy": player.velocity.y,
-				"of": -player.facing,
-				"osw": player.is_swinging,
-				"odv": player.is_diving
-			})
+		net_manager.send_packet({
+			"t": "player_input",
+			"x": player.global_position.x,
+			"y": player.global_position.y,
+			"vx": player.velocity.x,
+			"vy": player.velocity.y,
+			"sw": player.is_swinging,
+			"dv": player.is_diving
+		})
 	
 	_update_stats_display()
 	
@@ -952,18 +987,12 @@ func _process_serve_state() -> void:
 	if is_umpire_speaking:
 		return
 	if is_pvp_active:
-		if is_pvp_host:
-			if current_server == "player":
-				if Input.is_key_pressed(KEY_K):
-					_execute_serve("player", "clear")
-				elif Input.is_key_pressed(KEY_J):
-					_execute_serve("player", "drop")
-		else: # Guest (controls player on their own left court)
-			if current_server == "player":
-				if Input.is_key_pressed(KEY_K):
-					net_manager.send_packet({"t": "g_serve", "shot_type": "clear"})
-				elif Input.is_key_pressed(KEY_J):
-					net_manager.send_packet({"t": "g_serve", "shot_type": "drop"})
+		if current_server == "player" and net_manager:
+			if Input.is_key_pressed(KEY_K):
+				net_manager.send_packet({"t": "serve", "shot_type": "clear"})
+			elif Input.is_key_pressed(KEY_J):
+				net_manager.send_packet({"t": "serve", "shot_type": "drop"})
+		return
 	else:
 		if current_server == "player":
 			if Input.is_key_pressed(KEY_K):
@@ -1106,15 +1135,13 @@ func _world_to_screen(world_pos: Vector2) -> Vector2:
 
 
 func _on_shot_hit(shot_type: String, is_smash: bool, quality: float, is_perfect: bool, is_jump_shot: bool, contact_pos: Vector2, hitter: String) -> void:
-	if is_pvp_active and not is_pvp_host and hitter == "player":
+	if is_pvp_active and net_manager and hitter == "player":
 		net_manager.send_packet({
-			"t": "g_hit",
-			"type": shot_type,
-			"smash": is_smash,
-			"q": quality,
-			"perf": is_perfect,
-			"jump": is_jump_shot,
-			"px": 1280.0 - contact_pos.x,
+			"t": "hit",
+			"shot_type": shot_type,
+			"is_smash": is_smash,
+			"is_perf": is_perfect,
+			"px": contact_pos.x,
 			"py": contact_pos.y
 		})
 	is_serve_in_progress = false

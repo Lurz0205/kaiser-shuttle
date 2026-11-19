@@ -7,115 +7,197 @@ signal peer_disconnected(reason: String)
 signal packet_received(data: Dictionary)
 signal ping_updated(ping_ms: int)
 
+# Dedicated Backend WebSocket URL
+# Default Render.com hosted server or localhost
+@export var server_url: String = "wss://kaiser-shuttle-server.onrender.com"
+
+var ws: WebSocketPeer = WebSocketPeer.new()
 var is_active: bool = false
 var is_host: bool = false
 var current_room: String = ""
 var last_status: String = "idle"
 var current_ping: int = 0
-var status_poll_timer: float = 0.0
+var ping_timer: float = 0.0
+var last_ping_sent_msec: int = 0
+var connection_timeout_timer: float = 0.0
 
-# Desktop / Mock test support
-var is_mock_mode: bool = false
-var mock_connected: bool = false
+var pending_action: String = "" # "host" or "join"
+var pending_char: String = "nishikawa"
+var pending_pts: int = 11
+var pending_sets: int = 1
 
 func _ready() -> void:
 	process_physics_priority = -100
+	_resolve_server_url()
+
+func _resolve_server_url() -> void:
+	if OS.has_feature("web"):
+		var custom_url = JavaScriptBridge.eval("new URLSearchParams(window.location.search).get('server')")
+		if custom_url is String and not custom_url.is_empty():
+			server_url = custom_url
+			print("[PvP] Custom server URL from query params: ", server_url)
+
+func set_custom_server_url(url: String) -> void:
+	server_url = url.strip_edges()
+	print("[PvP] Server URL configured to: ", server_url)
 
 func _physics_process(delta: float) -> void:
 	if not is_active:
 		return
 
-	if OS.has_feature("web"):
-		_poll_web_network(delta)
-	elif is_mock_mode:
-		_poll_mock_network(delta)
+	ws.poll()
+	var state = ws.get_ready_state()
 
-func host_room(code: String) -> void:
+	match state:
+		WebSocketPeer.STATE_CONNECTING:
+			connection_timeout_timer += delta
+			if connection_timeout_timer > 8.0:
+				connection_timeout_timer = 0.0
+				disconnect_peer()
+				peer_disconnected.emit("Hết thời gian kết nối server (%s)" % server_url)
+
+		WebSocketPeer.STATE_OPEN:
+			connection_timeout_timer = 0.0
+			
+			# Flush pending actions upon connection
+			if not pending_action.is_empty():
+				var act = pending_action
+				pending_action = ""
+				if act == "host":
+					var pkt = {
+						"t": "create_room",
+						"code": current_room,
+						"char": pending_char,
+						"pts": pending_pts,
+						"sets": pending_sets
+					}
+					send_packet(pkt)
+				elif act == "join":
+					var pkt = {
+						"t": "join_room",
+						"code": current_room,
+						"char": pending_char
+					}
+					send_packet(pkt)
+
+			# Handle Ping / Pong (every 1.5 seconds)
+			ping_timer += delta
+			if ping_timer >= 1.5:
+				ping_timer = 0.0
+				last_ping_sent_msec = Time.get_ticks_msec()
+				send_packet({"t": "ping", "ts": last_ping_sent_msec})
+
+			# Process all incoming packets
+			while ws.get_available_packet_count() > 0:
+				var packet_bytes = ws.get_packet()
+				var text = packet_bytes.get_string_from_utf8()
+				if text.is_empty():
+					continue
+				var parsed = JSON.parse_string(text)
+				if parsed is Dictionary:
+					_handle_server_packet(parsed)
+
+		WebSocketPeer.STATE_CLOSING:
+			pass
+
+		WebSocketPeer.STATE_CLOSED:
+			var code = ws.get_close_code()
+			var reason = ws.get_close_reason()
+			if is_active:
+				is_active = false
+				last_status = "disconnected"
+				connection_status_changed.emit("disconnected")
+				peer_disconnected.emit("Server đã ngắt kết nối (Mã: %d, Lý do: %s)" % [code, reason])
+
+func _handle_server_packet(data: Dictionary) -> void:
+	var t = str(data.get("t", ""))
+	match t:
+		"pong":
+			var sent_ts = int(data.get("ts", 0))
+			if sent_ts > 0:
+				current_ping = max(1, Time.get_ticks_msec() - sent_ts)
+				ping_updated.emit(current_ping)
+
+		"room_created":
+			current_room = str(data.get("code", current_room))
+			last_status = "hosting"
+			connection_status_changed.emit("hosting")
+
+		"room_joined":
+			current_room = str(data.get("code", current_room))
+			last_status = "connected"
+			connection_status_changed.emit("connected")
+			peer_connected.emit(false, current_room)
+
+		"guest_joined":
+			last_status = "connected"
+			connection_status_changed.emit("connected")
+			peer_connected.emit(true, current_room)
+
+		"opponent_left":
+			peer_disconnected.emit("Đối thủ đã thoát khỏi phòng.")
+
+		"error":
+			var msg = str(data.get("msg", "Lỗi mạng server"))
+			peer_disconnected.emit(msg)
+
+		_:
+			packet_received.emit(data)
+
+func host_room(code: String, char_id: String = "nishikawa", pts: int = 11, sets: int = 1) -> void:
 	is_active = true
 	is_host = true
 	current_room = code.to_upper().strip_edges()
-	last_status = "hosting"
-	
-	if OS.has_feature("web"):
-		var js_code = "window.KaiserNet && window.KaiserNet.initHost('%s');" % current_room
-		JavaScriptBridge.eval(js_code)
-	else:
-		is_mock_mode = true
-		mock_connected = true
-		last_status = "connected"
-		peer_connected.emit(true, current_room)
+	pending_action = "host"
+	pending_char = char_id
+	pending_pts = pts
+	pending_sets = sets
+	connection_timeout_timer = 0.0
 
-func join_room(code: String) -> void:
+	_connect_if_needed()
+
+func join_room(code: String, char_id: String = "wall") -> void:
 	is_active = true
 	is_host = false
 	current_room = code.to_upper().strip_edges()
+	pending_action = "join"
+	pending_char = char_id
+	connection_timeout_timer = 0.0
+
+	_connect_if_needed()
+
+func _connect_if_needed() -> void:
+	var state = ws.get_ready_state()
+	if state == WebSocketPeer.STATE_OPEN:
+		return
+	if state == WebSocketPeer.STATE_CONNECTING:
+		return
+
 	last_status = "connecting"
-	
-	if OS.has_feature("web"):
-		var js_code = "window.KaiserNet && window.KaiserNet.initGuest('%s');" % current_room
-		JavaScriptBridge.eval(js_code)
-	else:
-		is_mock_mode = true
-		mock_connected = true
-		last_status = "connected"
-		peer_connected.emit(false, current_room)
+	connection_status_changed.emit("connecting")
+	var err = ws.connect_to_url(server_url)
+	if err != OK:
+		is_active = false
+		last_status = "error"
+		connection_status_changed.emit("error")
+		peer_disconnected.emit("Không thể mở kết nối tới " + server_url)
+
+func start_match(pts: int, sets: int) -> void:
+	send_packet({
+		"t": "start_match",
+		"pts": pts,
+		"sets": sets
+	})
 
 func send_packet(data: Dictionary) -> void:
-	if not is_active:
-		return
-		
-	if OS.has_feature("web"):
+	if ws.get_ready_state() == WebSocketPeer.STATE_OPEN:
 		var json_str = JSON.stringify(data)
-		# Pass json as string to KaiserNet.sendPacket
-		var js_code = "window.KaiserNet && window.KaiserNet.sendPacket(%s);" % json_str
-		JavaScriptBridge.eval(js_code)
-	elif is_mock_mode:
-		# In desktop mock mode, loopback packet for testing if needed
-		pass
+		ws.send_text(json_str)
 
 func disconnect_peer() -> void:
+	if ws.get_ready_state() == WebSocketPeer.STATE_OPEN or ws.get_ready_state() == WebSocketPeer.STATE_CONNECTING:
+		ws.close(1000, "Client disconnect")
 	is_active = false
-	mock_connected = false
-	if OS.has_feature("web"):
-		JavaScriptBridge.eval("window.KaiserNet && window.KaiserNet.reset();")
+	pending_action = ""
 	last_status = "idle"
-	peer_disconnected.emit("User disconnected")
-
-func _poll_web_network(delta: float) -> void:
-	status_poll_timer += delta
-	if status_poll_timer >= 0.15: # Poll status ~6.6 times per second
-		status_poll_timer = 0.0
-		var status_json = JavaScriptBridge.eval("window.KaiserNet ? window.KaiserNet.getStatus() : '{}'")
-		if status_json is String and not status_json.is_empty():
-			var parsed = JSON.parse_string(status_json)
-			if parsed is Dictionary:
-				var st = parsed.get("status", "idle")
-				var ping = int(parsed.get("ping", 0))
-				
-				if ping != current_ping:
-					current_ping = ping
-					ping_updated.emit(current_ping)
-					
-				if st != last_status:
-					var prev_st = last_status
-					last_status = st
-					connection_status_changed.emit(st)
-					if st == "connected" and prev_st != "connected":
-						peer_connected.emit(is_host, current_room)
-					elif st == "disconnected" and prev_st == "connected":
-						peer_disconnected.emit("Peer closed connection")
-					elif st == "error":
-						var err_msg = str(parsed.get("lastError", "Unknown network error"))
-						peer_disconnected.emit(err_msg)
-
-	# Fetch incoming packets at 60Hz physics rate
-	var packets_json = JavaScriptBridge.eval("window.KaiserNet ? window.KaiserNet.getPackets() : '[]'")
-	if packets_json is String and not packets_json.is_empty() and packets_json != "[]":
-		var list = JSON.parse_string(packets_json)
-		if list is Array:
-			for item in list:
-				if item is Dictionary:
-					packet_received.emit(item)
-
-func _poll_mock_network(_delta: float) -> void:
-	pass
+	peer_disconnected.emit("Đã ngắt kết nối")

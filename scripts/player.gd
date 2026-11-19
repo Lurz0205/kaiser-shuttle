@@ -312,7 +312,21 @@ func _physics_process(delta: float) -> void:
 			rally_hits = shuttlecock.tension_level
 	
 	if is_remote_puppet:
-		pass
+		if is_swinging:
+			swing_timer += delta
+			swing_prog = clamp(swing_timer / SWING_DURATION, 0.0, 1.0)
+			if swing_timer >= SWING_DURATION:
+				is_swinging = false
+				swing_recovery = 1.0
+		elif swing_recovery > 0.0:
+			swing_recovery = move_toward(swing_recovery, 0.0, delta * 4.2)
+		if is_on_ground() and abs(velocity.x) > 10.0:
+			walk_phase += delta * (abs(velocity.x) / move_speed_x) * 14.0
+		else:
+			walk_phase = lerp(walk_phase, 0.0, 10.0 * delta)
+		_update_joint_kinematics(delta)
+		queue_redraw()
+		return
 	elif is_ai:
 		if ai_pressure_model:
 			ai_pressure_model.update(delta)

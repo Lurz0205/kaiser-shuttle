@@ -4,5 +4,8 @@ build/
 *.exe
 *.pck
 tests/
+node_modules/
+scratch/
+server/test_server.js
 scripts/publish_github.py
 

@@ -1,0 +1,12 @@
+{
+  "name": "kaiser-shuttle-server",
+  "version": "1.0.0",
+  "description": "Authoritative Multiplayer Game Server for Kaiser Shuttle",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "ws": "^8.18.0"
+  }
+}
