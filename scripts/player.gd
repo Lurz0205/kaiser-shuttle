@@ -2288,9 +2288,9 @@ func _draw() -> void:
 		hip_y = -64.0
 	
 	var hip_pos = Vector2(0, hip_y)
-	var shoulder_offset = Vector2(sin(joint_torso), -cos(joint_torso)) * 44.0
+	var shoulder_offset = Vector2(sin(joint_torso), -cos(joint_torso)) * 38.0
 	var shoulder_pos = hip_pos + shoulder_offset
-	var head_pos = shoulder_pos + Vector2(sin(joint_torso), -cos(joint_torso)) * 18.0
+	var head_pos = shoulder_pos + Vector2(sin(joint_torso), -cos(joint_torso)) * 12.5
 	
 	# Màu sắc vùng khuất phía sau (Back limbs depth shading)
 	var col_skin_back = Color(col_skin.r * 0.72, col_skin.g * 0.72, col_skin.b * 0.78)
@@ -2491,26 +2491,33 @@ func _draw_textured_player(
 	var tint_back = Color(0.72, 0.72, 0.78, 1.0)
 	
 	# LAYER 1: BACK LIMBS (ĐẰNG SAU THÂN)
-	_draw_textured_limb(tex_thigh, hip_l, knee_l, 1.0, tint_back)
-	_draw_textured_limb(tex_shin, knee_l, foot_l, 1.0, tint_back)
+	_draw_textured_limb(tex_thigh, hip_l, knee_l, 1.25, tint_back)
+	_draw_textured_limb(tex_shin, knee_l, foot_l, 1.2, tint_back)
 	
 	if tex_shoe:
-		var s_shoe = 0.32
+		var s_shoe = 0.35
 		draw_set_transform(foot_l, 0.0, Vector2(s_shoe * facing, s_shoe))
 		draw_texture(tex_shoe, Vector2(-26.0, -14.0), tint_back)
 		draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 	
-	_draw_textured_limb(tex_arm_upper, shoulder_off, elbow_off, 1.0, tint_back)
-	_draw_textured_limb(tex_arm_fore, elbow_off, hand_off, 1.0, tint_back)
+	_draw_textured_limb(tex_arm_upper, shoulder_off, elbow_off, 1.2, tint_back)
+	_draw_textured_limb(tex_arm_fore, elbow_off, hand_off, 1.15, tint_back)
 	if tex_hand:
-		var s_h = 0.23
+		var s_h = 0.26
 		draw_set_transform(hand_off, 0.0, Vector2(s_h * facing, s_h))
 		draw_texture(tex_hand, Vector2(-24.0, -24.0), tint_back)
 		draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 	
-	# LAYER 2: PELVIS, TORSO, HEAD (THÂN VÀ ĐẦU)
+	# LAYER 2: HEAD & NECK FIRST (CỔ NẰM DƯỚI CỔ ÁO ĐỂ KHÔNG BAO GIỜ BỊ HỞ/TÁCH)
+	if tex_head:
+		var s_head = 0.38
+		draw_set_transform(head_pos, joint_torso * 0.15, Vector2(s_head * facing, s_head))
+		draw_texture(tex_head, Vector2(-64.0, -48.0))
+		draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+		
+	# PELVIS & TORSO (ĐÈ LÊN GỐC CỔ VÀ TAY CHÂN SAU)
 	if tex_pelvis:
-		var s_pel = 0.38
+		var s_pel = 0.45
 		draw_set_transform(hip_pos, 0.0, Vector2(s_pel * facing, s_pel))
 		draw_texture(tex_pelvis, Vector2(-48.0, -14.0))
 		draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
@@ -2520,32 +2527,26 @@ func _draw_textured_player(
 		var torso_dist = torso_diff.length()
 		var torso_ang = torso_diff.angle()
 		var s_tor_y = torso_dist / 80.0
-		var s_tor_x = s_tor_y * facing
+		var s_tor_x = s_tor_y * 1.35 * facing
 		draw_set_transform(hip_pos, torso_ang + PI * 0.5, Vector2(s_tor_x, s_tor_y))
 		draw_texture(tex_torso, Vector2(-48.0, -96.0))
 		draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 		
-	if tex_head:
-		var s_head = 0.36
-		draw_set_transform(head_pos, joint_torso * 0.15, Vector2(s_head * facing, s_head))
-		draw_texture(tex_head, Vector2(-64.0, -52.0))
-		draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
-		
 	# LAYER 3: FRONT LIMBS & RACKET (NỔI BẬT PHÍA TRƯỚC)
-	_draw_textured_limb(tex_thigh, hip_r, knee_r, 1.0)
-	_draw_textured_limb(tex_shin, knee_r, foot_r, 1.0)
+	_draw_textured_limb(tex_thigh, hip_r, knee_r, 1.25)
+	_draw_textured_limb(tex_shin, knee_r, foot_r, 1.2)
 	
 	if tex_shoe:
-		var s_shoe = 0.32
+		var s_shoe = 0.35
 		draw_set_transform(foot_r, 0.0, Vector2(s_shoe * facing, s_shoe))
 		draw_texture(tex_shoe, Vector2(-26.0, -14.0))
 		draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 		
-	_draw_textured_limb(tex_arm_upper, shoulder_racket, elbow_racket, 1.0)
-	_draw_textured_limb(tex_arm_fore, elbow_racket, hand_racket, 1.0)
+	_draw_textured_limb(tex_arm_upper, shoulder_racket, elbow_racket, 1.2)
+	_draw_textured_limb(tex_arm_fore, elbow_racket, hand_racket, 1.15)
 	
 	if tex_hand:
-		var s_h = 0.23
+		var s_h = 0.26
 		draw_set_transform(hand_racket, 0.0, Vector2(s_h * facing, s_h))
 		draw_texture(tex_hand, Vector2(-24.0, -24.0))
 		draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
