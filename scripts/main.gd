@@ -505,7 +505,7 @@ func _on_menu_start_pvp_match(room_code: String, is_host: bool, local_char: Stri
 	current_server = "player"
 	
 	if shuttlecock:
-		shuttlecock.is_network_client = true
+		shuttlecock.is_network_client = not is_host
 	
 	if match_over_dialog:
 		match_over_dialog.visible = false
@@ -582,76 +582,78 @@ func _on_network_packet_received(data: Dictionary) -> void:
 		return
 	var t = str(data.get("t", ""))
 	match t:
-		"tick":
-			# Both players receive p1 (local left) and p2 (opponent right) from server
-			var p2_data = data.get("p2", {})
-			if p2_data is Dictionary and ai_rival:
-				ai_rival.global_position.x = lerp(ai_rival.global_position.x, float(p2_data.get("x", ai_rival.global_position.x)), 0.65)
-				ai_rival.global_position.y = lerp(ai_rival.global_position.y, float(p2_data.get("y", ai_rival.global_position.y)), 0.65)
-				ai_rival.velocity.x = float(p2_data.get("vx", 0.0))
-				ai_rival.velocity.y = float(p2_data.get("vy", 0.0))
-				ai_rival.facing = float(p2_data.get("f", -1.0))
-				ai_rival.is_swinging = bool(p2_data.get("sw", false))
-				ai_rival.is_diving = bool(p2_data.get("dv", false))
+		"opp_sync":
+			if ai_rival:
+				ai_rival.global_position.x = lerp(ai_rival.global_position.x, float(data.get("x", ai_rival.global_position.x)), 0.5)
+				ai_rival.global_position.y = lerp(ai_rival.global_position.y, float(data.get("y", ai_rival.global_position.y)), 0.5)
+				ai_rival.velocity.x = float(data.get("vx", 0.0))
+				ai_rival.velocity.y = float(data.get("vy", 0.0))
+				ai_rival.facing = float(data.get("f", -1.0))
+				ai_rival.is_swinging = bool(data.get("sw", false))
+				ai_rival.is_diving = bool(data.get("dv", false))
+				ai_rival.walk_phase = float(data.get("wp", ai_rival.walk_phase))
+				ai_rival.balance = float(data.get("bal", 100.0))
 
-			var ball_data = data.get("ball", {})
-			if ball_data is Dictionary and shuttlecock:
-				var is_act = bool(ball_data.get("act", false))
-				shuttlecock.global_position.x = lerp(shuttlecock.global_position.x, float(ball_data.get("x", shuttlecock.global_position.x)), 0.70)
-				shuttlecock.global_position.y = lerp(shuttlecock.global_position.y, float(ball_data.get("y", shuttlecock.global_position.y)), 0.70)
-				shuttlecock.velocity.x = float(ball_data.get("vx", 0.0))
-				shuttlecock.velocity.y = float(ball_data.get("vy", 0.0))
-				shuttlecock.is_active = is_act
-				shuttlecock.is_serve = bool(ball_data.get("srv", false))
-
-				if is_act:
-					player.is_serving_phase = false
-					ai_rival.is_serving_phase = false
-					current_state = MatchState.RALLY
-					is_serve_in_progress = false
-
-		"shot_fx":
-			var shot_type = str(data.get("shot_type", "clear"))
-			var is_smash = bool(data.get("is_smash", false))
-			if is_smash and sfx_smash:
-				sfx_smash.play()
-			elif sfx_phong:
-				sfx_phong.play()
-
-		"point_scored":
-			var winner_role = str(data.get("winner", "p1"))
-			var reason = str(data.get("reason", "ĐIỂM TRỰC TIẾP"))
-			var is_my_point = (winner_role == "p1" and is_pvp_host) or (winner_role == "p2" and not is_pvp_host)
+		"opp_shot":
+			var from_pt = Vector2(float(data.get("from_x", 890.0)), float(data.get("from_y", 450.0)))
+			var target_pt = Vector2(float(data.get("target_x", 390.0)), float(data.get("target_y", 550.0)))
+			var s_type = str(data.get("shot_type", "clear"))
+			var err = float(data.get("err", 0.0))
+			var is_perf = bool(data.get("is_perf", false))
+			var is_jump = bool(data.get("is_jump", false))
+			var t_mult = float(data.get("t_mult", 1.0))
+			var t_lvl = int(data.get("t_lvl", 0))
+			var q = float(data.get("quality", 0.8))
 			
-			score_player = int(data.get("p1_pts", score_player)) if is_pvp_host else int(data.get("p2_pts", score_player))
-			score_ai = int(data.get("p2_pts", score_ai)) if is_pvp_host else int(data.get("p1_pts", score_ai))
-			sets_won_player = int(data.get("p1_sets", sets_won_player)) if is_pvp_host else int(data.get("p2_sets", sets_won_player))
-			sets_won_ai = int(data.get("p2_sets", sets_won_ai)) if is_pvp_host else int(data.get("p1_sets", sets_won_ai))
+			if ai_rival:
+				ai_rival.is_swinging = true
+				ai_rival.swing_timer = 0.0
+				ai_rival.can_hit = false
+			if player:
+				player.can_hit = true
+				
+			if shuttlecock:
+				shuttlecock.last_hitter = "ai"
+				shuttlecock.is_serve = false
+				shuttlecock.launch_to_target_2d(from_pt, target_pt, s_type, err, is_perf, is_jump, t_mult, t_lvl)
+				
+			_on_shot_hit(s_type, is_perf or is_jump or s_type == "smash", q, is_perf, is_jump, from_pt, "ai")
+
+		"opp_serve":
+			var s_type = str(data.get("shot_type", "clear"))
+			_execute_serve("ai", s_type)
+
+		"score_update":
+			var winner = str(data.get("winner", "ai"))
+			var reason = str(data.get("reason", "ĐIỂM"))
+			score_player = int(data.get("p1_pts", score_player))
+			score_ai = int(data.get("p2_pts", score_ai))
+			sets_won_player = int(data.get("p1_sets", sets_won_player))
+			sets_won_ai = int(data.get("p2_sets", sets_won_ai))
+			current_server = str(data.get("next_server", "ai"))
+			current_state = MatchState.POINT_OVER
 			
 			_update_scoreboard()
-			if is_my_point:
+			if winner == "player":
 				_show_banner("ĐIỂM CHO BẠN! - " + reason, Color(0.2, 1.0, 0.4), true, 1.5)
 			else:
 				_show_banner("ĐIỂM ĐỐI THỦ! - " + reason, Color(1.0, 0.4, 0.4), true, 1.5)
+				
+			get_tree().create_timer(1.8).timeout.connect(func():
+				if is_pvp_active:
+					_setup_serve(current_server)
+			)
 
-		"serve_ready":
-			var srv_role = str(data.get("server", "p1"))
-			var i_am_server = (srv_role == "p1" and is_pvp_host) or (srv_role == "p2" and not is_pvp_host)
-			current_server = "player" if i_am_server else "ai"
-			current_state = MatchState.SERVE
-			is_serve_in_progress = true
-			player.can_hit = true
-			if i_am_server:
-				player.is_serving_phase = true
-				_show_banner("LƯỢT BẠN PHÁT CẦU (BẤM J HOẶC K)", Color(0.95, 0.85, 0.2))
-			else:
-				player.is_serving_phase = false
-				_show_banner("ĐỐI THỦ ĐANG PHÁT CẦU...", Color(0.7, 0.8, 0.9))
+		"match_over_update":
+			var winner = str(data.get("winner", "ai"))
+			var champ = "BẠN" if winner == "player" else "ĐỐI THỦ"
+			_show_match_over_dialog(champ)
 
-		"match_over":
-			var match_winner = str(data.get("winner", "p1"))
-			var i_won = (match_winner == "p1" and is_pvp_host) or (match_winner == "p2" and not is_pvp_host)
-			_show_match_over_dialog("player" if i_won else "ai")
+		"countdown_start":
+			if main_menu and main_menu.visible:
+				main_menu.pvp_selected_points = int(data.get("pts", target_match_points))
+				main_menu.pvp_selected_sets = int(data.get("sets", total_match_sets))
+				main_menu._start_pvp_countdown()
 
 		"init":
 			if not is_pvp_host:
@@ -902,13 +904,16 @@ func _process(delta: float) -> void:
 	# Authoritative WebSocket PvP Multiplayer Sync (Mirrored 100% independent low-latency)
 	if is_pvp_active and net_manager:
 		net_manager.send_packet({
-			"t": "player_input",
+			"t": "sync",
 			"x": player.global_position.x,
 			"y": player.global_position.y,
 			"vx": player.velocity.x,
 			"vy": player.velocity.y,
+			"f": player.facing,
 			"sw": player.is_swinging,
-			"dv": player.is_diving
+			"dv": player.is_diving,
+			"wp": player.walk_phase,
+			"bal": player.balance
 		})
 	
 	_update_stats_display()
@@ -999,16 +1004,10 @@ func _process_serve_state() -> void:
 	if is_pvp_active:
 		if current_server == "player" and net_manager:
 			if Input.is_key_pressed(KEY_K):
-				player.is_serving_phase = false
-				ai_rival.is_serving_phase = false
-				current_state = MatchState.RALLY
-				is_serve_in_progress = false
+				_execute_serve("player", "clear")
 				net_manager.send_packet({"t": "serve", "shot_type": "clear"})
 			elif Input.is_key_pressed(KEY_J):
-				player.is_serving_phase = false
-				ai_rival.is_serving_phase = false
-				current_state = MatchState.RALLY
-				is_serve_in_progress = false
+				_execute_serve("player", "drop")
 				net_manager.send_packet({"t": "serve", "shot_type": "drop"})
 		return
 	else:
@@ -1079,8 +1078,11 @@ func _setup_serve(server: String) -> void:
 			label_banner.visible = false
 			label_banner.text = ""
 	else:
-		var server_name = "PLAYER" if server == "player" else "RIVAL AI"
-		_show_banner("%s GIAO CẦU (BẤM J HOẶC K)" % server_name, Color(1.0, 1.0, 1.0))
+		var server_name = "BẠN" if server == "player" else ("ĐỐI THỦ" if is_pvp_active else "RIVAL AI")
+		if is_pvp_active and server == "ai":
+			_show_banner("ĐỐI THỦ ĐANG GIAO CẦU...", Color(1.0, 0.9, 0.4))
+		else:
+			_show_banner("%s GIAO CẦU (BẤM J HOẶC K)" % server_name, Color(1.0, 1.0, 1.0))
 		
 		# AI auto serve after 0.8s (only if not in PvP)
 		if server == "ai" and not is_pvp_active:
@@ -1154,13 +1156,23 @@ func _world_to_screen(world_pos: Vector2) -> Vector2:
 
 func _on_shot_hit(shot_type: String, is_smash: bool, quality: float, is_perfect: bool, is_jump_shot: bool, contact_pos: Vector2, hitter: String) -> void:
 	if is_pvp_active and net_manager and hitter == "player":
+		var target_x = shuttlecock.launch_target.x if shuttlecock else 890.0
+		var target_y = shuttlecock.launch_target.y if shuttlecock else FLOOR_Y
+		var t_mult = player.current_tension_mult if player else 1.0
+		var t_lvl = player.current_tension_level if player else 0
 		net_manager.send_packet({
-			"t": "hit",
+			"t": "shot",
+			"from_x": contact_pos.x,
+			"from_y": contact_pos.y,
+			"target_x": target_x,
+			"target_y": target_y,
 			"shot_type": shot_type,
-			"is_smash": is_smash,
+			"err": 0.0,
 			"is_perf": is_perfect,
-			"px": contact_pos.x,
-			"py": contact_pos.y
+			"is_jump": is_jump_shot,
+			"t_mult": t_mult,
+			"t_lvl": t_lvl,
+			"quality": quality
 		})
 	is_serve_in_progress = false
 	if shuttlecock:
@@ -1776,8 +1788,6 @@ func _show_landing_callout(pos: Vector2, status: String, subtitle: String = "") 
 
 
 func _on_shuttlecock_landed(pos: Vector2, _floor_3d: Vector3 = Vector3.ZERO) -> void:
-	if is_pvp_active:
-		return
 	if current_state != MatchState.RALLY:
 		return
 	
@@ -1788,6 +1798,9 @@ func _on_shuttlecock_landed(pos: Vector2, _floor_3d: Vector3 = Vector3.ZERO) -> 
 	shockwave_radius = 8.0
 	shockwave_alpha = 0.9 if shuttlecock.is_smash else 0.5
 	_redraw_effects()
+	
+	if is_pvp_active and not is_pvp_host:
+		return
 	
 	var point_winner = ""
 	var reason = ""
@@ -1858,8 +1871,6 @@ func _on_shuttlecock_landed(pos: Vector2, _floor_3d: Vector3 = Vector3.ZERO) -> 
 
 
 func _on_shuttlecock_hit_net() -> void:
-	if is_pvp_active:
-		return
 	if current_state != MatchState.RALLY:
 		return
 	shake_amount = max(shake_amount, 3.0)
@@ -1872,6 +1883,9 @@ func _on_shuttlecock_hit_net() -> void:
 		ai_rival.can_hit = false
 	
 	_show_landing_callout(shuttlecock.global_position, "FAULT", "CẦU MẮC LƯỚI")
+	
+	if is_pvp_active and not is_pvp_host:
+		return
 	
 	if is_serve_in_progress:
 		is_serve_in_progress = false
@@ -1892,7 +1906,7 @@ func _on_shuttlecock_hit_net() -> void:
 
 
 func _award_point(winner: String, reason: String) -> void:
-	if is_pvp_active:
+	if is_pvp_active and not is_pvp_host:
 		return
 	if winner == "player":
 		score_player += 1
@@ -1943,13 +1957,45 @@ func _award_point(winner: String, reason: String) -> void:
 				is_match_over = true
 				
 		if is_match_over:
-			var champ = "PLAYER" if sets_won_player > sets_won_ai else "RIVAL AI"
+			var champ = "BẠN" if sets_won_player > sets_won_ai else "ĐỐI THỦ"
+			if not is_pvp_active:
+				champ = "PLAYER" if sets_won_player > sets_won_ai else "RIVAL AI"
+			if is_pvp_active and net_manager:
+				net_manager.send_packet({
+					"t": "score",
+					"winner": winner,
+					"reason": reason,
+					"p1_pts": score_player,
+					"p2_pts": score_ai,
+					"p1_sets": sets_won_player,
+					"p2_sets": sets_won_ai,
+					"next_server": current_server
+				})
+				net_manager.send_packet({
+					"t": "match_over",
+					"winner": set_winner
+				})
 			_show_match_over_dialog(champ)
 			return
 			
 		# Chuyển sang Set tiếp theo trong trận 3 Set
 		var set_banner = "KẾT THÚC SET %d! [TỈ SỐ SET: %d - %d]" % [current_set_index + 1, sets_won_player, sets_won_ai]
 		_show_banner(set_banner, Color(1.0, 0.90, 0.25), false)
+		
+		# Người thắng set trước có quyền giao cầu set sau
+		current_server = set_winner
+		if is_pvp_active and net_manager:
+			net_manager.send_packet({
+				"t": "score",
+				"winner": winner,
+				"reason": reason,
+				"p1_pts": score_player,
+				"p2_pts": score_ai,
+				"p1_sets": sets_won_player,
+				"p2_sets": sets_won_ai,
+				"next_server": current_server
+			})
+			
 		await get_tree().create_timer(2.2).timeout
 		
 		current_set_index += 1
@@ -1959,15 +2005,25 @@ func _award_point(winner: String, reason: String) -> void:
 			bwf_scoreboard.advance_to_next_set()
 			bwf_scoreboard.update_current_score(0, 0)
 			
-		# Người thắng set trước có quyền giao cầu set sau
-		current_server = set_winner
 		if bwf_scoreboard:
 			bwf_scoreboard.set_server(current_server != "player")
 		_setup_serve(current_server)
 		return
 	
-	await get_tree().create_timer(1.2).timeout
 	current_server = winner
+	if is_pvp_active and net_manager:
+		net_manager.send_packet({
+			"t": "score",
+			"winner": winner,
+			"reason": reason,
+			"p1_pts": score_player,
+			"p2_pts": score_ai,
+			"p1_sets": sets_won_player,
+			"p2_sets": sets_won_ai,
+			"next_server": current_server
+		})
+		
+	await get_tree().create_timer(1.2).timeout
 	if bwf_scoreboard:
 		bwf_scoreboard.set_server(current_server != "player")
 	_setup_serve(current_server)
@@ -2118,6 +2174,9 @@ func _on_match_over_play_again() -> void:
 func _on_match_over_to_menu() -> void:
 	if match_over_dialog:
 		match_over_dialog.visible = false
+	if is_pvp_active and net_manager:
+		net_manager.disconnect_peer()
+		is_pvp_active = false
 	_set_in_game_hud_visible(false)
 	main_menu.switch_state(MainMenuController.MenuState.MATCH_SETUP)
 	main_menu.visible = true
