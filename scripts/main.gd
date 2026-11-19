@@ -505,13 +505,26 @@ func _on_menu_start_pvp_match(room_code: String, is_host: bool, local_char: Stri
 		match_over_dialog.visible = false
 	_set_in_game_hud_visible(true)
 	
-	# Trong PvP: cả 2 bên đều là người chơi thật!
+	# TRONG PVP: CẢ 2 NGƯỜI CHƠI ĐỀU LUÔN ĐIỀU KHIỂN NHÂN VẬT SÂN TRÁI CỦA MÌNH ($Player)
+	# ĐỐI THỦ LUÔN HIỆN Ở SÂN PHẢI ($AIRival) VÀ BỊ KHÓA HOÀN TOÀN BÀN PHÍM (is_remote_puppet = true)
 	player.is_ai = false
+	player.is_remote_puppet = false
+	player.court_side = "player"
+	player.facing = 1.0
+	player.min_x = 20.0
+	player.max_x = 620.0
+	
 	ai_rival.is_ai = false
+	ai_rival.is_remote_puppet = true
+	ai_rival.court_side = "ai"
+	ai_rival.facing = -1.0
+	ai_rival.min_x = 660.0
+	ai_rival.max_x = 1260.0
+	
+	player.stats = _create_char_stats(local_char)
+	player.move_speed_x = lerp(230.0, 265.0, (player.stats.agility - 40.0) / 59.0)
 	
 	if is_host:
-		player.stats = _create_char_stats(local_char)
-		player.move_speed_x = lerp(230.0, 265.0, (player.stats.agility - 40.0) / 59.0)
 		ai_rival.stats = _create_char_stats("wall")
 		ai_rival.move_speed_x = lerp(230.0, 265.0, (ai_rival.stats.agility - 40.0) / 59.0)
 		net_manager.send_packet({
@@ -521,10 +534,8 @@ func _on_menu_start_pvp_match(room_code: String, is_host: bool, local_char: Stri
 			"sets": match_sets
 		})
 	else:
-		ai_rival.stats = _create_char_stats(local_char)
+		ai_rival.stats = _create_char_stats("nishikawa")
 		ai_rival.move_speed_x = lerp(230.0, 265.0, (ai_rival.stats.agility - 40.0) / 59.0)
-		player.stats = _create_char_stats("nishikawa")
-		player.move_speed_x = lerp(230.0, 265.0, (player.stats.agility - 40.0) / 59.0)
 		net_manager.send_packet({
 			"t": "init_ack",
 			"char": local_char
@@ -549,7 +560,7 @@ func _on_menu_start_pvp_match(room_code: String, is_host: bool, local_char: Stri
 		
 	_update_scoreboard()
 	_setup_serve("player")
-	_show_banner("TRẬN ĐẤU ONLINE BẮT ĐẦU! PHÒNG: " + room_code, Color(0.2, 0.9, 0.8))
+	_show_banner("BẠN ĐANG Ở SÂN TRÁI - ĐỐI THỦ Ở SÂN PHẢI!", Color(0.2, 0.9, 0.8))
 	
 	if bgm_lobby and bgm_lobby.playing:
 		var tween = create_tween()
@@ -563,15 +574,15 @@ func _on_menu_start_pvp_match(room_code: String, is_host: bool, local_char: Stri
 func _on_network_packet_received(data: Dictionary) -> void:
 	if not is_pvp_active:
 		return
-	var t = data.get("t", "")
+	var t = str(data.get("t", ""))
 	match t:
 		"init":
 			if not is_pvp_host:
 				var host_char = str(data.get("char", "nishikawa"))
 				target_match_points = int(data.get("pts", 11))
 				total_match_sets = int(data.get("sets", 1))
-				player.stats = _create_char_stats(host_char)
-				player.move_speed_x = lerp(230.0, 265.0, (player.stats.agility - 40.0) / 59.0)
+				ai_rival.stats = _create_char_stats(host_char)
+				ai_rival.move_speed_x = lerp(230.0, 265.0, (ai_rival.stats.agility - 40.0) / 59.0)
 				if bwf_scoreboard:
 					bwf_scoreboard.reset_scoreboard(total_match_sets)
 					bwf_scoreboard.set_match_mode(total_match_sets)
@@ -590,45 +601,44 @@ func _on_network_packet_received(data: Dictionary) -> void:
 						player.stats.character_name.to_upper(),
 						ai_rival.stats.character_name.to_upper()
 					)
-		"sync":
+		"h_sync":
 			if not is_pvp_host:
-				var p1_data = data.get("p1", {})
-				if not p1_data.is_empty():
-					player.global_position.x = lerp(player.global_position.x, float(p1_data.get("x", player.global_position.x)), 0.65)
-					player.global_position.y = lerp(player.global_position.y, float(p1_data.get("y", player.global_position.y)), 0.65)
-					player.velocity.x = float(p1_data.get("vx", 0.0))
-					player.velocity.y = float(p1_data.get("vy", 0.0))
-					player.facing = float(p1_data.get("f", 1.0))
-					player.is_swinging = bool(p1_data.get("sw", false))
-					player.is_diving = bool(p1_data.get("dv", false))
-				var b_data = data.get("ball", {})
-				if not b_data.is_empty():
-					shuttlecock.global_position = Vector2(float(b_data.get("x", 640.0)), float(b_data.get("y", 300.0)))
-					shuttlecock.velocity = Vector2(float(b_data.get("vx", 0.0)), float(b_data.get("vy", 0.0)))
-					shuttlecock.rotation = float(b_data.get("rot", 0.0))
-					shuttlecock.is_active = bool(b_data.get("act", false))
-					shuttlecock.last_hitter = str(b_data.get("last", "player"))
-				var sc_data = data.get("sc", {})
-				if not sc_data.is_empty():
-					score_player = int(sc_data.get("p1", score_player))
-					score_ai = int(sc_data.get("p2", score_ai))
-					sets_won_player = int(sc_data.get("s1", sets_won_player))
-					sets_won_ai = int(sc_data.get("s2", sets_won_ai))
-					current_server = str(sc_data.get("srv", current_server))
-					current_state = int(sc_data.get("st", current_state))
-					_update_scoreboard()
-		"p2":
+				# Cập nhật đối thủ trên máy Guest ($AIRival ở sân phải):
+				ai_rival.global_position.x = lerp(ai_rival.global_position.x, float(data.get("ox", ai_rival.global_position.x)), 0.75)
+				ai_rival.global_position.y = lerp(ai_rival.global_position.y, float(data.get("oy", ai_rival.global_position.y)), 0.75)
+				ai_rival.velocity.x = float(data.get("ovx", 0.0))
+				ai_rival.velocity.y = float(data.get("ovy", 0.0))
+				ai_rival.facing = float(data.get("of", -1.0))
+				ai_rival.is_swinging = bool(data.get("osw", false))
+				ai_rival.is_diving = bool(data.get("odv", false))
+				
+				# Cập nhật quả cầu trên máy Guest:
+				shuttlecock.global_position = Vector2(float(data.get("bx", 640.0)), float(data.get("by", 300.0)))
+				shuttlecock.velocity = Vector2(float(data.get("bvx", 0.0)), float(data.get("bvy", 0.0)))
+				shuttlecock.rotation = float(data.get("brot", 0.0))
+				shuttlecock.is_active = bool(data.get("bact", false))
+				shuttlecock.is_serve = bool(data.get("bsrv", false))
+				shuttlecock.last_hitter = "ai" if str(data.get("blast", "")) == "opponent" else "player"
+				
+				# Cập nhật điểm số trên máy Guest:
+				score_player = int(data.get("p1_pts", score_player))
+				score_ai = int(data.get("p2_pts", score_ai))
+				sets_won_player = int(data.get("s1_sets", sets_won_player))
+				sets_won_ai = int(data.get("s2_sets", sets_won_ai))
+				current_server = "player" if str(data.get("srv", "")) == "player" else "ai"
+				current_state = int(data.get("st", current_state))
+				_update_scoreboard()
+		"g_pos":
 			if is_pvp_host:
-				var p2_data = data.get("p2", {})
-				if not p2_data.is_empty():
-					ai_rival.global_position.x = lerp(ai_rival.global_position.x, float(p2_data.get("x", ai_rival.global_position.x)), 0.65)
-					ai_rival.global_position.y = lerp(ai_rival.global_position.y, float(p2_data.get("y", ai_rival.global_position.y)), 0.65)
-					ai_rival.velocity.x = float(p2_data.get("vx", 0.0))
-					ai_rival.velocity.y = float(p2_data.get("vy", 0.0))
-					ai_rival.facing = float(p2_data.get("f", -1.0))
-					ai_rival.is_swinging = bool(p2_data.get("sw", false))
-					ai_rival.is_diving = bool(p2_data.get("dv", false))
-		"hit":
+				# Cập nhật đối thủ trên máy Host ($AIRival ở sân phải):
+				ai_rival.global_position.x = lerp(ai_rival.global_position.x, float(data.get("ox", ai_rival.global_position.x)), 0.75)
+				ai_rival.global_position.y = lerp(ai_rival.global_position.y, float(data.get("oy", ai_rival.global_position.y)), 0.75)
+				ai_rival.velocity.x = float(data.get("ovx", 0.0))
+				ai_rival.velocity.y = float(data.get("ovy", 0.0))
+				ai_rival.facing = float(data.get("of", -1.0))
+				ai_rival.is_swinging = bool(data.get("osw", false))
+				ai_rival.is_diving = bool(data.get("odv", false))
+		"g_hit":
 			if is_pvp_host:
 				_on_shot_hit(
 					str(data.get("type", "clear")),
@@ -639,7 +649,7 @@ func _on_network_packet_received(data: Dictionary) -> void:
 					Vector2(float(data.get("px", 800.0)), float(data.get("py", 400.0))),
 					"ai"
 				)
-		"p2_serve":
+		"g_serve":
 			if is_pvp_host and current_state == MatchState.SERVE and current_server == "ai":
 				_execute_serve("ai", str(data.get("shot_type", "clear")))
 
@@ -812,55 +822,48 @@ func _process(delta: float) -> void:
 			fuji_slowmo_active = false
 		_redraw_effects()
 	
-	# WebRTC P2P Multiplayer Sync (60Hz ultra-low latency UDP packets)
+	# WebRTC P2P Multiplayer Sync (Mirrored 100% independent low-latency)
 	if is_pvp_active and net_manager:
 		if is_pvp_host:
-			var p1_data = {
-				"x": player.global_position.x,
-				"y": player.global_position.y,
-				"vx": player.velocity.x,
-				"vy": player.velocity.y,
-				"f": player.facing,
-				"sw": player.is_swinging,
-				"dv": player.is_diving
-			}
-			var ball_data = {
-				"x": shuttlecock.global_position.x,
-				"y": shuttlecock.global_position.y,
-				"vx": shuttlecock.velocity.x,
-				"vy": shuttlecock.velocity.y,
-				"rot": shuttlecock.rotation,
-				"act": shuttlecock.is_active,
-				"srv": is_serve_in_progress,
-				"last": shuttlecock.last_hitter
-			}
-			var sc_data = {
-				"p1": score_player,
-				"p2": score_ai,
-				"s1": sets_won_player,
-				"s2": sets_won_ai,
-				"srv": current_server,
+			# Host sends Authoritative state (mirrored for Guest):
+			net_manager.send_packet({
+				"t": "h_sync",
+				# Opponent for Guest is Host's player mirrored:
+				"ox": 1280.0 - player.global_position.x,
+				"oy": player.global_position.y,
+				"ovx": -player.velocity.x,
+				"ovy": player.velocity.y,
+				"of": -player.facing,
+				"osw": player.is_swinging,
+				"odv": player.is_diving,
+				# Shuttlecock mirrored for Guest:
+				"bx": 1280.0 - shuttlecock.global_position.x,
+				"by": shuttlecock.global_position.y,
+				"bvx": -shuttlecock.velocity.x,
+				"bvy": shuttlecock.velocity.y,
+				"brot": -shuttlecock.rotation,
+				"bact": shuttlecock.is_active,
+				"bsrv": is_serve_in_progress,
+				"blast": ("opponent" if shuttlecock.last_hitter == "player" else "player"),
+				# Scores (Guest is p1 on Guest screen):
+				"p1_pts": score_ai,
+				"p2_pts": score_player,
+				"s1_sets": sets_won_ai,
+				"s2_sets": sets_won_player,
+				"srv": ("player" if current_server == "ai" else "opponent"),
 				"st": current_state
-			}
-			net_manager.send_packet({
-				"t": "sync",
-				"p1": p1_data,
-				"ball": ball_data,
-				"sc": sc_data
 			})
-		else: # Guest
-			var p2_data = {
-				"x": ai_rival.global_position.x,
-				"y": ai_rival.global_position.y,
-				"vx": ai_rival.velocity.x,
-				"vy": ai_rival.velocity.y,
-				"f": ai_rival.facing,
-				"sw": ai_rival.is_swinging,
-				"dv": ai_rival.is_diving
-			}
+		else:
+			# Guest sends Guest's player mirrored for Host:
 			net_manager.send_packet({
-				"t": "p2",
-				"p2": p2_data
+				"t": "g_pos",
+				"ox": 1280.0 - player.global_position.x,
+				"oy": player.global_position.y,
+				"ovx": -player.velocity.x,
+				"ovy": player.velocity.y,
+				"of": -player.facing,
+				"osw": player.is_swinging,
+				"odv": player.is_diving
 			})
 	
 	_update_stats_display()
@@ -933,9 +936,9 @@ func _play_umpire_opening_call(server: String = "player") -> void:
 		if current_state == MatchState.SERVE:
 			var server_name = "PLAYER" if server == "player" else "RIVAL AI"
 			_show_banner("%s GIAO CẦU (BẤM J HOẶC K)" % server_name, Color(1.0, 1.0, 1.0))
-			if server == "ai":
+			if server == "ai" and not is_pvp_active:
 				get_tree().create_timer(0.8).timeout.connect(func():
-					if current_state == MatchState.SERVE and current_server == "ai" and not is_umpire_speaking:
+					if current_state == MatchState.SERVE and current_server == "ai" and not is_umpire_speaking and not is_pvp_active:
 						var is_short = randf() < 0.35
 						var shot_type = "drop" if is_short else "clear"
 						_execute_serve("ai", shot_type)
@@ -955,12 +958,12 @@ func _process_serve_state() -> void:
 					_execute_serve("player", "clear")
 				elif Input.is_key_pressed(KEY_J):
 					_execute_serve("player", "drop")
-		else: # Guest (controls AI Rival)
-			if current_server == "ai":
+		else: # Guest (controls player on their own left court)
+			if current_server == "player":
 				if Input.is_key_pressed(KEY_K):
-					net_manager.send_packet({"t": "p2_serve", "shot_type": "clear"})
+					net_manager.send_packet({"t": "g_serve", "shot_type": "clear"})
 				elif Input.is_key_pressed(KEY_J):
-					net_manager.send_packet({"t": "p2_serve", "shot_type": "drop"})
+					net_manager.send_packet({"t": "g_serve", "shot_type": "drop"})
 	else:
 		if current_server == "player":
 			if Input.is_key_pressed(KEY_K):
@@ -1103,15 +1106,15 @@ func _world_to_screen(world_pos: Vector2) -> Vector2:
 
 
 func _on_shot_hit(shot_type: String, is_smash: bool, quality: float, is_perfect: bool, is_jump_shot: bool, contact_pos: Vector2, hitter: String) -> void:
-	if is_pvp_active and not is_pvp_host and hitter == "ai":
+	if is_pvp_active and not is_pvp_host and hitter == "player":
 		net_manager.send_packet({
-			"t": "hit",
+			"t": "g_hit",
 			"type": shot_type,
 			"smash": is_smash,
 			"q": quality,
 			"perf": is_perfect,
 			"jump": is_jump_shot,
-			"px": contact_pos.x,
+			"px": 1280.0 - contact_pos.x,
 			"py": contact_pos.y
 		})
 	is_serve_in_progress = false

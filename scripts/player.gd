@@ -15,6 +15,7 @@ var prev_velocity_x: float = 0.0
 var squeak_cooldown: float = 0.0
 
 @export var is_ai: bool = false
+@export var is_remote_puppet: bool = false
 @export var court_side: String = "player" # "player" (left) or "ai" (right)
 @export var tuning: GameTuning
 @export var ai_difficulty: int = 1 # 0: EASY (Dễ), 1: MEDIUM (TB), 2: HARD (Khó)
@@ -310,7 +311,9 @@ func _physics_process(delta: float) -> void:
 		if shuttlecock:
 			rally_hits = shuttlecock.tension_level
 	
-	if is_ai:
+	if is_remote_puppet:
+		pass
+	elif is_ai:
 		if ai_pressure_model:
 			ai_pressure_model.update(delta)
 		_process_ai(delta)
@@ -335,7 +338,7 @@ func _physics_process(delta: float) -> void:
 	# TỰ ĐỘNG CỨU CẦU KHI BAY NGƯỜI (AUTOMATIC DIVE RESCUE):
 	# Nếu bay người tới vị trí cầu và chạm vào hitbox cứu cầu thì tự động xúc đỡ cầu ngay lập tức!
 	# CẤM ĐÁNH CẦU KHI CẦU Ở PHẦN SÂN ĐỐI PHƯƠNG HOẶC LỖI LƯỚI (NET FAULT):
-	if is_diving and not dive_has_hit and can_hit and shuttlecock and shuttlecock.is_active:
+	if not is_remote_puppet and is_diving and not dive_has_hit and can_hit and shuttlecock and shuttlecock.is_active:
 		var net_x_val = tuning.net_x if tuning else 640.0
 		var s_pt = shuttlecock.global_position
 		var is_on_my_side = (court_side == "player" and s_pt.x <= net_x_val) or (court_side == "ai" and s_pt.x >= net_x_val)
@@ -349,7 +352,7 @@ func _physics_process(delta: float) -> void:
 				_execute_dive_rescue({"can_hit": true, "zone": "dive", "quality": q, "is_perfect": is_perf})
 	
 	# Input Buffer: Kiểm tra đón đầu phím bấm trong cửa sổ 160ms
-	if not is_ai and input_buffer_timer > 0.0:
+	if not is_ai and not is_remote_puppet and input_buffer_timer > 0.0:
 		var hit_status = get_hit_status()
 		if hit_status["can_hit"]:
 			var act_shot = input_buffer_shot

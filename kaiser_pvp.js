@@ -181,7 +181,10 @@
                     return;
                 }
 
-                // Push game packets to queue
+                // Push game packets to queue (bounded to prevent backlog lag)
+                if (self.packetQueue.length >= 15) {
+                    self.packetQueue.shift();
+                }
                 self.packetQueue.push(data);
             });
 

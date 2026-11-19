@@ -40,6 +40,11 @@ var pvp_selected_char: String = "nishikawa"
 var pvp_selected_points: int = 11
 var pvp_selected_sets: int = 1
 var pvp_is_host: bool = false
+var pvp_is_connected: bool = false
+var btn_pvp_start: Button
+var pvp_countdown_lbl: Label
+var pvp_countdown_timer: float = 0.0
+var pvp_is_counting_down: bool = false
 var pvp_char_btns: Dictionary = {}
 var pvp_pts_btns: Dictionary = {}
 var pvp_sets_btns: Dictionary = {}
@@ -114,6 +119,20 @@ func _ready() -> void:
 	
 	_build_ui()
 	switch_state(MenuState.TITLE)
+
+func _process(delta: float) -> void:
+	if pvp_is_counting_down:
+		pvp_countdown_timer -= delta
+		if pvp_countdown_timer > 0.0:
+			var sec = int(ceil(pvp_countdown_timer))
+			if pvp_countdown_lbl:
+				pvp_countdown_lbl.text = "TRẬN ĐẤU BẮT ĐẦU TRONG: %d..." % sec
+		else:
+			pvp_is_counting_down = false
+			if pvp_countdown_lbl:
+				pvp_countdown_lbl.text = "VÀO SÂN!"
+			start_pvp_match_requested.emit(pvp_current_code, pvp_is_host, pvp_selected_char, pvp_selected_points, pvp_selected_sets)
+			visible = false
 
 func _draw() -> void:
 	if not visible:
@@ -695,6 +714,7 @@ func set_network_manager(net: PvPNetworkManager) -> void:
 		net_manager.peer_connected.connect(_on_net_peer_connected)
 		net_manager.peer_disconnected.connect(_on_net_peer_disconnected)
 		net_manager.ping_updated.connect(_on_net_ping_updated)
+		net_manager.packet_received.connect(_on_net_packet_received)
 
 func _build_pvp_panel(sb_setup: StyleBoxFlat) -> void:
 	pvp_panel = Control.new()
@@ -926,13 +946,34 @@ func _build_pvp_panel(sb_setup: StyleBoxFlat) -> void:
 	pvp_ping_lbl.modulate = Color(0.20, 0.85, 0.50)
 	status_bar.add_child(pvp_ping_lbl)
 	
-	var btn_back = _create_clean_button("QUAY LẠI TRANG CHÍNH", Color(0.70, 0.70, 0.75), Vector2(220, 38), 13)
+	# Action buttons & Countdown row
+	var action_center = VBoxContainer.new()
+	action_center.alignment = BoxContainer.ALIGNMENT_CENTER
+	action_center.add_theme_constant_override("separation", 6)
+	vbox.add_child(action_center)
+	
+	pvp_countdown_lbl = Label.new()
+	pvp_countdown_lbl.text = ""
+	pvp_countdown_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	pvp_countdown_lbl.add_theme_font_size_override("font_size", 20)
+	pvp_countdown_lbl.modulate = Color(1.0, 0.9, 0.2)
+	pvp_countdown_lbl.visible = false
+	action_center.add_child(pvp_countdown_lbl)
+	
+	btn_pvp_start = _create_clean_button("▶ BẮT ĐẦU TRẬN ĐẤU (START MATCH)", Color(0.98, 0.85, 0.25), Vector2(340, 46), 15)
+	btn_pvp_start.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	btn_pvp_start.visible = false
+	btn_pvp_start.pressed.connect(_on_host_press_start_match)
+	action_center.add_child(btn_pvp_start)
+	
+	var btn_back = _create_clean_button("QUAY LẠI TRANG CHÍNH", Color(0.70, 0.70, 0.75), Vector2(220, 36), 12)
+	btn_back.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	btn_back.pressed.connect(func():
 		if net_manager:
 			net_manager.disconnect_peer()
 		switch_state(MenuState.TITLE)
 	)
-	vbox.add_child(btn_back)
+	action_center.add_child(btn_back)
 
 func _update_pvp_controls() -> void:
 	for cid in pvp_char_btns:
@@ -967,10 +1008,15 @@ func _generate_room_code() -> String:
 func _on_host_create_room() -> void:
 	pvp_current_code = _generate_room_code()
 	pvp_is_host = true
+	pvp_is_connected = false
+	pvp_is_counting_down = false
+	if btn_pvp_start: btn_pvp_start.visible = false
+	if pvp_countdown_lbl: pvp_countdown_lbl.visible = false
 	if pvp_host_code_lbl:
 		pvp_host_code_lbl.text = "MÃ PHÒNG: " + pvp_current_code
 	if pvp_status_lbl:
 		pvp_status_lbl.text = "Đang mở phòng [%s]... Hãy gửi mã cho đối thủ!" % pvp_current_code
+		pvp_status_lbl.modulate = Color(0.95, 0.85, 0.3)
 	if net_manager:
 		net_manager.host_room(pvp_current_code)
 
@@ -982,8 +1028,13 @@ func _on_guest_join_room() -> void:
 		return
 	pvp_current_code = code
 	pvp_is_host = false
+	pvp_is_connected = false
+	pvp_is_counting_down = false
+	if btn_pvp_start: btn_pvp_start.visible = false
+	if pvp_countdown_lbl: pvp_countdown_lbl.visible = false
 	if pvp_status_lbl:
 		pvp_status_lbl.text = "Đang kết nối tới phòng [%s]..." % code
+		pvp_status_lbl.modulate = Color(0.3, 0.7, 1.0)
 	if net_manager:
 		net_manager.join_room(code)
 
@@ -991,26 +1042,76 @@ func _on_net_status_changed(st: String) -> void:
 	if not pvp_status_lbl: return
 	match st:
 		"hosting":
-			pvp_status_lbl.text = "Phòng [%s] đang mở. Đang chờ người chơi khác vào..." % pvp_current_code
+			pvp_status_lbl.text = "Phòng [%s] đang mở. Đang chờ đối thủ vào..." % pvp_current_code
 		"connecting":
 			pvp_status_lbl.text = "Đang kết nối tới phòng [%s] qua WebRTC P2P..." % pvp_current_code
-		"connected":
-			pvp_status_lbl.text = "ĐÃ KẾT NỐI P2P THÀNH CÔNG! ĐANG VÀO SÂN ĐẤU..."
 		"disconnected":
 			pvp_status_lbl.text = "Kết nối đã ngắt."
+			pvp_status_lbl.modulate = Color(1.0, 0.4, 0.4)
+			if btn_pvp_start: btn_pvp_start.visible = false
+			pvp_is_connected = false
 		"error":
 			pvp_status_lbl.text = "Lỗi kết nối phòng hoặc không tìm thấy phòng."
+			pvp_status_lbl.modulate = Color(1.0, 0.4, 0.4)
+			if btn_pvp_start: btn_pvp_start.visible = false
+			pvp_is_connected = false
 
 func _on_net_peer_connected(is_h: bool, _room: String) -> void:
+	pvp_is_connected = true
+	pvp_is_host = is_h
+	if is_h:
+		if pvp_status_lbl:
+			pvp_status_lbl.text = "🟢 ĐỐI THỦ ĐÃ VÀO PHÒNG! HÃY BẤM BẮT ĐẦU KHI SẴN SÀNG"
+			pvp_status_lbl.modulate = Color(0.2, 1.0, 0.4)
+		if btn_pvp_start:
+			btn_pvp_start.visible = true
+			btn_pvp_start.text = "▶ BẮT ĐẦU TRẬN ĐẤU (START)"
+	else:
+		if pvp_status_lbl:
+			pvp_status_lbl.text = "🟢 ĐÃ VÀO PHÒNG! ĐANG CHỜ CHỦ PHÒNG BẮT ĐẦU..."
+			pvp_status_lbl.modulate = Color(0.2, 1.0, 0.4)
+		if btn_pvp_start:
+			btn_pvp_start.visible = false
+
+func _on_host_press_start_match() -> void:
+	if not pvp_is_host or not pvp_is_connected:
+		return
+	if btn_pvp_start:
+		btn_pvp_start.visible = false
+	if net_manager:
+		net_manager.send_packet({
+			"t": "lobby_start",
+			"pts": pvp_selected_points,
+			"sets": pvp_selected_sets,
+			"char": pvp_selected_char
+		})
+	_start_pvp_countdown()
+
+func _on_net_packet_received(data: Dictionary) -> void:
+	var t = str(data.get("t", ""))
+	if t == "lobby_start":
+		pvp_selected_points = int(data.get("pts", 11))
+		pvp_selected_sets = int(data.get("sets", 1))
+		_start_pvp_countdown()
+
+func _start_pvp_countdown() -> void:
+	pvp_is_counting_down = true
+	pvp_countdown_timer = 3.0
+	if pvp_countdown_lbl:
+		pvp_countdown_lbl.visible = true
+		pvp_countdown_lbl.text = "TRẬN ĐẤU BẮT ĐẦU TRONG: 3..."
 	if pvp_status_lbl:
-		pvp_status_lbl.text = "ĐÃ KẾT NỐI THÀNH CÔNG! ĐANG VÀO SÂN ĐẤU..."
-	# Emit signal to start match
-	start_pvp_match_requested.emit(pvp_current_code, is_h, pvp_selected_char, pvp_selected_points, pvp_selected_sets)
-	visible = false
+		pvp_status_lbl.text = "🟢 TẤT CẢ SẴN SÀNG! ĐANG VÀO TRẬN..."
+		pvp_status_lbl.modulate = Color(0.2, 1.0, 0.4)
 
 func _on_net_peer_disconnected(reason: String) -> void:
+	pvp_is_connected = false
+	pvp_is_counting_down = false
+	if btn_pvp_start: btn_pvp_start.visible = false
+	if pvp_countdown_lbl: pvp_countdown_lbl.visible = false
 	if pvp_status_lbl:
 		pvp_status_lbl.text = "Mất kết nối: " + reason
+		pvp_status_lbl.modulate = Color(1.0, 0.4, 0.4)
 
 func _on_net_ping_updated(ping: int) -> void:
 	if pvp_ping_lbl:
