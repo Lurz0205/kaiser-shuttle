@@ -667,11 +667,14 @@ func _process_player_input(delta: float) -> void:
 	var cur_d_raw = Input.is_key_pressed(KEY_D) or Input.is_key_pressed(KEY_RIGHT)
 	var cur_a_raw = Input.is_key_pressed(KEY_A) or Input.is_key_pressed(KEY_LEFT)
 	
-	# Nhấp đúp phím D (phải / hướng tới lưới) để BAY NGƯỜI CỨU CẦU:
-	# Lưu ý: Nhấn A (lùi sau) tuyệt đối KHÔNG kích hoạt bay người để tránh lật ngược hướng nhân vật!
-	if cur_d_raw and not prev_key_d_raw:
+	var is_forward_press = (cur_d_raw and not prev_key_d_raw) if court_side == "player" else (cur_a_raw and not prev_key_a_raw)
+	var is_backward_press = (cur_a_raw and not prev_key_a_raw) if court_side == "player" else (cur_d_raw and not prev_key_d_raw)
+	
+	# Nhấp đúp phím hướng tới lưới để BAY NGƯỜI CỨU CẦU:
+	# Lưu ý: Nhấn lùi sau tuyệt đối KHÔNG kích hoạt bay người để tránh lật ngược hướng nhân vật!
+	if is_forward_press:
 		if tap_d_timer > 0.0 and not is_diving and not is_getting_up and is_on_ground():
-			start_dive(1.0)
+			start_dive(1.0 if court_side == "player" else -1.0)
 			tap_d_timer = 0.0
 		else:
 			tap_d_timer = DOUBLE_TAP_WINDOW
@@ -680,8 +683,8 @@ func _process_player_input(delta: float) -> void:
 				squeak_cooldown = 0.12
 				shoe_squeak_triggered.emit()
 				
-	if cur_a_raw and not prev_key_a_raw:
-		# Tiếng rít giày phát ra khi ấn nút di chuyển A:
+	if is_backward_press:
+		# Tiếng rít giày phát ra khi ấn nút di chuyển lùi:
 		if is_on_ground() and not is_diving and not is_getting_up and squeak_cooldown <= 0.0:
 			squeak_cooldown = 0.12
 			shoe_squeak_triggered.emit()

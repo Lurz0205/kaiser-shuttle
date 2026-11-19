@@ -9,11 +9,13 @@ extends Control
 const CustomIcon = preload("res://scripts/ui/custom_icon.gd")
 
 signal start_match_requested(player_char: String, rival_char: String, difficulty: int, target_points: int, match_sets: int)
+signal start_pvp_match_requested(room_code: String, is_host: bool, player_char: String, target_points: int, match_sets: int)
 signal settings_updated(squeak: bool)
 
 enum MenuState {
 	TITLE,
 	MATCH_SETUP,
+	PVP_LOBBY,
 	SETTINGS
 }
 
@@ -25,6 +27,22 @@ var selected_rival_id: String = "wall"
 var selected_difficulty: int = 1 # 0: Dễ, 1: Trung bình, 2: Khó
 var selected_target_points: int = 11 # 11, 15, hoặc 21
 var selected_match_sets: int = 1 # 1 hoặc 3 (Best of 3)
+
+# PvP Parameters
+var pvp_panel: Control
+var net_manager: PvPNetworkManager = null
+var pvp_room_input: LineEdit
+var pvp_host_code_lbl: Label
+var pvp_status_lbl: Label
+var pvp_ping_lbl: Label
+var pvp_current_code: String = ""
+var pvp_selected_char: String = "nishikawa"
+var pvp_selected_points: int = 11
+var pvp_selected_sets: int = 1
+var pvp_is_host: bool = false
+var pvp_char_btns: Dictionary = {}
+var pvp_pts_btns: Dictionary = {}
+var pvp_sets_btns: Dictionary = {}
 
 # Settings parameters
 var squeak_enabled: bool = true
@@ -127,6 +145,10 @@ func switch_state(new_state: MenuState) -> void:
 			_update_difficulty_buttons()
 			_update_points_buttons()
 			_update_sets_buttons()
+	if pvp_panel:
+		pvp_panel.visible = (new_state == MenuState.PVP_LOBBY)
+		if pvp_panel.visible:
+			_update_pvp_controls()
 	if settings_panel: settings_panel.visible = (new_state == MenuState.SETTINGS)
 
 func _build_ui() -> void:
@@ -196,15 +218,19 @@ func _build_ui() -> void:
 	btn_vbox.add_theme_constant_override("separation", 12)
 	title_center.add_child(btn_vbox)
 	
-	var btn_play = _create_clean_button("BẮT ĐẦU TRANH TÀI (PLAY)", Color(0.95, 0.82, 0.25), Vector2(300, 46), 15)
+	var btn_play = _create_clean_button("BẮT ĐẦU TRANH TÀI (VS AI)", Color(0.95, 0.82, 0.25), Vector2(320, 46), 15)
 	btn_play.pressed.connect(func(): switch_state(MenuState.MATCH_SETUP))
 	btn_vbox.add_child(btn_play)
 	
-	var btn_settings = _create_clean_button("CÀI ĐẶT (SETTINGS)", Color(0.40, 0.70, 0.95), Vector2(300, 42), 14)
+	var btn_pvp = _create_clean_button("TRANH TÀI ONLINE (PVP 1V1)", Color(0.18, 0.90, 0.75), Vector2(320, 46), 15)
+	btn_pvp.pressed.connect(func(): switch_state(MenuState.PVP_LOBBY))
+	btn_vbox.add_child(btn_pvp)
+	
+	var btn_settings = _create_clean_button("CÀI ĐẶT (SETTINGS)", Color(0.40, 0.70, 0.95), Vector2(320, 42), 14)
 	btn_settings.pressed.connect(func(): switch_state(MenuState.SETTINGS))
 	btn_vbox.add_child(btn_settings)
 	
-	var btn_quit = _create_clean_button("THOÁT (QUIT)", Color(0.80, 0.35, 0.40), Vector2(300, 40), 13)
+	var btn_quit = _create_clean_button("THOÁT (QUIT)", Color(0.80, 0.35, 0.40), Vector2(320, 40), 13)
 	btn_quit.pressed.connect(func(): get_tree().quit())
 	btn_vbox.add_child(btn_quit)
 
@@ -418,6 +444,8 @@ func _build_ui() -> void:
 	var set_close = _create_clean_button("ĐÓNG", Color(0.95, 0.85, 0.25), Vector2(130, 36), 13)
 	set_close.pressed.connect(func(): switch_state(MenuState.TITLE))
 	set_close_row.add_child(set_close)
+	
+	_build_pvp_panel(sb_setup)
 
 func _create_character_card(cid: String) -> PanelContainer:
 	var data = CHAR_DATA[cid]
@@ -659,3 +687,331 @@ func _update_setup_cards() -> void:
 func _confirm_and_start_match() -> void:
 	start_match_requested.emit(selected_player_id, selected_rival_id, selected_difficulty, selected_target_points, selected_match_sets)
 	visible = false
+
+func set_network_manager(net: PvPNetworkManager) -> void:
+	net_manager = net
+	if net_manager:
+		net_manager.connection_status_changed.connect(_on_net_status_changed)
+		net_manager.peer_connected.connect(_on_net_peer_connected)
+		net_manager.peer_disconnected.connect(_on_net_peer_disconnected)
+		net_manager.ping_updated.connect(_on_net_ping_updated)
+
+func _build_pvp_panel(sb_setup: StyleBoxFlat) -> void:
+	pvp_panel = Control.new()
+	pvp_panel.custom_minimum_size = Vector2(1280, 720)
+	pvp_panel.size = Vector2(1280, 720)
+	pvp_panel.position = Vector2.ZERO
+	pvp_panel.visible = false
+	add_child(pvp_panel)
+	
+	var pvp_box = PanelContainer.new()
+	pvp_box.custom_minimum_size = Vector2(1060, 600)
+	pvp_box.size = Vector2(1060, 600)
+	pvp_box.position = Vector2(110, 60)
+	pvp_box.add_theme_stylebox_override("panel", sb_setup)
+	pvp_panel.add_child(pvp_box)
+	
+	var m = MarginContainer.new()
+	m.add_theme_constant_override("margin_left", 24)
+	m.add_theme_constant_override("margin_top", 18)
+	m.add_theme_constant_override("margin_right", 24)
+	m.add_theme_constant_override("margin_bottom", 18)
+	pvp_box.add_child(m)
+	
+	var vbox = VBoxContainer.new()
+	vbox.add_theme_constant_override("separation", 12)
+	m.add_child(vbox)
+	
+	# Header
+	var header_row = HBoxContainer.new()
+	header_row.alignment = BoxContainer.ALIGNMENT_CENTER
+	var lbl_title = Label.new()
+	lbl_title.text = "TRANH TÀI ONLINE (PVP 1V1 P2P WEBRTC)"
+	lbl_title.add_theme_font_size_override("font_size", 20)
+	lbl_title.modulate = Color(0.20, 0.90, 0.80)
+	header_row.add_child(lbl_title)
+	vbox.add_child(header_row)
+	
+	var lbl_sub = Label.new()
+	lbl_sub.text = "Kết nối trực tiếp trình duyệt - trình duyệt qua WebRTC UDP DataChannel. Không độ trễ máy chủ (15-40ms)!"
+	lbl_sub.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	lbl_sub.add_theme_font_size_override("font_size", 12)
+	lbl_sub.modulate = Color(0.70, 0.80, 0.90, 0.8)
+	vbox.add_child(lbl_sub)
+	
+	# Config row: Character + Points + Sets
+	var cfg_row = HBoxContainer.new()
+	cfg_row.alignment = BoxContainer.ALIGNMENT_CENTER
+	cfg_row.add_theme_constant_override("separation", 24)
+	vbox.add_child(cfg_row)
+	
+	# Character picker
+	var char_box = HBoxContainer.new()
+	char_box.add_theme_constant_override("separation", 6)
+	var lbl_c = Label.new()
+	lbl_c.text = "TƯỚNG:"
+	lbl_c.add_theme_font_size_override("font_size", 12)
+	lbl_c.modulate = Color(0.85, 0.88, 0.92)
+	char_box.add_child(lbl_c)
+	
+	for cid in ["nishikawa", "fuji", "wall"]:
+		var b = _create_clean_button(CHAR_DATA[cid]["name"], CHAR_DATA[cid]["color"], Vector2(100, 32), 11)
+		b.pressed.connect(func(): _select_pvp_char(cid))
+		char_box.add_child(b)
+		pvp_char_btns[cid] = b
+	cfg_row.add_child(char_box)
+	
+	# Points picker
+	var pts_box = HBoxContainer.new()
+	pts_box.add_theme_constant_override("separation", 6)
+	var lbl_p = Label.new()
+	lbl_p.text = "ĐIỂM:"
+	lbl_p.add_theme_font_size_override("font_size", 12)
+	pts_box.add_child(lbl_p)
+	for pts in [11, 21]:
+		var b = _create_clean_button(str(pts) + " ĐIỂM", Color(0.95, 0.82, 0.25), Vector2(75, 32), 11)
+		b.pressed.connect(func(): _select_pvp_pts(pts))
+		pts_box.add_child(b)
+		pvp_pts_btns[pts] = b
+	cfg_row.add_child(pts_box)
+	
+	# Sets picker
+	var sets_box = HBoxContainer.new()
+	sets_box.add_theme_constant_override("separation", 6)
+	var lbl_s = Label.new()
+	lbl_s.text = "SỐ SET:"
+	lbl_s.add_theme_font_size_override("font_size", 12)
+	sets_box.add_child(lbl_s)
+	for s_cnt in [1, 3]:
+		var b = _create_clean_button("1 SET" if s_cnt == 1 else "BEST OF 3", Color(0.35, 0.75, 1.0), Vector2(85, 32), 11)
+		b.pressed.connect(func(): _select_pvp_sets(s_cnt))
+		sets_box.add_child(b)
+		pvp_sets_btns[s_cnt] = b
+	cfg_row.add_child(sets_box)
+	
+	var sep = HSeparator.new()
+	vbox.add_child(sep)
+	
+	# Two Action Cards: Host (Left) and Join (Right)
+	var cards_row = HBoxContainer.new()
+	cards_row.alignment = BoxContainer.ALIGNMENT_CENTER
+	cards_row.add_theme_constant_override("separation", 28)
+	vbox.add_child(cards_row)
+	
+	# Host Card
+	var host_card = PanelContainer.new()
+	host_card.custom_minimum_size = Vector2(480, 260)
+	var sb_card = StyleBoxFlat.new()
+	sb_card.bg_color = Color(0.10, 0.14, 0.20, 0.90)
+	sb_card.border_width_left = 1
+	sb_card.border_width_top = 1
+	sb_card.border_width_right = 1
+	sb_card.border_width_bottom = 1
+	sb_card.border_color = Color(0.20, 0.80, 0.65, 0.5)
+	sb_card.corner_radius_top_left = 8
+	sb_card.corner_radius_top_right = 8
+	sb_card.corner_radius_bottom_right = 8
+	sb_card.corner_radius_bottom_left = 8
+	host_card.add_theme_stylebox_override("panel", sb_card)
+	cards_row.add_child(host_card)
+	
+	var hm = MarginContainer.new()
+	hm.add_theme_constant_override("margin_left", 16)
+	hm.add_theme_constant_override("margin_top", 14)
+	hm.add_theme_constant_override("margin_right", 16)
+	hm.add_theme_constant_override("margin_bottom", 14)
+	host_card.add_child(hm)
+	
+	var hv = VBoxContainer.new()
+	hv.add_theme_constant_override("separation", 10)
+	hm.add_child(hv)
+	
+	var h_title = Label.new()
+	h_title.text = "CÁCH 1: TẠO PHÒNG (BẠN LÀ CHỦ NHÀ - P1)"
+	h_title.add_theme_font_size_override("font_size", 14)
+	h_title.modulate = Color(0.25, 0.90, 0.70)
+	hv.add_child(h_title)
+	
+	var h_desc = Label.new()
+	h_desc.text = "Tạo phòng và gửi mã cho bạn bè để cùng vào sân đấu (Sân trái P1)."
+	h_desc.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	h_desc.add_theme_font_size_override("font_size", 11)
+	h_desc.modulate = Color(0.70, 0.75, 0.85)
+	hv.add_child(h_desc)
+	
+	var btn_gen_room = _create_clean_button("TẠO MÃ PHÒNG (HOST)", Color(0.25, 0.90, 0.70), Vector2(220, 38), 13)
+	btn_gen_room.pressed.connect(_on_host_create_room)
+	hv.add_child(btn_gen_room)
+	
+	var code_row = HBoxContainer.new()
+	code_row.add_theme_constant_override("separation", 10)
+	pvp_host_code_lbl = Label.new()
+	pvp_host_code_lbl.text = "MÃ PHÒNG: ----"
+	pvp_host_code_lbl.add_theme_font_size_override("font_size", 22)
+	pvp_host_code_lbl.modulate = Color(0.98, 0.85, 0.25)
+	code_row.add_child(pvp_host_code_lbl)
+	
+	var btn_copy = _create_clean_button("SAO CHÉP MÃ", Color(0.85, 0.85, 0.85), Vector2(110, 32), 11)
+	btn_copy.pressed.connect(func():
+		if not pvp_current_code.is_empty():
+			DisplayServer.clipboard_set(pvp_current_code)
+			btn_copy.text = "ĐÃ CHÉP!"
+	)
+	code_row.add_child(btn_copy)
+	hv.add_child(code_row)
+	
+	# Join Card
+	var join_card = PanelContainer.new()
+	join_card.custom_minimum_size = Vector2(480, 260)
+	var sb_jcard = sb_card.duplicate()
+	sb_jcard.border_color = Color(0.30, 0.70, 1.0, 0.5)
+	join_card.add_theme_stylebox_override("panel", sb_jcard)
+	cards_row.add_child(join_card)
+	
+	var jm = MarginContainer.new()
+	jm.add_theme_constant_override("margin_left", 16)
+	jm.add_theme_constant_override("margin_top", 14)
+	jm.add_theme_constant_override("margin_right", 16)
+	jm.add_theme_constant_override("margin_bottom", 14)
+	join_card.add_child(jm)
+	
+	var jv = VBoxContainer.new()
+	jv.add_theme_constant_override("separation", 10)
+	jm.add_child(jv)
+	
+	var j_title = Label.new()
+	j_title.text = "CÁCH 2: THAM GIA PHÒNG (BẠN LÀ KHÁCH - P2)"
+	j_title.add_theme_font_size_override("font_size", 14)
+	j_title.modulate = Color(0.35, 0.75, 1.0)
+	jv.add_child(j_title)
+	
+	var j_desc = Label.new()
+	j_desc.text = "Nhập mã phòng 4 ký tự do bạn bè gửi để vào thi đấu (Sân phải P2)."
+	j_desc.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	j_desc.add_theme_font_size_override("font_size", 11)
+	j_desc.modulate = Color(0.70, 0.75, 0.85)
+	jv.add_child(j_desc)
+	
+	var input_row = HBoxContainer.new()
+	input_row.add_theme_constant_override("separation", 10)
+	
+	pvp_room_input = LineEdit.new()
+	pvp_room_input.custom_minimum_size = Vector2(180, 38)
+	pvp_room_input.placeholder_text = "MÃ (VD: 8899)"
+	pvp_room_input.max_length = 6
+	pvp_room_input.alignment = HORIZONTAL_ALIGNMENT_CENTER
+	pvp_room_input.add_theme_font_size_override("font_size", 16)
+	input_row.add_child(pvp_room_input)
+	
+	var btn_join = _create_clean_button("KẾT NỐI (JOIN)", Color(0.35, 0.75, 1.0), Vector2(140, 38), 13)
+	btn_join.pressed.connect(_on_guest_join_room)
+	input_row.add_child(btn_join)
+	jv.add_child(input_row)
+	
+	# Status Bar & Back Button
+	var status_bar = HBoxContainer.new()
+	status_bar.alignment = BoxContainer.ALIGNMENT_CENTER
+	status_bar.add_theme_constant_override("separation", 20)
+	vbox.add_child(status_bar)
+	
+	pvp_status_lbl = Label.new()
+	pvp_status_lbl.text = "Trạng thái: Sẵn sàng kết nối"
+	pvp_status_lbl.add_theme_font_size_override("font_size", 13)
+	pvp_status_lbl.modulate = Color(0.85, 0.90, 0.95)
+	status_bar.add_child(pvp_status_lbl)
+	
+	pvp_ping_lbl = Label.new()
+	pvp_ping_lbl.text = "Ping: -- ms"
+	pvp_ping_lbl.add_theme_font_size_override("font_size", 13)
+	pvp_ping_lbl.modulate = Color(0.20, 0.85, 0.50)
+	status_bar.add_child(pvp_ping_lbl)
+	
+	var btn_back = _create_clean_button("QUAY LẠI TRANG CHÍNH", Color(0.70, 0.70, 0.75), Vector2(220, 38), 13)
+	btn_back.pressed.connect(func():
+		if net_manager:
+			net_manager.disconnect_peer()
+		switch_state(MenuState.TITLE)
+	)
+	vbox.add_child(btn_back)
+
+func _update_pvp_controls() -> void:
+	for cid in pvp_char_btns:
+		var b = pvp_char_btns[cid]
+		b.modulate = Color(1.3, 1.3, 1.3) if cid == pvp_selected_char else Color(0.6, 0.6, 0.6)
+	for pts in pvp_pts_btns:
+		var b = pvp_pts_btns[pts]
+		b.modulate = Color(1.3, 1.3, 1.3) if pts == pvp_selected_points else Color(0.6, 0.6, 0.6)
+	for s in pvp_sets_btns:
+		var b = pvp_sets_btns[s]
+		b.modulate = Color(1.3, 1.3, 1.3) if s == pvp_selected_sets else Color(0.6, 0.6, 0.6)
+
+func _select_pvp_char(cid: String) -> void:
+	pvp_selected_char = cid
+	_update_pvp_controls()
+
+func _select_pvp_pts(pts: int) -> void:
+	pvp_selected_points = pts
+	_update_pvp_controls()
+
+func _select_pvp_sets(s_cnt: int) -> void:
+	pvp_selected_sets = s_cnt
+	_update_pvp_controls()
+
+func _generate_room_code() -> String:
+	var chars = "23456789ABCDEFGHJKLMNPQRSTUVWXYZ"
+	var res = ""
+	for i in range(4):
+		res += chars[randi() % chars.length()]
+	return res
+
+func _on_host_create_room() -> void:
+	pvp_current_code = _generate_room_code()
+	pvp_is_host = true
+	if pvp_host_code_lbl:
+		pvp_host_code_lbl.text = "MÃ PHÒNG: " + pvp_current_code
+	if pvp_status_lbl:
+		pvp_status_lbl.text = "Đang mở phòng [%s]... Hãy gửi mã cho đối thủ!" % pvp_current_code
+	if net_manager:
+		net_manager.host_room(pvp_current_code)
+
+func _on_guest_join_room() -> void:
+	if not pvp_room_input: return
+	var code = pvp_room_input.text.strip_edges().to_upper()
+	if code.is_empty():
+		if pvp_status_lbl: pvp_status_lbl.text = "Lỗi: Vui lòng nhập mã phòng!"
+		return
+	pvp_current_code = code
+	pvp_is_host = false
+	if pvp_status_lbl:
+		pvp_status_lbl.text = "Đang kết nối tới phòng [%s]..." % code
+	if net_manager:
+		net_manager.join_room(code)
+
+func _on_net_status_changed(st: String) -> void:
+	if not pvp_status_lbl: return
+	match st:
+		"hosting":
+			pvp_status_lbl.text = "Phòng [%s] đang mở. Đang chờ người chơi khác vào..." % pvp_current_code
+		"connecting":
+			pvp_status_lbl.text = "Đang kết nối tới phòng [%s] qua WebRTC P2P..." % pvp_current_code
+		"connected":
+			pvp_status_lbl.text = "ĐÃ KẾT NỐI P2P THÀNH CÔNG! ĐANG VÀO SÂN ĐẤU..."
+		"disconnected":
+			pvp_status_lbl.text = "Kết nối đã ngắt."
+		"error":
+			pvp_status_lbl.text = "Lỗi kết nối phòng hoặc không tìm thấy phòng."
+
+func _on_net_peer_connected(is_h: bool, _room: String) -> void:
+	if pvp_status_lbl:
+		pvp_status_lbl.text = "ĐÃ KẾT NỐI THÀNH CÔNG! ĐANG VÀO SÂN ĐẤU..."
+	# Emit signal to start match
+	start_pvp_match_requested.emit(pvp_current_code, is_h, pvp_selected_char, pvp_selected_points, pvp_selected_sets)
+	visible = false
+
+func _on_net_peer_disconnected(reason: String) -> void:
+	if pvp_status_lbl:
+		pvp_status_lbl.text = "Mất kết nối: " + reason
+
+func _on_net_ping_updated(ping: int) -> void:
+	if pvp_ping_lbl:
+		pvp_ping_lbl.text = "Ping: %d ms (%s)" % [ping, "P2P SIÊU TỐC" if ping < 60 else "ỔN ĐỊNH"]
