@@ -17,6 +17,7 @@
 [ext_resource type="AudioStream" path="res://assets/audio/isabel_slowmo.wav" id="15_isabel_slowmo"]
 [ext_resource type="AudioStream" path="res://assets/audio/low_ball_play.wav" id="16_low_ball_play"]
 [ext_resource type="AudioStream" path="res://assets/audio/lobby_theme.ogg" id="17_lobby_theme"]
+[ext_resource type="PackedScene" path="res://scenes/BWFScoreboard.tscn" id="18_bwf_scoreboard"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_net"]
 size = Vector2(14, 110)
@@ -262,6 +263,7 @@ grow_vertical = 2
 mouse_filter = 2
 
 [node name="ScoreBoard" type="PanelContainer" parent="HUD"]
+visible = false
 anchors_preset = 5
 anchor_left = 0.5
 anchor_right = 0.5
@@ -337,23 +339,22 @@ label_settings = SubResource("LabelSettings_score")
 horizontal_alignment = 1
 vertical_alignment = 1
 
-[node name="PillStats" type="Panel" parent="HUD/ScoreBoard/Inner"]
+[node name="BWFScoreboard" parent="HUD" instance=ExtResource("18_bwf_scoreboard")]
+
+[node name="PillStats" type="Panel" parent="HUD"]
 visible = false
 layout_mode = 1
-anchors_preset = 7
+anchors_preset = 5
 anchor_left = 0.5
-anchor_top = 1.0
 anchor_right = 0.5
-anchor_bottom = 1.0
-offset_left = -190.0
-offset_top = -34.0
-offset_right = 190.0
-offset_bottom = -8.0
+offset_left = -140.0
+offset_top = 82.0
+offset_right = 140.0
+offset_bottom = 106.0
 grow_horizontal = 2
-grow_vertical = 0
 theme_override_styles/panel = SubResource("StyleBoxFlat_stat_pill")
 
-[node name="LabelSpikeStats" type="Label" parent="HUD/ScoreBoard/Inner/PillStats"]
+[node name="LabelSpikeStats" type="Label" parent="HUD/PillStats"]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0

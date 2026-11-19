@@ -1,0 +1,138 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/ui/bwf_scoreboard.gd" id="1_script"]
+[ext_resource type="Texture2D" path="res://assets/ui/scoreboard_bwf_base.png" id="2_base"]
+
+[node name="BWFScoreboard" type="Control"]
+custom_minimum_size = Vector2(440, 64)
+layout_mode = 3
+anchors_preset = 5
+anchor_left = 0.5
+anchor_right = 0.5
+offset_left = -220.0
+offset_top = 14.0
+offset_right = 220.0
+offset_bottom = 78.0
+grow_horizontal = 2
+pivot_offset = Vector2(220, 0)
+script = ExtResource("1_script")
+
+[node name="BaseTexture" type="TextureRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+texture = ExtResource("2_base")
+expand_mode = 1
+
+[node name="NameP1" type="Label" parent="BaseTexture"]
+layout_mode = 0
+offset_left = 68.0
+offset_top = 2.0
+offset_right = 274.0
+offset_bottom = 32.0
+theme_override_colors/font_color = Color(0.08, 0.08, 0.12, 1)
+theme_override_font_sizes/font_size = 15
+text = "MOMOTA"
+vertical_alignment = 1
+
+[node name="NameP2" type="Label" parent="BaseTexture"]
+layout_mode = 0
+offset_left = 68.0
+offset_top = 33.0
+offset_right = 274.0
+offset_bottom = 63.0
+theme_override_colors/font_color = Color(0.08, 0.08, 0.12, 1)
+theme_override_font_sizes/font_size = 15
+text = "AXELSEN"
+vertical_alignment = 1
+
+[node name="ServerIndicator" type="ColorRect" parent="BaseTexture"]
+layout_mode = 0
+offset_left = 276.0
+offset_top = 2.0
+offset_right = 280.0
+offset_bottom = 32.0
+color = Color(0.89, 1, 0.08, 1)
+
+[node name="Scores" type="Control" parent="BaseTexture"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="Score_P1_S1" type="Label" parent="BaseTexture/Scores"]
+layout_mode = 0
+offset_left = 280.0
+offset_top = 2.0
+offset_right = 333.0
+offset_bottom = 32.0
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_font_sizes/font_size = 18
+text = "22"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="Score_P1_S2" type="Label" parent="BaseTexture/Scores"]
+layout_mode = 0
+offset_left = 333.0
+offset_top = 2.0
+offset_right = 386.0
+offset_bottom = 32.0
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_font_sizes/font_size = 18
+text = "18"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="Score_P1_S3" type="Label" parent="BaseTexture/Scores"]
+layout_mode = 0
+offset_left = 386.0
+offset_top = 2.0
+offset_right = 438.0
+offset_bottom = 32.0
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_font_sizes/font_size = 18
+text = "4"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="Score_P2_S1" type="Label" parent="BaseTexture/Scores"]
+layout_mode = 0
+offset_left = 280.0
+offset_top = 33.0
+offset_right = 333.0
+offset_bottom = 63.0
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_font_sizes/font_size = 18
+text = "20"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="Score_P2_S2" type="Label" parent="BaseTexture/Scores"]
+layout_mode = 0
+offset_left = 333.0
+offset_top = 33.0
+offset_right = 386.0
+offset_bottom = 63.0
+theme_override_colors/font_color = Color(0.89, 1, 0.08, 1)
+theme_override_font_sizes/font_size = 18
+text = "21"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="Score_P2_S3" type="Label" parent="BaseTexture/Scores"]
+layout_mode = 0
+offset_left = 386.0
+offset_top = 33.0
+offset_right = 438.0
+offset_bottom = 63.0
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_font_sizes/font_size = 18
+text = "6"
+horizontal_alignment = 1
+vertical_alignment = 1

@@ -45,13 +45,14 @@ var effects_overlay: Node2D = null
 @onready var shuttlecock: Shuttlecock = $Shuttlecock
 
 # HUD
-@onready var scoreboard: PanelContainer = $HUD/ScoreBoard
+@onready var bwf_scoreboard: BWFScoreboard = $HUD/BWFScoreboard
+@onready var scoreboard: PanelContainer = get_node_or_null("HUD/ScoreBoard")
 @onready var controls_bar: PanelContainer = $HUD/ControlsBar
-@onready var label_score: Label = $HUD/ScoreBoard/Inner/LabelScore
-@onready var label_player_badge: Label = $HUD/ScoreBoard/Inner/BadgePlayer/LabelPlayer
-@onready var label_rival_badge: Label = $HUD/ScoreBoard/Inner/BadgeRival/LabelRival
-@onready var pill_stats: Panel = $HUD/ScoreBoard/Inner/PillStats
-@onready var label_spike_stats: Label = $HUD/ScoreBoard/Inner/PillStats/LabelSpikeStats
+@onready var label_score: Label = get_node_or_null("HUD/ScoreBoard/Inner/LabelScore")
+@onready var label_player_badge: Label = get_node_or_null("HUD/ScoreBoard/Inner/BadgePlayer/LabelPlayer")
+@onready var label_rival_badge: Label = get_node_or_null("HUD/ScoreBoard/Inner/BadgeRival/LabelRival")
+@onready var pill_stats: Panel = $HUD/PillStats
+@onready var label_spike_stats: Label = $HUD/PillStats/LabelSpikeStats
 @onready var label_banner: Label = $HUD/LabelBanner
 @onready var flash_rect: ColorRect = $HUD/FlashRect
 @onready var grayscale_rect: ColorRect = $HUD/GrayscaleRect
@@ -67,6 +68,10 @@ var aoi_shield_start_ticks: int = 0
 
 # Match Rules & Target Points
 var target_match_points: int = 11
+var total_match_sets: int = 1
+var current_set_index: int = 0
+var sets_won_player: int = 0
+var sets_won_ai: int = 0
 var is_umpire_speaking: bool = false
 var match_over_dialog: PanelContainer = null
 
@@ -293,8 +298,10 @@ func _ready() -> void:
 
 
 func _set_in_game_hud_visible(show: bool) -> void:
+	if bwf_scoreboard:
+		bwf_scoreboard.visible = show
 	if scoreboard:
-		scoreboard.visible = show
+		scoreboard.visible = false # Legacy scoreboard stays hidden
 	if controls_bar:
 		controls_bar.visible = show
 	if btn_char_select:
@@ -381,8 +388,16 @@ func _toggle_character_select() -> void:
 		main_menu.visible = true
 
 
-func _on_menu_start_match(p_id: String, r_id: String, diff: int, target_points: int = 11) -> void:
+func _on_menu_start_match(p_id: String, r_id: String, diff: int, target_points: int = 11, match_sets: int = 1) -> void:
 	target_match_points = target_points
+	total_match_sets = match_sets
+	current_set_index = 0
+	sets_won_player = 0
+	sets_won_ai = 0
+	score_player = 0
+	score_ai = 0
+	current_server = "player"
+	
 	if match_over_dialog:
 		match_over_dialog.visible = false
 	_set_in_game_hud_visible(true)
@@ -416,9 +431,22 @@ func _on_menu_start_match(p_id: String, r_id: String, diff: int, target_points: 
 	if label_rival_badge and ai_rival and ai_rival.stats:
 		label_rival_badge.text = ai_rival.stats.character_name.to_upper()
 		
+	# Khởi tạo bảng điểm BWF chuẩn truyền hình
+	if bwf_scoreboard:
+		bwf_scoreboard.reset_scoreboard(total_match_sets)
+		var p_name = p_id.to_upper()
+		var r_name = r_id.to_upper()
+		if player and player.stats:
+			p_name = player.stats.character_name.split("(")[0].strip_edges().to_upper()
+		if ai_rival and ai_rival.stats:
+			r_name = ai_rival.stats.character_name.split("(")[0].strip_edges().to_upper()
+		var flag_p1 = "JP" if p_id == "nishikawa" or p_id == "fuji" else "DK"
+		var flag_p2 = "DK" if r_id == "wall" else "JP"
+		bwf_scoreboard.set_players(p_name, r_name, flag_p1, flag_p2)
+		bwf_scoreboard.update_current_score(0, 0)
+		bwf_scoreboard.set_server(false)
+		
 	# Reset điểm và bắt đầu giao cầu
-	score_player = 0
-	score_ai = 0
 	_update_scoreboard()
 	_setup_serve("player")
 	_play_umpire_opening_call("player")
@@ -1561,28 +1589,68 @@ func _award_point(winner: String, reason: String) -> void:
 	_update_scoreboard()
 	
 	# ==========================================================
-	# BWF DEUCE & MATCH WINNING RULES (LUẬT CÁCH 2 ĐIỂM)
+	# BWF DEUCE & SET / MATCH WINNING RULES (LUẬT THI ĐẤU BWF)
 	# ==========================================================
 	var max_cap = 30 if target_match_points == 21 else (target_match_points + 6)
 	var diff = abs(score_player - score_ai)
-	var is_match_won = false
-	var champ = ""
+	var is_set_won = false
+	var set_winner = ""
 	
 	if score_player >= target_match_points or score_ai >= target_match_points:
 		if diff >= 2 or score_player >= max_cap or score_ai >= max_cap:
-			is_match_won = true
-			champ = "PLAYER" if score_player > score_ai else "RIVAL AI"
+			is_set_won = true
+			set_winner = "player" if score_player > score_ai else "ai"
 		else:
 			# Deuce: Cách 2 điểm mới ăn
 			_show_banner("DEUCE! CÁCH 2 ĐIỂM ĐỂ THẮNG (%d - %d)" % [score_player, score_ai], Color(1.0, 0.88, 0.35))
 	
-	if is_match_won:
+	if is_set_won:
 		current_state = MatchState.POINT_OVER
-		_show_match_over_dialog(champ)
+		var winner_is_ai = (set_winner == "ai")
+		if winner_is_ai:
+			sets_won_ai += 1
+		else:
+			sets_won_player += 1
+			
+		if bwf_scoreboard:
+			bwf_scoreboard.finish_set(current_set_index, winner_is_ai)
+			
+		var is_match_over = false
+		if total_match_sets == 1:
+			is_match_over = true
+		else:
+			# Best of 3 sets: Thắng 2 set là vô địch
+			if sets_won_player >= 2 or sets_won_ai >= 2:
+				is_match_over = true
+				
+		if is_match_over:
+			var champ = "PLAYER" if sets_won_player > sets_won_ai else "RIVAL AI"
+			_show_match_over_dialog(champ)
+			return
+			
+		# Chuyển sang Set tiếp theo trong trận 3 Set
+		var set_banner = "KẾT THÚC SET %d! [TỈ SỐ SET: %d - %d]" % [current_set_index + 1, sets_won_player, sets_won_ai]
+		_show_banner(set_banner, Color(1.0, 0.90, 0.25), false)
+		await get_tree().create_timer(2.2).timeout
+		
+		current_set_index += 1
+		score_player = 0
+		score_ai = 0
+		if bwf_scoreboard:
+			bwf_scoreboard.advance_to_next_set()
+			bwf_scoreboard.update_current_score(0, 0)
+			
+		# Người thắng set trước có quyền giao cầu set sau
+		current_server = set_winner
+		if bwf_scoreboard:
+			bwf_scoreboard.set_server(current_server != "player")
+		_setup_serve(current_server)
 		return
 	
 	await get_tree().create_timer(1.2).timeout
 	current_server = winner
+	if bwf_scoreboard:
+		bwf_scoreboard.set_server(current_server != "player")
 	_setup_serve(current_server)
 
 
@@ -1692,9 +1760,13 @@ func _show_match_over_dialog(champ: String) -> void:
 		lbl_title.text = "[ %s CHIẾN THẮNG TRẬN ĐẤU! ]" % champ
 		lbl_title.modulate = Color(0.35, 2.0, 0.6) if champ == "PLAYER" else Color(2.0, 0.45, 0.45)
 	if lbl_score_res:
-		lbl_score_res.text = "%d   -   %d" % [score_player, score_ai]
+		if total_match_sets == 1:
+			lbl_score_res.text = "%d   -   %d" % [score_player, score_ai]
+		else:
+			lbl_score_res.text = "TỈ SỐ SET: %d   -   %d" % [sets_won_player, sets_won_ai]
 	if lbl_sub:
-		lbl_sub.text = "TRẬN ĐẤU CHẠM %d ĐIỂM (CÁCH 2 ĐIỂM) • BWF RULES" % target_match_points
+		var mode_str = "1 SET" if total_match_sets == 1 else "BEST OF 3 SETS"
+		lbl_sub.text = "THỂ THỨC: %s (CHẠM %d ĐIỂM) • BWF RULES" % [mode_str, target_match_points]
 		
 	match_over_dialog.visible = true
 
@@ -1702,8 +1774,15 @@ func _show_match_over_dialog(champ: String) -> void:
 func _on_match_over_play_again() -> void:
 	if match_over_dialog:
 		match_over_dialog.visible = false
+	current_set_index = 0
+	sets_won_player = 0
+	sets_won_ai = 0
 	score_player = 0
 	score_ai = 0
+	if bwf_scoreboard:
+		bwf_scoreboard.reset_scoreboard(total_match_sets)
+		bwf_scoreboard.update_current_score(0, 0)
+		bwf_scoreboard.set_server(false)
 	_update_scoreboard()
 	if player and player.stats:
 		player.stats.reset_stamina()
@@ -1712,6 +1791,7 @@ func _on_match_over_play_again() -> void:
 		ai_rival.stats.reset_stamina()
 		ai_rival.stats.reset_torque()
 		ai_rival.reset_in_match_learning()
+	current_server = "player"
 	_setup_serve("player")
 	_play_umpire_opening_call("player")
 
@@ -1752,7 +1832,11 @@ func _update_floor_reflection() -> void:
 
 
 func _update_scoreboard() -> void:
-	label_score.text = "%d  -  %d" % [score_player, score_ai]
+	if label_score:
+		label_score.text = "%d  -  %d" % [score_player, score_ai]
+	if bwf_scoreboard:
+		bwf_scoreboard.update_current_score(score_player, score_ai)
+		bwf_scoreboard.set_server(current_server != "player")
 
 
 func _show_banner(text: String, col: Color, auto_hide: bool = false, duration: float = 1.0) -> void:
@@ -1907,101 +1991,95 @@ func _on_effects_overlay_draw() -> void:
 # ==========================================================
 
 func _setup_hud_stamina_bars() -> void:
-	var inner = get_node_or_null("HUD/ScoreBoard/Inner")
-	if not inner:
+	var hud = get_node_or_null("HUD")
+	if not hud:
 		return
 	
-	# --- PLAYER 1 (Dưới BadgePlayer: left=16, right=140) ---
-	# 1. Player Stamina Bar (top=47, bottom=51.5)
+	# --- PLAYER 1 (Dưới BWFScoreboard cánh trái: left=425, right=565, top=82) ---
+	# 1. Player Stamina Bar
 	stamina_bar_bg_player = ColorRect.new()
 	stamina_bar_bg_player.color = Color(0.08, 0.10, 0.14, 0.85)
-	stamina_bar_bg_player.set_anchors_preset(Control.PRESET_TOP_LEFT)
-	stamina_bar_bg_player.offset_left = 16.0
-	stamina_bar_bg_player.offset_top = 47.0
-	stamina_bar_bg_player.offset_right = 140.0
-	stamina_bar_bg_player.offset_bottom = 51.5
-	inner.add_child(stamina_bar_bg_player)
+	stamina_bar_bg_player.offset_left = 425.0
+	stamina_bar_bg_player.offset_top = 82.0
+	stamina_bar_bg_player.offset_right = 565.0
+	stamina_bar_bg_player.offset_bottom = 86.5
+	hud.add_child(stamina_bar_bg_player)
 	
 	stamina_bar_cap_player = ColorRect.new()
 	stamina_bar_cap_player.color = Color(0.25, 0.30, 0.38, 0.45)
 	stamina_bar_cap_player.position = Vector2.ZERO
-	stamina_bar_cap_player.size = Vector2(124.0, 4.5)
+	stamina_bar_cap_player.size = Vector2(140.0, 4.5)
 	stamina_bar_bg_player.add_child(stamina_bar_cap_player)
 	
 	stamina_bar_fill_player = ColorRect.new()
 	stamina_bar_fill_player.color = Color(0.2, 0.9, 0.45, 0.95)
 	stamina_bar_fill_player.position = Vector2.ZERO
-	stamina_bar_fill_player.size = Vector2(124.0, 4.5)
+	stamina_bar_fill_player.size = Vector2(140.0, 4.5)
 	stamina_bar_bg_player.add_child(stamina_bar_fill_player)
 	
-	# 2. Player Accuracy Bar (top=53.5, bottom=58)
+	# 2. Player Accuracy Bar (top=88, bottom=91.5)
 	accuracy_bar_bg_player = ColorRect.new()
 	accuracy_bar_bg_player.color = Color(0.08, 0.10, 0.14, 0.85)
-	accuracy_bar_bg_player.set_anchors_preset(Control.PRESET_TOP_LEFT)
-	accuracy_bar_bg_player.offset_left = 16.0
-	accuracy_bar_bg_player.offset_top = 53.5
-	accuracy_bar_bg_player.offset_right = 140.0
-	accuracy_bar_bg_player.offset_bottom = 58.0
-	inner.add_child(accuracy_bar_bg_player)
+	accuracy_bar_bg_player.offset_left = 425.0
+	accuracy_bar_bg_player.offset_top = 88.0
+	accuracy_bar_bg_player.offset_right = 565.0
+	accuracy_bar_bg_player.offset_bottom = 91.5
+	hud.add_child(accuracy_bar_bg_player)
 	
 	accuracy_bar_fill_player = ColorRect.new()
 	accuracy_bar_fill_player.color = Color(0.20, 0.88, 1.0, 0.95)
 	accuracy_bar_fill_player.position = Vector2.ZERO
-	accuracy_bar_fill_player.size = Vector2(124.0, 4.5)
+	accuracy_bar_fill_player.size = Vector2(140.0, 4.5)
 	accuracy_bar_bg_player.add_child(accuracy_bar_fill_player)
 	
 	# Vạch cảnh báo 50% nguy hiểm đánh hỏng
 	var tick_p = ColorRect.new()
 	tick_p.color = Color(1.0, 1.0, 1.0, 0.4)
-	tick_p.position = Vector2(62.0, -1.0)
-	tick_p.size = Vector2(1.0, 6.5)
+	tick_p.position = Vector2(70.0, -1.0)
+	tick_p.size = Vector2(1.0, 5.5)
 	accuracy_bar_bg_player.add_child(tick_p)
 	
-	# --- RIVAL AI (Dưới BadgeRival: left=-140, right=-16) ---
-	# 1. AI Stamina Bar (top=47, bottom=51.5)
+	# --- RIVAL AI (Dưới BWFScoreboard cánh phải: left=715, right=855, top=82) ---
+	# 1. AI Stamina Bar
 	stamina_bar_bg_ai = ColorRect.new()
 	stamina_bar_bg_ai.color = Color(0.08, 0.10, 0.14, 0.85)
-	stamina_bar_bg_ai.anchor_left = 1.0
-	stamina_bar_bg_ai.anchor_right = 1.0
-	stamina_bar_bg_ai.offset_left = -140.0
-	stamina_bar_bg_ai.offset_top = 47.0
-	stamina_bar_bg_ai.offset_right = -16.0
-	stamina_bar_bg_ai.offset_bottom = 51.5
-	inner.add_child(stamina_bar_bg_ai)
+	stamina_bar_bg_ai.offset_left = 715.0
+	stamina_bar_bg_ai.offset_top = 82.0
+	stamina_bar_bg_ai.offset_right = 855.0
+	stamina_bar_bg_ai.offset_bottom = 86.5
+	hud.add_child(stamina_bar_bg_ai)
 	
 	stamina_bar_cap_ai = ColorRect.new()
 	stamina_bar_cap_ai.color = Color(0.25, 0.30, 0.38, 0.45)
 	stamina_bar_cap_ai.position = Vector2.ZERO
-	stamina_bar_cap_ai.size = Vector2(124.0, 4.5)
+	stamina_bar_cap_ai.size = Vector2(140.0, 4.5)
 	stamina_bar_bg_ai.add_child(stamina_bar_cap_ai)
 	
 	stamina_bar_fill_ai = ColorRect.new()
 	stamina_bar_fill_ai.color = Color(0.2, 0.85, 1.0, 0.95)
 	stamina_bar_fill_ai.position = Vector2.ZERO
-	stamina_bar_fill_ai.size = Vector2(124.0, 4.5)
+	stamina_bar_fill_ai.size = Vector2(140.0, 4.5)
 	stamina_bar_bg_ai.add_child(stamina_bar_fill_ai)
 	
-	# 2. AI Accuracy Bar (top=53.5, bottom=58)
+	# 2. AI Accuracy Bar (top=88, bottom=91.5)
 	accuracy_bar_bg_ai = ColorRect.new()
 	accuracy_bar_bg_ai.color = Color(0.08, 0.10, 0.14, 0.85)
-	accuracy_bar_bg_ai.anchor_left = 1.0
-	accuracy_bar_bg_ai.anchor_right = 1.0
-	accuracy_bar_bg_ai.offset_left = -140.0
-	accuracy_bar_bg_ai.offset_top = 53.5
-	accuracy_bar_bg_ai.offset_right = -16.0
-	accuracy_bar_bg_ai.offset_bottom = 58.0
-	inner.add_child(accuracy_bar_bg_ai)
+	accuracy_bar_bg_ai.offset_left = 715.0
+	accuracy_bar_bg_ai.offset_top = 88.0
+	accuracy_bar_bg_ai.offset_right = 855.0
+	accuracy_bar_bg_ai.offset_bottom = 91.5
+	hud.add_child(accuracy_bar_bg_ai)
 	
 	accuracy_bar_fill_ai = ColorRect.new()
-	accuracy_bar_fill_ai.color = Color(0.20, 0.88, 1.0, 0.95)
+	accuracy_bar_fill_ai.color = Color(0.95, 0.75, 0.25, 0.95)
 	accuracy_bar_fill_ai.position = Vector2.ZERO
-	accuracy_bar_fill_ai.size = Vector2(124.0, 4.5)
+	accuracy_bar_fill_ai.size = Vector2(140.0, 4.5)
 	accuracy_bar_bg_ai.add_child(accuracy_bar_fill_ai)
 	
 	var tick_ai = ColorRect.new()
 	tick_ai.color = Color(1.0, 1.0, 1.0, 0.4)
-	tick_ai.position = Vector2(62.0, -1.0)
-	tick_ai.size = Vector2(1.0, 6.5)
+	tick_ai.position = Vector2(70.0, -1.0)
+	tick_ai.size = Vector2(1.0, 5.5)
 	accuracy_bar_bg_ai.add_child(tick_ai)
 
 

@@ -325,6 +325,18 @@ func calculate_error_spread(timing_quality: float, is_perfect: bool, is_off_bala
 # PRESET ARCHETYPES
 # ==========================================================
 
+static func create_default() -> Resource:
+	var s = load("res://scripts/core/character_stats.gd").new()
+	s.character_id = "default"
+	s.character_name = "Player"
+	s.special_skill_id = "power_smash"
+	s.special_skill_name = "Power Smash"
+	s.power = 85.0
+	s.agility = 80.0
+	s.control = 80.0
+	s.composure = 80.0
+	return s
+
 static func create_nishikawa() -> Resource:
 	var s = load("res://scripts/core/character_stats.gd").new()
 	s.character_id = "nishikawa"

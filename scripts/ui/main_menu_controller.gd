@@ -8,7 +8,7 @@ extends Control
 
 const CustomIcon = preload("res://scripts/ui/custom_icon.gd")
 
-signal start_match_requested(player_char: String, rival_char: String, difficulty: int, target_points: int)
+signal start_match_requested(player_char: String, rival_char: String, difficulty: int, target_points: int, match_sets: int)
 signal settings_updated(squeak: bool)
 
 enum MenuState {
@@ -24,6 +24,7 @@ var selected_player_id: String = "nishikawa"
 var selected_rival_id: String = "wall"
 var selected_difficulty: int = 1 # 0: Dễ, 1: Trung bình, 2: Khó
 var selected_target_points: int = 11 # 11, 15, hoặc 21
+var selected_match_sets: int = 1 # 1 hoặc 3 (Best of 3)
 
 # Settings parameters
 var squeak_enabled: bool = true
@@ -42,6 +43,8 @@ var btn_diff_hard: Button
 var btn_pts_11: Button
 var btn_pts_15: Button
 var btn_pts_21: Button
+var btn_sets_1: Button
+var btn_sets_3: Button
 
 const CHAR_DATA = {
 	"nishikawa": {
@@ -123,6 +126,7 @@ func switch_state(new_state: MenuState) -> void:
 			_update_setup_cards()
 			_update_difficulty_buttons()
 			_update_points_buttons()
+			_update_sets_buttons()
 	if settings_panel: settings_panel.visible = (new_state == MenuState.SETTINGS)
 
 func _build_ui() -> void:
@@ -312,6 +316,26 @@ func _build_ui() -> void:
 	btn_pts_21 = _create_clean_button("21 ĐIỂM (BWF)", Color(0.95, 0.40, 0.35), Vector2(120, 32), 11)
 	btn_pts_21.pressed.connect(func(): _set_target_points(21))
 	pts_box.add_child(btn_pts_21)
+	
+	# Thể thức Set đấu (1 Set hay 3 Set - Best of 3)
+	var sets_box = HBoxContainer.new()
+	sets_box.alignment = BoxContainer.ALIGNMENT_CENTER
+	sets_box.add_theme_constant_override("separation", 10)
+	setup_vbox.add_child(sets_box)
+	
+	var lbl_sets = Label.new()
+	lbl_sets.text = "SỐ SET ĐẤU:"
+	lbl_sets.add_theme_font_size_override("font_size", 12)
+	lbl_sets.modulate = Color(0.75, 0.82, 0.90)
+	sets_box.add_child(lbl_sets)
+	
+	btn_sets_1 = _create_clean_button("1 SET (CHẠM ĐIỂM)", Color(0.35, 0.85, 1.0), Vector2(140, 32), 11)
+	btn_sets_1.pressed.connect(func(): _set_match_sets(1))
+	sets_box.add_child(btn_sets_1)
+	
+	btn_sets_3 = _create_clean_button("3 SET (BEST OF 3)", Color(0.95, 0.85, 0.25), Vector2(150, 32), 11)
+	btn_sets_3.pressed.connect(func(): _set_match_sets(3))
+	sets_box.add_child(btn_sets_3)
 	
 	# Matchup Summary
 	label_matchup_summary = Label.new()
@@ -548,6 +572,11 @@ func _set_target_points(pts: int) -> void:
 	_update_points_buttons()
 	_update_setup_cards()
 
+func _set_match_sets(sets: int) -> void:
+	selected_match_sets = sets
+	_update_sets_buttons()
+	_update_setup_cards()
+
 func _update_difficulty_buttons() -> void:
 	if btn_diff_easy:
 		btn_diff_easy.modulate = Color(1.2, 1.2, 1.2) if selected_difficulty == 0 else Color(0.60, 0.60, 0.60)
@@ -563,6 +592,12 @@ func _update_points_buttons() -> void:
 		btn_pts_15.modulate = Color(1.3, 1.3, 1.3) if selected_target_points == 15 else Color(0.60, 0.60, 0.60)
 	if btn_pts_21:
 		btn_pts_21.modulate = Color(1.3, 1.3, 1.3) if selected_target_points == 21 else Color(0.60, 0.60, 0.60)
+
+func _update_sets_buttons() -> void:
+	if btn_sets_1:
+		btn_sets_1.modulate = Color(1.3, 1.3, 1.3) if selected_match_sets == 1 else Color(0.60, 0.60, 0.60)
+	if btn_sets_3:
+		btn_sets_3.modulate = Color(1.3, 1.3, 1.3) if selected_match_sets == 3 else Color(0.60, 0.60, 0.60)
 
 func _update_setup_cards() -> void:
 	for cid in card_nodes.keys():
@@ -618,8 +653,9 @@ func _update_setup_cards() -> void:
 		var p_name = CHAR_DATA[selected_player_id]["name"]
 		var r_name = CHAR_DATA[selected_rival_id]["name"]
 		var diff_str = "DỄ" if selected_difficulty == 0 else ("TRUNG BÌNH" if selected_difficulty == 1 else "KHÓ")
-		label_matchup_summary.text = "KÈO ĐẤU:  [PLAYER: %s]   VS   [AI: %s]   •   ĐỘ KHÓ: [%s]   •   CHẠM: [%d ĐIỂM]" % [p_name, r_name, diff_str, selected_target_points]
+		var set_str = "1 SET" if selected_match_sets == 1 else "3 SET (BEST OF 3)"
+		label_matchup_summary.text = "KÈO ĐẤU:  [PLAYER: %s]   VS   [AI: %s]   •   ĐỘ KHÓ: [%s]   •   CHẠM: [%d ĐIỂM]   •   [%s]" % [p_name, r_name, diff_str, selected_target_points, set_str]
 
 func _confirm_and_start_match() -> void:
-	start_match_requested.emit(selected_player_id, selected_rival_id, selected_difficulty, selected_target_points)
+	start_match_requested.emit(selected_player_id, selected_rival_id, selected_difficulty, selected_target_points, selected_match_sets)
 	visible = false
