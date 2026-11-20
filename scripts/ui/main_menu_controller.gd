@@ -128,6 +128,15 @@ func _ready() -> void:
 	switch_state(MenuState.TITLE)
 
 func _process(delta: float) -> void:
+	# Đồng bộ mã phòng từ HTML Native Modal trên Web / Mobile:
+	if OS.has_feature("web") and pvp_room_input:
+		var updated = JavaScriptBridge.eval("window._kaiserCodeUpdated === true")
+		if updated:
+			var code = str(JavaScriptBridge.eval("window._kaiserRoomCode || ''"))
+			JavaScriptBridge.eval("window._kaiserCodeUpdated = false")
+			if not code.is_empty():
+				pvp_room_input.text = code.strip_edges().to_upper()
+				
 	if pvp_is_counting_down:
 		pvp_countdown_timer -= delta
 		if pvp_countdown_timer > 0.0:
@@ -951,6 +960,8 @@ func _build_pvp_panel(sb_setup: StyleBoxFlat) -> void:
 	var btn_copy = _create_clean_button("SAO CHÉP MÃ", Color(0.85, 0.85, 0.85), Vector2(110, 32), 11)
 	btn_copy.pressed.connect(func():
 		if not pvp_current_code.is_empty():
+			if OS.has_feature("web"):
+				JavaScriptBridge.eval("window.kaiserCopy('" + pvp_current_code + "')")
 			DisplayServer.clipboard_set(pvp_current_code)
 			btn_copy.text = "ĐÃ CHÉP!"
 	)
@@ -990,21 +1001,47 @@ func _build_pvp_panel(sb_setup: StyleBoxFlat) -> void:
 	jv.add_child(j_desc)
 	
 	var input_row = HBoxContainer.new()
-	input_row.add_theme_constant_override("separation", 10)
+	input_row.add_theme_constant_override("separation", 6)
 	
 	pvp_room_input = LineEdit.new()
-	pvp_room_input.custom_minimum_size = Vector2(180, 38)
+	pvp_room_input.custom_minimum_size = Vector2(125, 38)
 	pvp_room_input.placeholder_text = "MÃ (VD: 8899)"
 	pvp_room_input.max_length = 6
 	pvp_room_input.alignment = HORIZONTAL_ALIGNMENT_CENTER
-	pvp_room_input.add_theme_font_size_override("font_size", 16)
+	pvp_room_input.add_theme_font_size_override("font_size", 15)
+	pvp_room_input.mouse_filter = Control.MOUSE_FILTER_STOP
+	pvp_room_input.focus_mode = Control.FOCUS_ALL
+	
+	# Xử lý phím tắt & chạm click mở modal chuẩn HTML Native trên Web / Mobile:
+	pvp_room_input.gui_input.connect(func(ev):
+		if ev is InputEventKey and ev.pressed:
+			if (ev.keycode == KEY_V) and (ev.ctrl_pressed or ev.meta_pressed):
+				_on_paste_room_code_pressed()
+				get_viewport().set_input_as_handled()
+		elif ev is InputEventMouseButton and ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT:
+			if OS.has_feature("web"):
+				JavaScriptBridge.eval("window.kaiserOpenCodeInputModal('" + pvp_room_input.text.strip_edges() + "')")
+	)
 	input_row.add_child(pvp_room_input)
 	
-	var btn_join = _create_clean_button("THI ĐẤU (P2)", Color(0.35, 0.75, 1.0), Vector2(110, 38), 12)
+	var btn_paste = _create_clean_button("📋 DÁN", Color(0.95, 0.75, 0.20), Vector2(70, 38), 12)
+	btn_paste.pressed.connect(_on_paste_room_code_pressed)
+	input_row.add_child(btn_paste)
+
+	var btn_type = _create_clean_button("✏ NHẬP", Color(0.30, 0.85, 0.65), Vector2(68, 38), 12)
+	btn_type.pressed.connect(func():
+		if OS.has_feature("web"):
+			JavaScriptBridge.eval("window.kaiserOpenCodeInputModal('" + pvp_room_input.text.strip_edges() + "')")
+		else:
+			pvp_room_input.grab_focus()
+	)
+	input_row.add_child(btn_type)
+	
+	var btn_join = _create_clean_button("THI ĐẤU (P2)", Color(0.35, 0.75, 1.0), Vector2(98, 38), 11)
 	btn_join.pressed.connect(_on_guest_join_room)
 	input_row.add_child(btn_join)
 	
-	var btn_spec = _create_clean_button("👁 XEM (KHÁN GIẢ)", Color(0.85, 0.45, 0.95), Vector2(140, 38), 12)
+	var btn_spec = _create_clean_button("👁 XEM", Color(0.85, 0.45, 0.95), Vector2(75, 38), 11)
 	btn_spec.pressed.connect(_on_spectate_room)
 	input_row.add_child(btn_spec)
 	jv.add_child(input_row)
@@ -1043,6 +1080,8 @@ func _build_pvp_panel(sb_setup: StyleBoxFlat) -> void:
 	input_srv.text = net_manager.server_url if net_manager else "wss://kaiser-shuttle-server.onrender.com"
 	input_srv.custom_minimum_size = Vector2(340, 28)
 	input_srv.add_theme_font_size_override("font_size", 11)
+	input_srv.mouse_filter = Control.MOUSE_FILTER_STOP
+	input_srv.focus_mode = Control.FOCUS_ALL
 	input_srv.text_submitted.connect(func(new_url):
 		if net_manager:
 			net_manager.set_custom_server_url(new_url)
@@ -1146,6 +1185,31 @@ func _on_host_create_room() -> void:
 		pvp_status_lbl.modulate = Color(0.95, 0.85, 0.3)
 	if net_manager:
 		net_manager.host_room(pvp_current_code, pvp_selected_char, pvp_selected_points, pvp_selected_sets)
+
+func _on_paste_room_code_pressed() -> void:
+	if not pvp_room_input: return
+	if OS.has_feature("web"):
+		JavaScriptBridge.eval("""
+			(async function() {
+				var txt = await window.kaiserReadClipboard();
+				if (txt) {
+					var match = txt.match(/[a-zA-Z0-9]{4,6}/);
+					var code = match ? match[0].toUpperCase() : txt.slice(0, 6).toUpperCase();
+					window._kaiserRoomCode = code;
+					window._kaiserCodeUpdated = true;
+				} else {
+					window.kaiserOpenCodeInputModal('');
+				}
+			})();
+		""")
+	else:
+		var clip = DisplayServer.clipboard_get().strip_edges()
+		var regex = RegEx.new()
+		regex.compile("[a-zA-Z0-9]{4,6}")
+		var m = regex.search(clip)
+		var code = m.get_string().to_upper() if m else clip.substr(0, 6).to_upper()
+		if not code.is_empty():
+			pvp_room_input.text = code
 
 func _on_guest_join_room() -> void:
 	if not pvp_room_input: return
