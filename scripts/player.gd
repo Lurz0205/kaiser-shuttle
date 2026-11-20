@@ -327,7 +327,7 @@ func _physics_process(delta: float) -> void:
 		elif swing_recovery > 0.0:
 			swing_recovery = move_toward(swing_recovery, 0.0, delta * 4.2)
 		if is_on_ground() and abs(velocity.x) > 10.0:
-			walk_phase += delta * (abs(velocity.x) / move_speed_x) * 14.0
+			walk_phase += delta * (abs(velocity.x) / move_speed_x) * 8.5
 		else:
 			walk_phase = lerp(walk_phase, 0.0, 10.0 * delta)
 		_update_joint_kinematics(delta)
@@ -444,7 +444,7 @@ func _physics_process(delta: float) -> void:
 	
 	# Walk cycle animation
 	if is_on_ground() and abs(velocity.x) > 10.0:
-		walk_phase += delta * (abs(velocity.x) / move_speed_x) * 14.0
+		walk_phase += delta * (abs(velocity.x) / move_speed_x) * 8.5
 	else:
 		walk_phase = lerp(walk_phase, 0.0, 10.0 * delta)
 	
@@ -745,7 +745,7 @@ func _process_player_input(delta: float) -> void:
 		if cur_d_raw:
 			move_x += 1.0
 		if abs(touch_move_axis) > 0.05:
-			move_x += touch_move_axis
+			move_x += sign(touch_move_axis) # 1 tốc độ di chuyển tới (+1.0) hoặc lui (-1.0) duy nhất, không tăng tuyến tính
 		move_x = clamp(move_x, -1.0, 1.0)
 		
 		velocity.x = move_x * move_speed_x
@@ -1701,7 +1701,7 @@ func _execute_hit(shot_type: String, hit_status: Dictionary = {}) -> void:
 	# NỘI TẠI THE WALL / AOI (MIRAGE COUNTER):
 	# Khi đỡ cầu Smash hoặc Cầu Non (Chance Ball) lúc đầy Flow (Flow >= 100):
 	# Cưỡng ép kích hoạt tuyệt kỹ Mirage Counter (dù bấm Smash, Drop hay Clear)!
-	var is_incoming_smash = shuttlecock and (shuttlecock.is_smash or shuttlecock.is_boom_smash or shuttlecock.is_kill_smash or shuttlecock.current_shot_type == "kill_smash")
+	var is_incoming_smash = shuttlecock and (shuttlecock.is_smash or shuttlecock.is_boom_smash or shuttlecock.is_kill_smash or shuttlecock.current_shot_type == "smash" or shuttlecock.current_shot_type == "boom_smash" or shuttlecock.current_shot_type == "kill_smash")
 	var is_incoming_chance = shuttlecock and (shuttlecock.is_weak_return or shuttlecock.current_shot_type == "weak_return")
 	var is_wall_auto_counter = is_incoming_smash and stats and (stats.character_id == "wall" or stats.special_skill_id == "mirage_counter") and stats.can_use_special()
 	if is_wall_auto_counter:
@@ -1742,8 +1742,7 @@ func _execute_hit(shot_type: String, hit_status: Dictionary = {}) -> void:
 	# ĐỠ CẦU SMASH: Đánh giá Timing tốt / xấu và tác động lên Accuracy & Balance & Thể lực:
 	if is_incoming_smash:
 		var is_kill = shuttlecock and (shuttlecock.is_kill_smash or shuttlecock.current_shot_type == "kill_smash")
-		var is_nishikawa_attacker = opponent_player and opponent_player.stats and (opponent_player.stats.character_id == "nishikawa" or opponent_player.stats.special_skill_id == "golden_smash")
-		var is_golden_boom_smash = is_nishikawa_attacker and shuttlecock and (shuttlecock.is_boom_smash or shuttlecock.current_shot_type == "boom_smash")
+		var is_golden_boom_smash = shuttlecock and (shuttlecock.is_boom_smash or shuttlecock.current_shot_type == "boom_smash")
 		
 		# TIÊU HAO THỂ LỰC PHÒNG THỦ KHI CHỐNG ĐỠ CÚ SMASH:
 		# Khi Isabel kích hoạt Mirage Counter: Khiên ảo ảnh triệt tiêu lực ép, không tốn thể lực phòng thủ
@@ -1753,18 +1752,19 @@ func _execute_hit(shot_type: String, hit_status: Dictionary = {}) -> void:
 		if is_golden_boom_smash:
 			# CÚ SMASH SẤM SÉT (GOLDEN BOOM SMASH): SÁT THƯƠNG 25% TỔNG THỂ LỰC (25.0) VÀ TRỪ 40% ACCURACY ĐANG CÓ!
 			# (CHỈ ÁP DỤNG CHO SMASH SẤM SÉT, KHÔNG ÁP DỤNG CHO SMASH THƯỜNG)
-			if stats:
-				stats.consume_stamina_action(25.0) # 25% tổng thể lực
-				stats.accuracy = max(0.0, stats.accuracy * 0.60) # Trừ 40% accuracy đang có
-			balance = max(10.0, balance - 35.0)
-			
 			if shot_type == "mirage_counter" or is_wall_auto_counter:
 				# Isabel kích hoạt Mirage Counter hóa giải đòn Smash của Nishikawa:
-				# Phản chấn lại kẻ tấn công Nishikawa 10% tổng thể lực, KHÔNG trừ accuracy (được cộng +10):
+				# Khiên ảo ảnh vô hiệu hóa sát thương; phản chấn lại kẻ tấn công Nishikawa 10% tổng thể lực, KHÔNG trừ accuracy (được cộng +10):
 				if opponent_player and opponent_player.stats:
 					opponent_player.stats.consume_stamina_action(10.0) # 10% tổng thể lực
 					opponent_player.stats.accuracy = min(100.0, opponent_player.stats.accuracy + 10.0)
 					opponent_player.balance = max(25.0, opponent_player.balance - 30.0)
+			else:
+				# Người phòng thủ chịu trọn cú đập sấm sét:
+				if stats:
+					stats.consume_stamina_action(25.0) # 25% tổng thể lực
+					stats.accuracy = max(0.0, stats.accuracy * 0.60) # Trừ 40% accuracy đang có
+				balance = max(10.0, balance - 35.0)
 		elif is_wall_auto_counter or shot_type == "mirage_counter":
 			# Đánh vào Isabel có skill (Mirage Counter):
 			# Kẻ tấn công bị phản chấn: chỉ trừ 10% tổng thể lực (10.0), KHÔNG trừ accuracy (thậm chí được cộng +10)
@@ -1837,12 +1837,12 @@ func _execute_hit(shot_type: String, hit_status: Dictionary = {}) -> void:
 	# KIỂM TRA LỖI ĐÁNH HỎNG (UNFORCED BLUNDER) KHI ACCURACY < 50% HOẶC STAMINA < 35%:
 	# ==========================================================
 	# ĐỠ CÚ PHẢN ĐÒN MIRAGE COUNTER CỦA ISABEL:
-	# - Đỡ cú đánh của Isabel: chỉ trừ thể lực (20% tổng thể lực), KHÔNG trừ accuracy mà còn được cộng (+10 accuracy).
+	# - Đỡ cú đánh của Isabel: chỉ trừ thể lực (10% tổng thể lực), KHÔNG trừ accuracy mà còn được cộng (+10 accuracy).
 	# ==========================================================
 	var is_incoming_mirage = not is_incoming_smash and shuttlecock and (shuttlecock.current_shot_type == "mirage_counter" or shuttlecock.is_mirage_counter)
 	if is_incoming_mirage and shot_type != "mirage_counter":
 		if stats:
-			stats.consume_stamina_action(20.0) # 20% tổng thể lực
+			stats.consume_stamina_action(10.0) # 10% tổng thể lực
 			stats.accuracy = min(100.0, stats.accuracy + 10.0) # Không trừ accuracy mà được cộng
 		balance = max(20.0, balance - 20.0)
 
@@ -1955,7 +1955,7 @@ func _execute_hit(shot_type: String, hit_status: Dictionary = {}) -> void:
 			# Hồi phục 20% thể lực từ khiên Mirage Counter:
 			stats.stamina = min(stats.max_stamina_cap, stats.stamina + 20.0)
 			# Chỉ khi chống đỡ cú Smash Sấm Sét (Boom Smash) của Nishikawa thì accuracy mới bị khóa giảm, còn smash thường vẫn hồi phục accuracy:
-			var is_nishi_smash = is_incoming_smash and shuttlecock and (shuttlecock.is_boom_smash or shuttlecock.current_shot_type == "boom_smash") and opponent_player and opponent_player.stats and (opponent_player.stats.character_id == "nishikawa" or opponent_player.stats.special_skill_id == "golden_smash")
+			var is_nishi_smash = is_incoming_smash and shuttlecock and (shuttlecock.is_boom_smash or shuttlecock.current_shot_type == "boom_smash")
 			if not is_nishi_smash:
 				stats.accuracy = min(100.0, stats.accuracy + 15.0)
 			stats.consume_flow()
@@ -2359,9 +2359,10 @@ func _draw() -> void:
 		hip_y = lerp(-30.0, -62.0, p_up)
 	elif is_on_ground():
 		if abs(velocity.x) > 10.0:
-			hip_y += abs(sin(walk_phase * 2.0)) * 3.5
+			# Giảm tần số và biên độ rung lắc lên xuống khi di chuyển, chuyển động êm ái
+			hip_y += abs(sin(walk_phase)) * 1.8
 		else:
-			hip_y += sin(time_val * 4.5) * 1.8
+			hip_y += sin(time_val * 3.0) * 1.0
 	else:
 		hip_y = -64.0
 	

@@ -409,6 +409,20 @@ wss.on('connection', (ws) => {
                 }
                 break;
             }
+
+            // Direct Peer Relays: Character Init & Special Skill Recoil Sync
+            case 'init':
+            case 'init_ack':
+            case 'skill_recoil': {
+                const room = rooms[ws.roomCode];
+                if (!room) return;
+                const isP1 = (ws.playerRole === 'p1');
+                const target = isP1 ? room.p2 : room.p1;
+                if (target && target.readyState === WebSocket.OPEN) {
+                    target.send(JSON.stringify(data));
+                }
+                break;
+            }
         }
     });
 

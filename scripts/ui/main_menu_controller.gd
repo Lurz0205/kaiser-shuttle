@@ -9,7 +9,7 @@ extends Control
 const CustomIcon = preload("res://scripts/ui/custom_icon.gd")
 
 signal start_match_requested(player_char: String, rival_char: String, difficulty: int, target_points: int, match_sets: int)
-signal start_pvp_match_requested(room_code: String, is_host: bool, player_char: String, target_points: int, match_sets: int, first_server: String)
+signal start_pvp_match_requested(room_code: String, is_host: bool, player_char: String, target_points: int, match_sets: int, first_server: String, opponent_char: String)
 signal spectate_room_requested(room_code: String)
 signal settings_updated(squeak: bool, bgm_enabled: bool, bgm_vol: float, low_gfx: bool)
 
@@ -38,6 +38,7 @@ var pvp_status_lbl: Label
 var pvp_ping_lbl: Label
 var pvp_current_code: String = ""
 var pvp_selected_char: String = "nishikawa"
+var pvp_opponent_char: String = "wall"
 var pvp_selected_points: int = 11
 var pvp_selected_sets: int = 1
 var pvp_first_server: String = "p1"
@@ -137,7 +138,7 @@ func _process(delta: float) -> void:
 			pvp_is_counting_down = false
 			if pvp_countdown_lbl:
 				pvp_countdown_lbl.text = "VÀO SÂN!"
-			start_pvp_match_requested.emit(pvp_current_code, pvp_is_host, pvp_selected_char, pvp_selected_points, pvp_selected_sets, pvp_first_server)
+			start_pvp_match_requested.emit(pvp_current_code, pvp_is_host, pvp_selected_char, pvp_selected_points, pvp_selected_sets, pvp_first_server, pvp_opponent_char)
 			visible = false
 
 func _draw() -> void:
@@ -1234,9 +1235,22 @@ func _on_host_press_start_match() -> void:
 
 func _on_net_packet_received(data: Dictionary) -> void:
 	var t = str(data.get("t", ""))
-	if t == "lobby_start" or t == "countdown_start":
+	if t == "guest_joined":
+		pvp_opponent_char = str(data.get("guest_char", "wall"))
+	elif t == "room_joined":
+		pvp_opponent_char = str(data.get("host_char", "nishikawa"))
+	elif t == "lobby_start" or t == "countdown_start":
 		pvp_selected_points = int(data.get("pts", pvp_selected_points))
 		pvp_selected_sets = int(data.get("sets", pvp_selected_sets))
+		if data.has("p1_char") and data.has("p2_char"):
+			var p1_c = str(data.get("p1_char", "nishikawa"))
+			var p2_c = str(data.get("p2_char", "wall"))
+			if pvp_is_host:
+				pvp_selected_char = p1_c
+				pvp_opponent_char = p2_c
+			else:
+				pvp_selected_char = p2_c
+				pvp_opponent_char = p1_c
 		if data.has("first_server"):
 			pvp_first_server = str(data.get("first_server"))
 		_start_pvp_countdown()

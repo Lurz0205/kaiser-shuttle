@@ -136,11 +136,13 @@ func _handle_server_packet(data: Dictionary) -> void:
 			last_status = "connected"
 			connection_status_changed.emit("connected")
 			peer_connected.emit(false, current_room)
+			packet_received.emit(data)
 
 		"guest_joined":
 			last_status = "connected"
 			connection_status_changed.emit("connected")
 			peer_connected.emit(true, current_room)
+			packet_received.emit(data)
 
 		"spectator_joined":
 			current_room = str(data.get("code", current_room))

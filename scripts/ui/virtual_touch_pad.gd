@@ -206,6 +206,8 @@ func _handle_touch(touch_id: int, is_down: bool, pos: Vector2) -> void:
 		if touch_id == track_touch_id:
 			track_touch_id = -1
 			is_dragging_knob = false
+			if player and is_instance_valid(player):
+				player.touch_move_axis = 0.0
 			queue_redraw()
 		if touch_id == btn_j_touch_id:
 			btn_j_touch_id = -1
@@ -230,7 +232,13 @@ func _update_knob_drag(finger_x: float) -> void:
 	knob_pos.x = knob_center.x + offset
 	knob_pos.y = knob_center.y
 	if player and is_instance_valid(player):
-		player.touch_move_axis = offset / max_drag_dist
+		const DEADZONE: float = 10.0
+		if offset > DEADZONE:
+			player.touch_move_axis = 1.0 # 1 tốc độ di chuyển tới duy nhất, không tăng tuyến tính
+		elif offset < -DEADZONE:
+			player.touch_move_axis = -1.0 # 1 tốc độ di chuyển lui duy nhất, không tăng tuyến tính
+		else:
+			player.touch_move_axis = 0.0
 
 func _draw() -> void:
 	if not visible:

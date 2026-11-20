@@ -702,7 +702,7 @@ func _create_char_stats(char_id: String) -> CharacterStats:
 		"wall": return CharacterStats.create_wall()
 		_: return CharacterStats.create_nishikawa()
 
-func _on_menu_start_pvp_match(room_code: String, is_host: bool, local_char: String, target_points: int, match_sets: int, first_server_role: String = "p1") -> void:
+func _on_menu_start_pvp_match(room_code: String, is_host: bool, local_char: String, target_points: int, match_sets: int, first_server_role: String = "p1", opponent_char: String = "") -> void:
 	is_pvp_active = true
 	is_pvp_host = is_host
 	is_spectator = false
@@ -748,9 +748,13 @@ func _on_menu_start_pvp_match(room_code: String, is_host: bool, local_char: Stri
 	player.stats = _create_char_stats(local_char)
 	player.move_speed_x = lerp(230.0, 265.0, (player.stats.agility - 40.0) / 59.0)
 	
+	var r_char = opponent_char
+	if r_char.is_empty():
+		r_char = "wall" if local_char != "wall" else "nishikawa"
+	ai_rival.stats = _create_char_stats(r_char)
+	ai_rival.move_speed_x = lerp(230.0, 265.0, (ai_rival.stats.agility - 40.0) / 59.0)
+	
 	if is_host:
-		ai_rival.stats = _create_char_stats("wall")
-		ai_rival.move_speed_x = lerp(230.0, 265.0, (ai_rival.stats.agility - 40.0) / 59.0)
 		net_manager.send_packet({
 			"t": "init",
 			"char": local_char,
@@ -759,8 +763,6 @@ func _on_menu_start_pvp_match(room_code: String, is_host: bool, local_char: Stri
 			"first_server": first_server_role
 		})
 	else:
-		ai_rival.stats = _create_char_stats("nishikawa")
-		ai_rival.move_speed_x = lerp(230.0, 265.0, (ai_rival.stats.agility - 40.0) / 59.0)
 		net_manager.send_packet({
 			"t": "init_ack",
 			"char": local_char
@@ -978,6 +980,17 @@ func _on_network_packet_received(data: Dictionary) -> void:
 					ai_rival.stats.max_stamina_cap = float(data.get("cap", ai_rival.stats.max_stamina_cap))
 					ai_rival.stats.accuracy = float(data.get("acc", ai_rival.stats.accuracy))
 
+		"skill_recoil":
+			if player and player.stats:
+				var s_loss = float(data.get("stamina_loss", 10.0))
+				var b_loss = float(data.get("balance_loss", 30.0))
+				var a_bonus = float(data.get("accuracy_bonus", 10.0))
+				player.stats.consume_stamina_action(s_loss)
+				player.balance = max(25.0, player.balance - b_loss)
+				player.stats.accuracy = min(100.0, player.stats.accuracy + a_bonus)
+				if floating_text_mgr:
+					floating_text_mgr.spawn("MIRAGE RECOIL: -%d STM!" % int(s_loss), player.global_position + Vector2(0, -50), Color(0.3, 0.8, 1.0), 16)
+
 		"opp_shot":
 			if pvp_landing_pending:
 				print("[PvP] Đối thủ đã cứu cầu thành công trong cửa sổ trễ ping! Tiếp tục pha cầu.")
@@ -1024,6 +1037,11 @@ func _on_network_packet_received(data: Dictionary) -> void:
 					shuttlecock.velocity = Vector2.ZERO
 					shuttlecock.last_hitter = "ai"
 					shuttlecock.is_serve = false
+					shuttlecock.current_shot_type = s_type
+					shuttlecock.is_boom_smash = (s_type == "boom_smash")
+					shuttlecock.is_tsubame_gaeshi = (s_type == "tsubame_gaeshi")
+					shuttlecock.is_mirage_counter = (s_type == "mirage_counter")
+					shuttlecock.is_smash = (s_type == "smash" or s_type == "boom_smash" or s_type == "kill_smash")
 			else:
 				if shuttlecock:
 					shuttlecock.last_hitter = "ai"
@@ -1824,6 +1842,20 @@ func _on_shot_hit(shot_type: String, is_smash: bool, quality: float, is_perfect:
 			"cap": player.stats.max_stamina_cap if player.stats else 100.0,
 			"acc": player.stats.accuracy if player.stats else 100.0
 		})
+		if shot_type == "mirage_counter":
+			net_manager.send_packet({
+				"t": "skill_recoil",
+				"stamina_loss": 10.0,
+				"balance_loss": 30.0,
+				"accuracy_bonus": 10.0
+			})
+	elif is_pvp_active and hitter == "ai" and shot_type == "mirage_counter":
+		if player and player.stats:
+			player.stats.consume_stamina_action(10.0)
+			player.balance = max(25.0, player.balance - 30.0)
+			player.stats.accuracy = min(100.0, player.stats.accuracy + 10.0)
+			if floating_text_mgr:
+				floating_text_mgr.spawn("MIRAGE RECOIL: -10 STM!", player.global_position + Vector2(0, -50), Color(0.3, 0.8, 1.0), 16)
 	is_serve_in_progress = false
 	if shuttlecock:
 		shuttlecock.is_serve = false
