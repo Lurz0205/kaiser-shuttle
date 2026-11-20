@@ -2108,7 +2108,7 @@ func _execute_hit(shot_type: String, hit_status: Dictionary = {}) -> void:
 	var is_chance_ball_smash = (actual_shot == "kill_smash")
 	if is_smash_hit:
 		if stats:
-			stats.on_smash_executed(actual_shot == "boom_smash" or actual_shot == "kill_smash", is_chance_ball_smash)
+			stats.on_smash_executed(actual_shot == "boom_smash", is_chance_ball_smash)
 		var rec_penalty = stats.get_recovery_delay_penalty() if stats else 0.0
 		if is_chance_ball_smash:
 			rec_penalty = 0.0 # Không bị trễ hồi chiêu khi dứt điểm cầu non

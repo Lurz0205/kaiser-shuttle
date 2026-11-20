@@ -137,12 +137,13 @@ func on_smash_executed(is_boom: bool = false, is_chance_ball: bool = false) -> v
 		smash_torque = 0.88 if character_id == "nishikawa" else 0.70
 	
 	# Tiêu hao thể lực cho cú smash:
-	# Nishikawa là Đệ Nhất Pháo Thủ (Power 98), sinh ra để smash dồn ép đối thủ -> tiêu hao cực ít thể lực (3-5 điểm)!
+	# Nishikawa: đập thường 3.0, đập skill (Boom Smash) 6.0, dứt điểm 2.0
+	# Nhân vật khác: đập thường 5.0, đập skill 7.0, dứt điểm 4.0
 	var drain = 0.0
 	if character_id == "nishikawa":
-		drain = 5.0 if is_boom else 3.0
+		drain = 6.0 if is_boom else 3.0
 	else:
-		drain = 9.0 if is_boom else 6.0
+		drain = 7.0 if is_boom else 5.0
 	consume_stamina_action(drain)
 
 
