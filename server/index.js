@@ -167,7 +167,7 @@ wss.on('connection', (ws) => {
                 const target = ws.playerRole === 'p1' ? room.p2 : room.p1;
                 if (!target || target.readyState !== WebSocket.OPEN) return;
 
-                // Send mirrored position and kinematics to opponent
+                // Send mirrored position, kinematics, and athletic stats to opponent
                 target.send(JSON.stringify({
                     t: 'opp_sync',
                     x: 1280.0 - Number(data.x || 0),
@@ -178,7 +178,10 @@ wss.on('connection', (ws) => {
                     sw: Boolean(data.sw),
                     dv: Boolean(data.dv),
                     wp: Number(data.wp || 0),
-                    bal: Number(data.bal || 100.0)
+                    bal: Number(data.bal || 100.0),
+                    stm: Number(data.stm != null ? data.stm : 100.0),
+                    cap: Number(data.cap != null ? data.cap : 100.0),
+                    acc: Number(data.acc != null ? data.acc : 100.0)
                 }));
                 break;
             }
@@ -205,7 +208,10 @@ wss.on('connection', (ws) => {
                     is_jump: Boolean(data.is_jump),
                     t_mult: Number(data.t_mult || 1.0),
                     t_lvl: Number(data.t_lvl || 0),
-                    quality: Number(data.quality || 0.8)
+                    quality: Number(data.quality || 0.8),
+                    stm: Number(data.stm != null ? data.stm : 100.0),
+                    cap: Number(data.cap != null ? data.cap : 100.0),
+                    acc: Number(data.acc != null ? data.acc : 100.0)
                 }));
                 break;
             }

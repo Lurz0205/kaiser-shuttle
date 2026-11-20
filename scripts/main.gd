@@ -725,6 +725,10 @@ func _on_network_packet_received(data: Dictionary) -> void:
 				ai_rival.is_diving = bool(data.get("dv", false))
 				ai_rival.walk_phase = float(data.get("wp", ai_rival.walk_phase))
 				ai_rival.balance = float(data.get("bal", 100.0))
+				if ai_rival.stats and data.has("stm"):
+					ai_rival.stats.stamina = float(data.get("stm", ai_rival.stats.stamina))
+					ai_rival.stats.max_stamina_cap = float(data.get("cap", ai_rival.stats.max_stamina_cap))
+					ai_rival.stats.accuracy = float(data.get("acc", ai_rival.stats.accuracy))
 
 		"opp_shot":
 			if pvp_landing_pending:
@@ -745,13 +749,38 @@ func _on_network_packet_received(data: Dictionary) -> void:
 				ai_rival.is_swinging = true
 				ai_rival.swing_timer = 0.0
 				ai_rival.can_hit = false
+				if ai_rival.stats and data.has("stm"):
+					ai_rival.stats.stamina = float(data.get("stm", ai_rival.stats.stamina))
+					ai_rival.stats.max_stamina_cap = float(data.get("cap", ai_rival.stats.max_stamina_cap))
+					ai_rival.stats.accuracy = float(data.get("acc", ai_rival.stats.accuracy))
 			if player:
 				player.can_hit = true
 				
-			if shuttlecock:
-				shuttlecock.last_hitter = "ai"
-				shuttlecock.is_serve = false
-				shuttlecock.launch_to_target_2d(from_pt, target_pt, s_type, err, is_perf, is_jump, t_mult, t_lvl)
+			var is_cinematic = (s_type == "boom_smash" and is_perf) or (s_type == "tsubame_gaeshi") or (s_type == "mirage_counter")
+			if is_cinematic:
+				if ai_rival:
+					ai_rival.pending_special_target = target_pt
+					ai_rival.pending_special_shot = s_type
+					ai_rival.pending_special_from = from_pt
+					ai_rival.pending_special_err = err
+					ai_rival.pending_special_is_perfect = is_perf
+					ai_rival.pending_special_is_jump_smash = is_jump
+					ai_rival.current_tension_mult = t_mult
+					ai_rival.current_tension_level = t_lvl
+					
+				if shuttlecock:
+					shuttlecock.is_active = false
+					shuttlecock.is_suspended_in_smash_slowmo = true
+					shuttlecock.suspended_smash_pos = from_pt
+					shuttlecock.global_position = from_pt
+					shuttlecock.velocity = Vector2.ZERO
+					shuttlecock.last_hitter = "ai"
+					shuttlecock.is_serve = false
+			else:
+				if shuttlecock:
+					shuttlecock.last_hitter = "ai"
+					shuttlecock.is_serve = false
+					shuttlecock.launch_to_target_2d(from_pt, target_pt, s_type, err, is_perf, is_jump, t_mult, t_lvl)
 				
 			_on_shot_hit(s_type, is_perf or is_jump or s_type == "smash", q, is_perf, is_jump, from_pt, "ai")
 
@@ -1104,7 +1133,10 @@ func _process(delta: float) -> void:
 			"sw": player.is_swinging,
 			"dv": player.is_diving,
 			"wp": player.walk_phase,
-			"bal": player.balance
+			"bal": player.balance,
+			"stm": player.stats.stamina if player.stats else 100.0,
+			"cap": player.stats.max_stamina_cap if player.stats else 100.0,
+			"acc": player.stats.accuracy if player.stats else 100.0
 		})
 	
 	_update_stats_display()
@@ -1366,8 +1398,10 @@ func _world_to_screen(world_pos: Vector2) -> Vector2:
 
 func _on_shot_hit(shot_type: String, is_smash: bool, quality: float, is_perfect: bool, is_jump_shot: bool, contact_pos: Vector2, hitter: String) -> void:
 	if is_pvp_active and net_manager and hitter == "player":
-		var target_x = shuttlecock.launch_target.x if shuttlecock else 890.0
-		var target_y = shuttlecock.launch_target.y if shuttlecock else FLOOR_Y
+		var has_pending_special = player and player.pending_special_target != Vector2.ZERO
+		var target_x = player.pending_special_target.x if has_pending_special else (shuttlecock.launch_target.x if shuttlecock else 890.0)
+		var target_y = player.pending_special_target.y if has_pending_special else (shuttlecock.launch_target.y if shuttlecock else FLOOR_Y)
+		var err_val = player.pending_special_err if has_pending_special else (shuttlecock.last_error_offset_x if shuttlecock else 0.0)
 		var t_mult = player.current_tension_mult if player else 1.0
 		var t_lvl = player.current_tension_level if player else 0
 		net_manager.send_packet({
@@ -1377,12 +1411,15 @@ func _on_shot_hit(shot_type: String, is_smash: bool, quality: float, is_perfect:
 			"target_x": target_x,
 			"target_y": target_y,
 			"shot_type": shot_type,
-			"err": 0.0,
+			"err": err_val,
 			"is_perf": is_perfect,
 			"is_jump": is_jump_shot,
 			"t_mult": t_mult,
 			"t_lvl": t_lvl,
-			"quality": quality
+			"quality": quality,
+			"stm": player.stats.stamina if player.stats else 100.0,
+			"cap": player.stats.max_stamina_cap if player.stats else 100.0,
+			"acc": player.stats.accuracy if player.stats else 100.0
 		})
 	is_serve_in_progress = false
 	if shuttlecock:
