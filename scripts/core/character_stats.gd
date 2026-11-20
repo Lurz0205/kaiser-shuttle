@@ -348,10 +348,10 @@ static func create_nishikawa() -> Resource:
 	s.character_name = "Nishikawa (Tia chớp vàng)"
 	s.special_skill_id = "golden_smash"
 	s.special_skill_name = "Golden Smash"
-	s.power = 98.0
+	s.power = 96.0
 	s.agility = 78.0
-	s.control = 74.0
-	s.composure = 84.0
+	s.control = 75.0
+	s.composure = 82.0
 	return s
 
 static func create_fuji() -> Resource:
@@ -360,10 +360,10 @@ static func create_fuji() -> Resource:
 	s.character_name = "Fuji (Cơn lốc xanh)"
 	s.special_skill_id = "tsubame_gaeshi"
 	s.special_skill_name = "Tsubame Gaeshi"
-	s.power = 76.0
-	s.agility = 84.0
+	s.power = 78.0
+	s.agility = 86.0
 	s.control = 96.0
-	s.composure = 86.0
+	s.composure = 85.0
 	return s
 
 static func create_wall() -> Resource:
@@ -372,9 +372,9 @@ static func create_wall() -> Resource:
 	s.character_name = "Isabel (Nữ hoàng của đấu trường La Mã)"
 	s.special_skill_id = "mirage_counter"
 	s.special_skill_name = "Mirage Shield"
-	s.power = 74.0
+	s.power = 75.0
 	s.agility = 88.0
-	s.control = 85.0
+	s.control = 84.0
 	s.composure = 96.0
 	return s
 

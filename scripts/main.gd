@@ -142,6 +142,7 @@ const VirtualTouchPadClass = preload("res://scripts/ui/virtual_touch_pad.gd")
 var virtual_touch_pad: Control = null
 var touch_controls_enabled: bool = false
 var btn_touch_toggle: Button = null
+var btn_fullscreen: Button = null
 
 # Audio (Smash, Phong, Rít giày, Sấm sét, Isabel Block & Slowmo, Dây vợt net, Gió Fuji, Chém cầu sau sân, Trọng tài)
 @onready var sfx_smash: AudioStreamPlayer = $Audio/SFXSmash
@@ -338,10 +339,47 @@ func _ready() -> void:
 			)
 			touch_row.add_child(btn_touch_toggle)
 			vbox.add_child(touch_row)
+			
+			var fs_row = HBoxContainer.new()
+			var lbl_fs = Label.new()
+			lbl_fs.text = "Toàn màn hình:"
+			lbl_fs.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			fs_row.add_child(lbl_fs)
+			
+			var btn_fs_toggle = Button.new()
+			btn_fs_toggle.custom_minimum_size = Vector2(80, 28)
+			btn_fs_toggle.text = "BẬT/TẮT"
+			btn_fs_toggle.pressed.connect(_toggle_fullscreen)
+			fs_row.add_child(btn_fs_toggle)
+			vbox.add_child(fs_row)
 		
 	# Tự động nhận diện thiết bị: Mặc định TẮT trên Desktop/PC, chỉ BẬT trên Mobile/Touchscreen
 	var is_mobile = OS.has_feature("mobile") or OS.has_feature("web_android") or OS.has_feature("web_ios")
 	touch_controls_enabled = is_mobile
+	
+	# Nút Toàn Màn Hình (Fullscreen) ở góc trên bên phải màn hình
+	btn_fullscreen = Button.new()
+	btn_fullscreen.name = "BtnFullscreen"
+	btn_fullscreen.text = "⛶ FULL"
+	btn_fullscreen.custom_minimum_size = Vector2(74, 30)
+	btn_fullscreen.position = Vector2(1190.0, 14.0)
+	btn_fullscreen.tooltip_text = "Bật / Tắt Toàn màn hình (Fullscreen)"
+	
+	var fs_sb = StyleBoxFlat.new()
+	fs_sb.bg_color = Color(0.06, 0.12, 0.20, 0.88)
+	fs_sb.border_width_left = 1
+	fs_sb.border_width_top = 1
+	fs_sb.border_width_right = 1
+	fs_sb.border_width_bottom = 1
+	fs_sb.border_color = Color(0.25, 0.85, 1.0, 0.65)
+	fs_sb.corner_radius_top_left = 6
+	fs_sb.corner_radius_top_right = 6
+	fs_sb.corner_radius_bottom_right = 6
+	fs_sb.corner_radius_bottom_left = 6
+	btn_fullscreen.add_theme_stylebox_override("normal", fs_sb)
+	btn_fullscreen.add_theme_color_override("font_color", Color(0.35, 0.90, 1.0))
+	btn_fullscreen.pressed.connect(_toggle_fullscreen)
+	$HUD.add_child(btn_fullscreen)
 	
 	_update_settings_ui()
 	_setup_hud_stamina_bars()
@@ -473,6 +511,17 @@ func _toggle_settings_panel() -> void:
 		return
 	settings_panel.visible = not settings_panel.visible
 	_update_settings_ui()
+
+
+func _toggle_fullscreen() -> void:
+	if OS.has_feature("web"):
+		JavaScriptBridge.eval("if (window.kaiserToggleFullscreen) window.kaiserToggleFullscreen();")
+	else:
+		var mode = DisplayServer.window_get_mode()
+		if mode == DisplayServer.WINDOW_MODE_FULLSCREEN:
+			DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_WINDOWED)
+		else:
+			DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_FULLSCREEN)
 
 
 func _toggle_character_select() -> void:
@@ -1351,7 +1400,9 @@ func _on_shot_hit(shot_type: String, is_smash: bool, quality: float, is_perfect:
 	# 1. NISHIKAWA GOLDEN SMASH (boom_smash): Ngưng đọng 1s, sấm sét nổ vang, đảo màu trắng đen!
 	if shot_type == "boom_smash" and is_perfect:
 		var base_spd = 192.0
-		current_shot_max_speed = (base_spd + (quality * 8.0) + randf_range(-4.0, 4.0)) * tension_mult * torque_mult
+		var floor_prox = clamp((contact_pos.y - 360.0) / 220.0, 0.0, 1.0)
+		var low_smash_boost = 1.0 + floor_prox * 0.10 # Cầu càng gần sân thì đập càng nhanh hơn tí
+		current_shot_max_speed = (base_spd + (quality * 8.0) + randf_range(-4.0, 4.0)) * tension_mult * torque_mult * low_smash_boost
 		_trigger_perfect_impact_effect(contact_pos, hitter)
 		return
 		
@@ -1390,7 +1441,9 @@ func _on_shot_hit(shot_type: String, is_smash: bool, quality: float, is_perfect:
 		sfx_smash.play()
 		var is_kill = (shot_type == "kill_smash")
 		var base_spd = 180.0 if is_kill else 142.0
-		current_shot_max_speed = (base_spd + (quality * 7.0) + randf_range(-4.2, 4.2)) * tension_mult * torque_mult
+		var floor_prox = clamp((contact_pos.y - 360.0) / 220.0, 0.0, 1.0)
+		var low_smash_boost = 1.0 + floor_prox * 0.10 # Cầu càng gần sân thì đập càng nhanh hơn tí
+		current_shot_max_speed = (base_spd + (quality * 7.0) + randf_range(-4.2, 4.2)) * tension_mult * torque_mult * low_smash_boost
 		
 		# Screen shake & impact flash theo lực đập thông thường:
 		shake_amount = 22.0 if is_kill else 14.0
