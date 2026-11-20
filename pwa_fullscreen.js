@@ -1,10 +1,11 @@
-// Kaiser Shuttle PWA & Mobile Fullscreen Helper + Background Execution Shim
+// Kaiser Shuttle PWA & Mobile Fullscreen Helper + Resilient Background Execution
 (function() {
     // -------------------------------------------------------------
-    // 1. Keep Game Loop running in background tabs & unfocused windows
-    // Browsers pause native requestAnimationFrame in background tabs.
-    // We maintain a dedicated Web Worker timer (16ms = ~60 FPS) to trigger
-    // queued rAF callbacks whenever document.hidden is true.
+    // 1. Resilient Game Loop across Background Tabs & Tab Switches
+    // Browsers pause or throttle native requestAnimationFrame in background tabs.
+    // A dedicated Web Worker timer (16ms = ~60 FPS) ticks callbacks when hidden.
+    // On tab restore (visibilitychange / focus), any pending callbacks are
+    // immediately executed and nativeRAF resumes smoothly without deadlock.
     // -------------------------------------------------------------
     const callbacks = new Map();
     let nextId = 1;
@@ -17,6 +18,7 @@
         const blob = new Blob([workerCode], { type: "application/javascript" });
         worker = new Worker(URL.createObjectURL(blob));
         worker.onmessage = function(e) {
+            // While tab is in background, drive the loop using worker ticks
             if (document.hidden && callbacks.size > 0) {
                 const now = e.data;
                 const batch = Array.from(callbacks.entries());
@@ -25,7 +27,7 @@
                     try {
                         batch[i][1](now);
                     } catch (err) {
-                        console.error('[Kaiser BG rAF] Error executing callback:', err);
+                        console.error('[Kaiser BG rAF] Error:', err);
                     }
                 }
             }
@@ -39,41 +41,86 @@
         window.requestAnimationFrame = function(callback) {
             const id = nextId++;
             callbacks.set(id, callback);
-            if (!document.hidden || !worker) {
-                nativeRAF(function(time) {
-                    if (callbacks.has(id)) {
-                        callbacks.delete(id);
-                        try {
-                            callback(time);
-                        } catch (err) {
-                            console.error('[Kaiser rAF] Error executing callback:', err);
-                        }
+
+            // ALWAYS schedule nativeRAF so it fires naturally when active
+            nativeRAF(function(time) {
+                if (callbacks.has(id)) {
+                    callbacks.delete(id);
+                    try {
+                        callback(time);
+                    } catch (err) {
+                        console.error('[Kaiser rAF] Error:', err);
                     }
-                });
-            }
+                }
+            });
+
             return id;
         };
-    }
 
-    if (nativeCAF) {
         window.cancelAnimationFrame = function(id) {
             callbacks.delete(id);
-            nativeCAF(id);
+            if (nativeCAF) nativeCAF(id);
         };
     }
 
-    // Keep AudioContext resumed across visibility changes & blur
-    function keepAudioAlive() {
-        if (window.AudioContext || window.webkitAudioContext) {
-            const AudioCtx = window.AudioContext || window.webkitAudioContext;
-            if (window._kaiserAudioCtx && window._kaiserAudioCtx.state === 'suspended') {
-                window._kaiserAudioCtx.resume().catch(() => {});
+    // When returning to tab, immediately ensure loop is running and canvas is focused!
+    function onTabRestored() {
+        if (!document.hidden) {
+            // 1. If any callback was queued by Godot while in background, flush it immediately!
+            if (callbacks.size > 0) {
+                const now = performance.now();
+                const batch = Array.from(callbacks.entries());
+                callbacks.clear();
+                for (let i = 0; i < batch.length; i++) {
+                    try {
+                        batch[i][1](now);
+                    } catch (err) {
+                        console.error('[Kaiser rAF] Restore Error:', err);
+                    }
+                }
+            }
+
+            // 2. Refocus Godot Canvas so clicks and keys register immediately
+            const canvas = document.querySelector('canvas') || document.getElementById('canvas');
+            if (canvas) {
+                try {
+                    canvas.focus();
+                } catch(e) {}
+            }
+
+            // 3. Resume AudioContext
+            if (window.AudioContext || window.webkitAudioContext) {
+                if (window._kaiserAudioCtx && window._kaiserAudioCtx.state === 'suspended') {
+                    window._kaiserAudioCtx.resume().catch(() => {});
+                }
             }
         }
     }
-    document.addEventListener('visibilitychange', keepAudioAlive);
-    window.addEventListener('focus', keepAudioAlive);
-    window.addEventListener('blur', keepAudioAlive);
+
+    document.addEventListener('visibilitychange', onTabRestored);
+    window.addEventListener('focus', onTabRestored);
+    window.addEventListener('pageshow', onTabRestored);
+
+    // Release any stuck pointer/mouse drag on window blur
+    window.addEventListener('blur', function() {
+        const canvas = document.querySelector('canvas') || document.getElementById('canvas');
+        if (canvas) {
+            try {
+                canvas.dispatchEvent(new PointerEvent('pointerup', { bubbles: true }));
+                canvas.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }));
+            } catch(e) {}
+        }
+    });
+
+    // Ensure canvas stays focused when user clicks anywhere in the game viewport
+    window.addEventListener('click', function(e) {
+        const canvas = document.querySelector('canvas') || document.getElementById('canvas');
+        if (canvas && document.activeElement !== canvas) {
+            try {
+                canvas.focus();
+            } catch(err) {}
+        }
+    }, true);
 
     // -------------------------------------------------------------
     // 2. PWA Install & Fullscreen Handling

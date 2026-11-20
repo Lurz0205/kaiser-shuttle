@@ -1240,8 +1240,6 @@ func _strip_keyboard_focus(root_node: Node) -> void:
 		root_node.focus_mode = Control.FOCUS_NONE
 		if not root_node.pressed.is_connected(root_node.release_focus):
 			root_node.pressed.connect(root_node.release_focus)
-	elif root_node is Control and not (root_node is LineEdit or root_node is TextEdit):
-		root_node.focus_mode = Control.FOCUS_NONE
 	for child in root_node.get_children():
 		_strip_keyboard_focus(child)
 
