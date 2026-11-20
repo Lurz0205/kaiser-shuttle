@@ -12,6 +12,8 @@ signal hit_net()
 @export var is_network_client: bool = false
 
 var is_active: bool = false
+var floor_contact_timer: float = 0.0
+var has_emitted_landed: bool = false
 var is_smash: bool = false
 var is_boom_smash: bool = false
 var is_tsubame_gaeshi: bool = false
@@ -289,6 +291,8 @@ func launch_to_target_2d(from_pt: Vector2, target_pt: Vector2, shot_type: String
 	
 	launch_target = Vector2(final_target_x, floor_y)
 	flight_time_elapsed = 0.0
+	floor_contact_timer = 0.0
+	has_emitted_landed = false
 	is_active = true
 	
 	global_position = from_pt
@@ -464,6 +468,7 @@ func _physics_process(delta: float) -> void:
 			is_boom_smash = false
 			is_active = false
 			is_net_fault = true
+			has_emitted_landed = true
 			if not is_network_client:
 				hit_net.emit()
 				landed.emit(global_position)
@@ -474,15 +479,20 @@ func _physics_process(delta: float) -> void:
 	# Chạm sàn (Floor Landing Check)
 	if p >= 1.0 or h <= 0.0:
 		global_position.y = floor_y
-		is_active = false
-		is_perfect = false
 		velocity = Vector2.ZERO
-		if landing_indicator:
-			landing_indicator.visible = false
-		if lightning_trail:
-			lightning_trail.queue_redraw()
-		if not is_network_client:
-			landed.emit(global_position)
+		
+		# Cho phép cửa sổ 80ms chạm sàn cứu cầu (Floor scoop/dive rescue leeway)
+		floor_contact_timer += delta
+		if floor_contact_timer >= 0.08:
+			is_active = false
+			is_perfect = false
+			if landing_indicator:
+				landing_indicator.visible = false
+			if lightning_trail:
+				lightning_trail.queue_redraw()
+			if not is_network_client and not has_emitted_landed:
+				has_emitted_landed = true
+				landed.emit(global_position)
 	
 	_sync_shadow()
 	_update_trail()

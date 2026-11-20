@@ -123,6 +123,10 @@ var is_pvp_active: bool = false
 var is_pvp_host: bool = false
 var pvp_room_code: String = ""
 var pvp_local_char: String = "nishikawa"
+var pvp_landing_pending: bool = false
+var pvp_landing_pending_pos: Vector2 = Vector2.ZERO
+var pvp_landing_pending_is_serve: bool = false
+var pvp_landing_grace_timer: float = 0.0
 
 @onready var btn_settings: Button = $HUD/BtnSettings
 @onready var settings_panel: PanelContainer = $HUD/SettingsPanel
@@ -723,6 +727,10 @@ func _on_network_packet_received(data: Dictionary) -> void:
 				ai_rival.balance = float(data.get("bal", 100.0))
 
 		"opp_shot":
+			if pvp_landing_pending:
+				print("[PvP] Đối thủ đã cứu cầu thành công trong cửa sổ trễ ping! Tiếp tục pha cầu.")
+				pvp_landing_pending = false
+				current_state = MatchState.RALLY
 			var from_pt = Vector2(float(data.get("from_x", 890.0)), float(data.get("from_y", 450.0)))
 			var target_pt = Vector2(float(data.get("target_x", 390.0)), float(data.get("target_y", 550.0)))
 			var s_type = str(data.get("shot_type", "clear"))
@@ -984,8 +992,16 @@ func _update_difficulty_buttons() -> void:
 
 
 func _process(delta: float) -> void:
+	# Authoritative PvP Landing Grace Timer (Đợi gói cứu cầu muộn do độ trễ mạng từ Guest)
+	if pvp_landing_pending:
+		pvp_landing_grace_timer -= delta
+		if pvp_landing_grace_timer <= 0.0:
+			pvp_landing_pending = false
+			_confirm_shuttlecock_landed(pvp_landing_pending_pos, pvp_landing_pending_is_serve)
+			
 	# Cố định tâm camera tuyệt đối tại giữa màn hình (tránh mọi lỗi trôi/lệch khung)
-	camera.position = Vector2(640.0, 360.0)
+	if camera:
+		camera.position = Vector2(640.0, 360.0)
 	
 	# Đồng bộ kích thước phản chiếu sàn ngay tức thì khi chuyển đổi Fullscreen / Maximize
 	var cur_win = Vector2(DisplayServer.window_get_size())
@@ -996,10 +1012,12 @@ func _process(delta: float) -> void:
 	
 	# Camera Screen Shake
 	if shake_amount > 0.0:
-		camera.offset = Vector2(randf_range(-shake_amount, shake_amount), randf_range(-shake_amount, shake_amount))
+		if camera:
+			camera.offset = Vector2(randf_range(-shake_amount, shake_amount), randf_range(-shake_amount, shake_amount))
 		shake_amount = move_toward(shake_amount, 0.0, delta * 55.0)
 	else:
-		camera.offset = Vector2.ZERO
+		if camera:
+			camera.offset = Vector2.ZERO
 	
 	# Impact Flash decay
 	if flash_alpha > 0.0:
@@ -1209,6 +1227,8 @@ func _on_touch_shot_triggered(shot_type: String) -> void:
 
 
 func _setup_serve(server: String) -> void:
+	pvp_landing_pending = false
+	pvp_landing_grace_timer = 0.0
 	current_state = MatchState.SERVE
 	current_server = server
 	is_serve_in_progress = false
@@ -1219,9 +1239,10 @@ func _setup_serve(server: String) -> void:
 	
 	# Phục hồi an toàn tuyệt đối mọi trạng thái hiệu ứng, tránh lỗi kẹt màn hình hay timescale
 	Engine.time_scale = 1.0
-	camera.position = Vector2(640.0, 360.0)
-	camera.zoom = Vector2(1.0, 1.0)
-	camera.offset = Vector2.ZERO
+	if camera:
+		camera.position = Vector2(640.0, 360.0)
+		camera.zoom = Vector2(1.0, 1.0)
+		camera.offset = Vector2.ZERO
 	shake_amount = 0.0
 	impact_lightning_active = false
 	if grayscale_rect:
@@ -1247,18 +1268,19 @@ func _setup_serve(server: String) -> void:
 		if ai_rival.ai_pressure_model:
 			ai_rival.ai_pressure_model.reset()
 	
-	player.reset_position(390.0, FLOOR_Y)
-	ai_rival.reset_position(890.0, FLOOR_Y)
-	
-	# Movement strictly locked during serve
-	player.is_serving_phase = true
-	ai_rival.is_serving_phase = true
+	if player:
+		player.reset_position(390.0, FLOOR_Y)
+		player.is_serving_phase = true
+	if ai_rival:
+		ai_rival.reset_position(890.0, FLOOR_Y)
+		ai_rival.is_serving_phase = true
 	
 	var serve_pos = Vector2(390.0, FLOOR_Y - 35.0) if server == "player" else Vector2(890.0, FLOOR_Y - 35.0)
-	shuttlecock.global_position = serve_pos
-	shuttlecock.velocity = Vector2.ZERO
-	shuttlecock.is_active = false
-	shuttlecock.is_serve = false
+	if shuttlecock:
+		shuttlecock.global_position = serve_pos
+		shuttlecock.velocity = Vector2.ZERO
+		shuttlecock.is_active = false
+		shuttlecock.is_serve = false
 	prev_shuttle_x = serve_pos.x
 	
 	if is_umpire_speaking:
@@ -1980,15 +2002,36 @@ func _show_landing_callout(pos: Vector2, status: String, subtitle: String = "") 
 
 
 func _on_shuttlecock_landed(pos: Vector2, _floor_3d: Vector3 = Vector3.ZERO) -> void:
-	if current_state != MatchState.RALLY:
+	if current_state != MatchState.RALLY and not pvp_landing_pending:
 		return
 	
+	if is_pvp_active and not is_pvp_host:
+		return
+	
+	# Trong trận PvP máy Host:
+	# Nếu cầu chạm sàn bên phần sân của Guest (pos.x > NET_X) và KHÔNG phải lỗi chạm lưới:
+	# Guest có Defensive Hit Authority. Host chờ cửa sổ trễ ping để đón cú đánh cứu cầu muộn từ Guest.
+	if is_pvp_active and is_pvp_host:
+		if pos.x > NET_X and not (shuttlecock and shuttlecock.is_net_fault):
+			pvp_landing_pending = true
+			pvp_landing_pending_pos = pos
+			pvp_landing_pending_is_serve = is_serve_in_progress
+			var p_ms = net_manager.current_ping if net_manager else 60
+			pvp_landing_grace_timer = clamp(float(p_ms) / 1000.0 + 0.16, 0.22, 0.45)
+			shake_amount = max(shake_amount, 5.0 if (shuttlecock and shuttlecock.is_smash) else 2.5)
+			return
+			
+	_confirm_shuttlecock_landed(pos, is_serve_in_progress)
+
+
+func _confirm_shuttlecock_landed(pos: Vector2, p_is_serve: bool = false) -> void:
+	pvp_landing_pending = false
 	current_state = MatchState.POINT_OVER
-	shake_amount = max(shake_amount, 14.0 if shuttlecock.is_smash else 4.0)
+	shake_amount = max(shake_amount, 14.0 if (shuttlecock and shuttlecock.is_smash) else 4.0)
 	
 	shockwave_pos = pos
 	shockwave_radius = 8.0
-	shockwave_alpha = 0.9 if shuttlecock.is_smash else 0.5
+	shockwave_alpha = 0.9 if (shuttlecock and shuttlecock.is_smash) else 0.5
 	_redraw_effects()
 	
 	if is_pvp_active and not is_pvp_host:
@@ -1998,7 +2041,7 @@ func _on_shuttlecock_landed(pos: Vector2, _floor_3d: Vector3 = Vector3.ZERO) -> 
 	var reason = ""
 	
 	# 1. KIỂM TRA LUẬT PHÁT CẦU (SERVE FAULT CHECK)
-	if is_serve_in_progress:
+	if p_is_serve:
 		is_serve_in_progress = false
 		if current_server == "player":
 			# Người chơi phát cầu: phải qua vạch SHORT_SERVICE_RIGHT (785px) và không ra ngoài
@@ -2033,9 +2076,9 @@ func _on_shuttlecock_landed(pos: Vector2, _floor_3d: Vector3 = Vector3.ZERO) -> 
 		return
 	
 	# 2. RALLY BÌNH THƯỜNG
-	if shuttlecock.is_net_fault:
+	if shuttlecock and shuttlecock.is_net_fault:
 		_show_landing_callout(pos, "FAULT", "CHƯA QUA LƯỚI")
-		if shuttlecock.last_hitter == "player":
+		if shuttlecock and shuttlecock.last_hitter == "player":
 			point_winner = "ai"
 			reason = "CẦU KHÔNG QUA LƯỚI! ĐIỂM CHO RIVAL AI"
 		else:
@@ -2043,7 +2086,7 @@ func _on_shuttlecock_landed(pos: Vector2, _floor_3d: Vector3 = Vector3.ZERO) -> 
 			reason = "CẦU KHÔNG QUA LƯỚI! ĐIỂM CHO PLAYER"
 	elif pos.x < LEFT_OUT_X or pos.x > RIGHT_OUT_X:
 		_show_landing_callout(pos, "OUT", "NGOÀI SÂN")
-		if shuttlecock.last_hitter == "player":
+		if shuttlecock and shuttlecock.last_hitter == "player":
 			point_winner = "ai"
 			reason = "NGOÀI BIÊN! ĐIỂM CHO RIVAL AI"
 		else:
@@ -2215,7 +2258,8 @@ func _award_point(winner: String, reason: String) -> void:
 			"next_server": current_server
 		})
 		
-	await get_tree().create_timer(1.2).timeout
+	if is_inside_tree() and get_tree():
+		await get_tree().create_timer(1.2).timeout
 	if bwf_scoreboard:
 		bwf_scoreboard.set_server(current_server != "player")
 	_setup_serve(current_server)
@@ -2410,6 +2454,8 @@ func _update_scoreboard() -> void:
 
 
 func _show_banner(text: String, col: Color, auto_hide: bool = false, duration: float = 1.0) -> void:
+	if not label_banner:
+		return
 	if banner_tween and banner_tween.is_valid():
 		banner_tween.kill()
 		
