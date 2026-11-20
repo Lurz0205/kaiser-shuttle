@@ -106,6 +106,7 @@ var input_buffer_shot: String = ""
 var input_buffer_timer: float = 0.0
 const INPUT_BUFFER_WINDOW: float = 0.16 # 160ms cửa sổ đệm phím bấm đón đầu cầu
 var facing: float = 1.0 # 1.0 = right, -1.0 = left
+var consecutive_drops: int = 0 # Đếm số quả drop liên tiếp để phạt mỏi từ quả thứ 8
 
 # Pending Perfect Smash & Special Skills (giữ cầu lơ lửng trong slow-mo tại điểm chạm vợt, hết slow-mo mới phóng đi)
 var pending_special_target: Vector2 = Vector2.ZERO
@@ -206,6 +207,7 @@ func reset_position(serve_x: float, serve_y: float) -> void:
 	current_tension_level = 0
 	rally_time = 0.0
 	rally_hits = 0
+	consecutive_drops = 0
 	balance = 100.0
 	is_diving = false
 	is_sliding = false
@@ -901,6 +903,15 @@ func _process_ai(delta: float) -> void:
 				dynamic_home_x = 855.0
 			else:
 				dynamic_home_x = 890.0
+				
+		# Tinh chỉnh vị trí hồi về linh hoạt theo lối chơi của từng nhân vật:
+		var ai_char = stats.character_id if stats else "wall"
+		if ai_char == "nishikawa":
+			dynamic_home_x += 15.0 # Nishikawa lùi nhẹ đón đà bật nhảy smash bão táp
+		elif ai_char == "fuji":
+			dynamic_home_x -= 15.0 # Fuji nhích nhẹ gần lưới để chủ động điều cầu/drop
+		elif ai_char == "wall":
+			dynamic_home_x += 20.0 # Isabel đứng chắc chắn ở đáy sân phòng ngự kiên cố
 	elif ai_difficulty == 1:
 		# MEDIUM AI: Thích nghi vừa phải
 		if opp_consecutive_clears >= 2:
@@ -1112,6 +1123,16 @@ func _process_ai(delta: float) -> void:
 				elif ai_difficulty == 1:
 					jump_chance = 0.35 if (opp_pos_x < 370.0) else 0.15
 				
+				# Tinh chỉnh độ hăng hái bật nhảy smash theo nhân vật:
+				var ai_char = stats.character_id if stats else "wall"
+				if ai_char == "nishikawa":
+					jump_chance += 0.15 # Nishikawa ham tấn công bão táp, bật nhảy nã smash nhiều hơn
+				elif ai_char == "fuji":
+					jump_chance -= 0.10 # Fuji chuộng điều cầu kỹ thuật hơn
+				elif ai_char == "wall":
+					jump_chance -= 0.18 # Isabel kiên nhẫn bám lưới và đáy sân phòng ngự
+				jump_chance = clamp(jump_chance, 0.10, 0.95)
+				
 				if randf() < jump_chance:
 					velocity.y = JUMP_FORCE
 					jump_taken.emit(Vector2(global_position.x, current_ground_y), facing)
@@ -1293,9 +1314,23 @@ func _process_ai(delta: float) -> void:
 						else:
 							_execute_hit("clear", hit_status)
 					elif player_is_back or opp_is_camping_back:
-						_execute_hit("drop" if randf() < 0.55 else "smash", hit_status)
+						var ai_char = stats.character_id if stats else "wall"
+						if ai_char == "nishikawa":
+							_execute_hit("smash" if randf() < 0.65 else "drop", hit_status) # Nishikawa ưu tiên nã smash uy lực
+						elif ai_char == "fuji":
+							_execute_hit("drop" if randf() < 0.70 else "smash", hit_status) # Fuji ưu tiên thả nhỏ hiểm hóc
+						else:
+							_execute_hit("drop" if randf() < 0.55 else "smash", hit_status)
 					else:
-						_execute_hit("drop" if randf() < 0.45 else ("smash" if randf() < 0.60 else "clear"), hit_status)
+						var ai_char = stats.character_id if stats else "wall"
+						if ai_char == "nishikawa":
+							_execute_hit("smash" if randf() < 0.55 else ("drop" if randf() < 0.50 else "clear"), hit_status)
+						elif ai_char == "fuji":
+							_execute_hit("drop" if randf() < 0.60 else "clear", hit_status)
+						elif ai_char == "wall":
+							_execute_hit("clear" if randf() < 0.65 else "drop", hit_status) # Isabel ưu tiên phông sâu bào mòn thể lực
+						else:
+							_execute_hit("drop" if randf() < 0.45 else ("smash" if randf() < 0.60 else "clear"), hit_status)
 				elif ai_difficulty == 1: # TRUNG BÌNH:
 					if opp_is_vulnerable:
 						_execute_hit("smash" if randf() < 0.80 else "clear", hit_status)
@@ -1753,24 +1788,27 @@ func _execute_hit(shot_type: String, hit_status: Dictionary = {}) -> void:
 			# CÚ SMASH SẤM SÉT (GOLDEN BOOM SMASH): SÁT THƯƠNG 25% TỔNG THỂ LỰC (25.0) VÀ TRỪ 40% ACCURACY ĐANG CÓ!
 			# (CHỈ ÁP DỤNG CHO SMASH SẤM SÉT, KHÔNG ÁP DỤNG CHO SMASH THƯỜNG)
 			if shot_type == "mirage_counter" or is_wall_auto_counter:
-				# Isabel kích hoạt Mirage Counter hóa giải đòn Smash của Nishikawa:
-				# Khiên ảo ảnh vô hiệu hóa sát thương; phản chấn lại kẻ tấn công Nishikawa 10% tổng thể lực, KHÔNG trừ accuracy (được cộng +10):
+				# Isabel kích hoạt Mirage Counter đỡ cú Smash của Nishikawa:
+				# VẪN BỊ TRỪ THỂ LỰC TỪ NISHIKAWA (25.0), CHỈ BẢO TOÀN ĐỘ ACCURACY (không bị giảm 40% accuracy):
+				if stats:
+					stats.consume_stamina_action(25.0) # Vẫn bị trừ thể lực từ cú smash sấm sét
+				balance = max(10.0, balance - 35.0)
+				# Phản chấn lại kẻ tấn công Nishikawa: trừ 10% tổng thể lực (10.0), trừ 30 balance.
+				# KẺ TẤN CÔNG KHÔNG BỊ GIẢM ACCURACY CŨNG KHÔNG ĐƯỢC BÙ:
 				if opponent_player and opponent_player.stats:
 					opponent_player.stats.consume_stamina_action(10.0) # 10% tổng thể lực
-					opponent_player.stats.accuracy = min(100.0, opponent_player.stats.accuracy + 10.0)
 					opponent_player.balance = max(25.0, opponent_player.balance - 30.0)
 			else:
-				# Người phòng thủ chịu trọn cú đập sấm sét:
+				# Người phòng thủ bình thường chịu trọn cú đập sấm sét:
 				if stats:
 					stats.consume_stamina_action(25.0) # 25% tổng thể lực
 					stats.accuracy = max(0.0, stats.accuracy * 0.60) # Trừ 40% accuracy đang có
 				balance = max(10.0, balance - 35.0)
 		elif is_wall_auto_counter or shot_type == "mirage_counter":
-			# Đánh vào Isabel có skill (Mirage Counter):
-			# Kẻ tấn công bị phản chấn: chỉ trừ 10% tổng thể lực (10.0), KHÔNG trừ accuracy (thậm chí được cộng +10)
+			# Đánh vào Isabel có skill (Mirage Counter) với smash thường:
+			# Kẻ tấn công bị phản chấn: trừ 10% tổng thể lực (10.0), trừ 30 balance. KHÔNG giảm cũng KHÔNG được bù accuracy:
 			if opponent_player and opponent_player.stats:
 				opponent_player.stats.consume_stamina_action(10.0) # 10% tổng thể lực
-				opponent_player.stats.accuracy = min(100.0, opponent_player.stats.accuracy + 10.0) # Không trừ accuracy mà được cộng
 				opponent_player.balance = max(25.0, opponent_player.balance - 30.0)
 		elif is_kill:
 			if is_perfect or quality >= 0.85:
@@ -1813,7 +1851,7 @@ func _execute_hit(shot_type: String, hit_status: Dictionary = {}) -> void:
 	var is_incoming_tsubame = not is_incoming_smash and shuttlecock and (shuttlecock.current_shot_type == "tsubame_gaeshi" or shuttlecock.is_tsubame_gaeshi)
 	if is_incoming_tsubame and shot_type != "mirage_counter":
 		if stats:
-			stats.accuracy = max(5.0, stats.accuracy - 10.0)
+			stats.accuracy = max(5.0, stats.accuracy - 20.0) # Trừ 20.0 accuracy (thay vì 10.0)
 		balance = max(20.0, balance - 25.0)
 		
 		var is_diving_or_sliding = is_diving or is_sliding
@@ -1897,8 +1935,13 @@ func _execute_hit(shot_type: String, hit_status: Dictionary = {}) -> void:
 			stats.consume_flow()
 	elif is_off_balance or accuracy_pop_weak or shot_type == "weak_return":
 		actual_shot = "weak_return"
-		# Rơi nông ở khoảng giữa sân đối thủ để đối phương lao lên dứt điểm
-		target_x = 880.0 if facing > 0 else 400.0
+		# Cầu non (Chance Ball) chỉ có thể non và trong sân như những cú từ gần lưới tới giữa sân:
+		var mid_target = 800.0 if facing > 0 else 480.0
+		target_x = mid_target + facing * randf_range(-40.0, 40.0)
+		if facing > 0:
+			target_x = clamp(target_x, 720.0, 880.0)
+		else:
+			target_x = clamp(target_x, 400.0, 560.0)
 	elif shot_type == "drop":
 		var is_fuji = stats and (stats.character_id == "fuji" or stats.special_skill_id == "tsubame_gaeshi")
 		if is_fuji and stats.can_use_special():
@@ -2072,10 +2115,23 @@ func _execute_hit(shot_type: String, hit_status: Dictionary = {}) -> void:
 			balance = max(10.0, balance - 5.0 * floor_prox)
 			if stats:
 				stats.accuracy = max(5.0, stats.accuracy - 3.5 * floor_prox)
-	else:
+	elif actual_shot != "mirage_counter":
 		if stats:
-			stats.on_reset_shot()
+			# Clear: -3.0 thể lực, Drop: -1.5 thể lực
+			stats.on_reset_shot(actual_shot)
 		swing_cooldown = SWING_COOLDOWN_MAX
+	else:
+		swing_cooldown = SWING_COOLDOWN_MAX
+		
+	# Theo dõi mỏi tay khi spam bỏ nhỏ (Drop): Từ quả thứ 8 trở đi giảm accuracy từ 0-20% tăng nhanh dần (phi tuyến tính):
+	if actual_shot == "drop" or actual_shot == "tsubame_gaeshi":
+		consecutive_drops += 1
+		if consecutive_drops >= 8 and stats:
+			var over_drops = float(consecutive_drops - 7)
+			var drop_fatigue_penalty = clamp(pow(over_drops, 1.5) * 2.8 + randf_range(0.0, 3.5), 1.0, 20.0)
+			stats.accuracy = max(5.0, stats.accuracy - drop_fatigue_penalty)
+	else:
+		consecutive_drops = 0
 	
 	# Multi-Factor Error Spread: Cầu chỉ có nguy cơ bay OUT khi hội tụ (Tension cao + Mất thăng bằng + Timing ẩu)
 	var err_offset_x: float = 0.0
@@ -2092,7 +2148,15 @@ func _execute_hit(shot_type: String, hit_status: Dictionary = {}) -> void:
 				err_offset_x = -facing * (1.0 - quality) * 40.0
 				
 	# Xử lý sai số hoặc lỗi đánh bóng Out sân khi Accuracy < 50%:
-	if is_blunder_out:
+	# CẦU NON (CHANCE BALL) TUYỆT ĐỐI KHÔNG BAO GIỜ OUT SÂN (chỉ rơi ở vùng từ gần lưới tới giữa sân):
+	if actual_shot == "weak_return":
+		is_blunder_out = false
+		err_offset_x = 0.0
+		if facing > 0:
+			target_x = clamp(target_x, 720.0, 880.0)
+		else:
+			target_x = clamp(target_x, 400.0, 560.0)
+	elif is_blunder_out:
 		target_x = 1175.0 if facing > 0 else 105.0
 		err_offset_x = 0.0
 	elif is_smash_hit:
@@ -2112,15 +2176,13 @@ func _execute_hit(shot_type: String, hit_status: Dictionary = {}) -> void:
 	var is_any_smash = (actual_shot == "smash" or actual_shot == "boom_smash" or actual_shot == "kill_smash")
 	var is_jump_smash_shot = (is_air or actual_shot == "kill_smash") and is_any_smash
 	
-	# Tích lũy Flow (Hưng Phấn / Nộ) (Không cộng nộ cho cú đánh vừa kích hoạt tiêu thụ Flow):
+	# Tích lũy Flow (Hưng Phấn / Nộ): Perfect +15 Flow, Cú đánh thường +3 Flow:
 	var is_flow_special_shot = (actual_shot == "boom_smash" or actual_shot == "mirage_counter" or actual_shot == "tsubame_gaeshi")
 	if stats and not is_flow_special_shot:
 		if is_perfect:
-			stats.add_flow(25.0)
-		elif quality >= 0.75:
-			stats.add_flow(10.0)
+			stats.add_flow(15.0)
 		else:
-			stats.add_flow(5.0)
+			stats.add_flow(3.0)
 	
 	# NGƯNG ĐỌNG TRONG SLOW-MO TẠI THỜI ĐIỂM TIẾP XÚC CẦU:
 	# Áp dụng cho:

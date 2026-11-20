@@ -984,10 +984,11 @@ func _on_network_packet_received(data: Dictionary) -> void:
 			if player and player.stats:
 				var s_loss = float(data.get("stamina_loss", 10.0))
 				var b_loss = float(data.get("balance_loss", 30.0))
-				var a_bonus = float(data.get("accuracy_bonus", 10.0))
+				var a_bonus = float(data.get("accuracy_bonus", 0.0))
 				player.stats.consume_stamina_action(s_loss)
 				player.balance = max(25.0, player.balance - b_loss)
-				player.stats.accuracy = min(100.0, player.stats.accuracy + a_bonus)
+				if a_bonus != 0.0:
+					player.stats.accuracy = min(100.0, player.stats.accuracy + a_bonus)
 				if floating_text_mgr:
 					floating_text_mgr.spawn("MIRAGE RECOIL: -%d STM!" % int(s_loss), player.global_position + Vector2(0, -50), Color(0.3, 0.8, 1.0), 16)
 
@@ -1847,13 +1848,12 @@ func _on_shot_hit(shot_type: String, is_smash: bool, quality: float, is_perfect:
 				"t": "skill_recoil",
 				"stamina_loss": 10.0,
 				"balance_loss": 30.0,
-				"accuracy_bonus": 10.0
+				"accuracy_bonus": 0.0
 			})
 	elif is_pvp_active and hitter == "ai" and shot_type == "mirage_counter":
 		if player and player.stats:
 			player.stats.consume_stamina_action(10.0)
 			player.balance = max(25.0, player.balance - 30.0)
-			player.stats.accuracy = min(100.0, player.stats.accuracy + 10.0)
 			if floating_text_mgr:
 				floating_text_mgr.spawn("MIRAGE RECOIL: -10 STM!", player.global_position + Vector2(0, -50), Color(0.3, 0.8, 1.0), 16)
 	is_serve_in_progress = false

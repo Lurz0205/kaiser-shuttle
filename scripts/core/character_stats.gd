@@ -169,10 +169,11 @@ func on_smash_defended(quality: float, is_perfect: bool, defender_balance: float
 
 
 ## Cơ chế "Kinetic Reset": 1 cú Drop êm ái hoặc Clear thả lỏng hồi 100% torque (nhưng TUYỆT ĐỐI không hồi thể lực khi đánh cầu!)
-func on_reset_shot() -> void:
+## Clear tiêu hao 3.0 thể lực, Drop tiêu hao 1.5 thể lực:
+func on_reset_shot(shot_type: String = "clear") -> void:
 	reset_torque()
-	# Tiêu hao nhẹ 2.5 thể lực khi vung vợt đánh phông/bỏ nhỏ:
-	consume_stamina_action(2.5)
+	var drain = 1.5 if (shot_type == "drop" or shot_type == "tsubame_gaeshi") else 3.0
+	consume_stamina_action(drain)
 
 
 # ==========================================================

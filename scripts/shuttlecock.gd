@@ -195,6 +195,13 @@ func launch_to_target_2d(from_pt: Vector2, target_pt: Vector2, shot_type: String
 	is_jump_drop = (shot_type == "drop" and h_start > t_res.net_height + 25.0)
 	
 	var final_target_x = target_pt.x + error_offset_x
+	if shot_type == "weak_return":
+		error_offset_x = 0.0
+		# Cầu non (Chance Ball) luôn rơi ở vùng từ gần lưới tới giữa sân đối thủ:
+		if final_target_x > t_res.net_x:
+			final_target_x = clamp(final_target_x, 720.0, 880.0)
+		else:
+			final_target_x = clamp(final_target_x, 400.0, 560.0)
 	var dx = final_target_x - from_pt.x
 	dist_x = max(abs(dx), 15.0)
 	var facing = 1.0 if dx >= 0 else -1.0
