@@ -1744,20 +1744,20 @@ func _execute_hit(shot_type: String, hit_status: Dictionary = {}) -> void:
 			stats.on_smash_defended(quality, is_perfect, balance)
 			
 		if is_nishikawa_attacker:
+			# ĐÒN SMASH CỦA NISHIKAWA: SÁT THƯƠNG 30% TỔNG THỂ LỰC (30.0) VÀ TRỪ 50% ACCURACY ĐANG CÓ!
+			# ÁP DỤNG TRỰC TIẾP LÊN NGƯỜI ĐỠ (KỂ CẢ KHI ISABEL KÍCH HOẠT SKILL MIRAGE COUNTER):
+			if stats:
+				stats.consume_stamina_action(30.0) # 30% tổng thể lực
+				stats.accuracy = max(0.0, stats.accuracy * 0.50) # Trừ 50% accuracy đang có
+			balance = max(10.0, balance - 35.0)
+			
 			if shot_type == "mirage_counter" or is_wall_auto_counter:
 				# Isabel kích hoạt Mirage Counter hóa giải đòn Smash của Nishikawa:
-				# Isabel hồi 20% thể lực và tăng accuracy (xử lý ở đoạn mirage_counter)
-				# Kẻ tấn công Nishikawa bị phản chấn 20% tổng thể lực, KHÔNG trừ accuracy (được cộng):
+				# Phản chấn lại kẻ tấn công Nishikawa 20% tổng thể lực, KHÔNG trừ accuracy (được cộng +10):
 				if opponent_player and opponent_player.stats:
 					opponent_player.stats.consume_stamina_action(20.0) # 20% tổng thể lực
 					opponent_player.stats.accuracy = min(100.0, opponent_player.stats.accuracy + 10.0)
 					opponent_player.balance = max(25.0, opponent_player.balance - 30.0)
-			else:
-				# Bị Nishikawa đập trúng: Sát thương 30% TỔNG thể lực (30.0), và trừ 50% accuracy ĐANG CÓ
-				if stats:
-					stats.consume_stamina_action(30.0) # 30% tổng thể lực
-					stats.accuracy = max(0.0, stats.accuracy * 0.50) # Trừ 50% accuracy đang có
-				balance = max(10.0, balance - 35.0)
 		elif is_wall_auto_counter or shot_type == "mirage_counter":
 			# Đánh vào Isabel có skill (Mirage Counter):
 			# Kẻ tấn công bị phản chấn: chỉ trừ 20% tổng thể lực (20.0), KHÔNG trừ accuracy (thậm chí được cộng +10)
@@ -1945,9 +1945,12 @@ func _execute_hit(shot_type: String, hit_status: Dictionary = {}) -> void:
 		# Bung sâu cao vút về đáy sân đối phương:
 		target_x = 1110.0 if facing > 0 else 170.0
 		if stats:
-			# Hồi phục 20% thể lực và phục hồi độ chính xác:
+			# Hồi phục 20% thể lực từ khiên Mirage Counter:
 			stats.stamina = min(stats.max_stamina_cap, stats.stamina + 20.0)
-			stats.accuracy = min(100.0, stats.accuracy + 15.0)
+			# Nếu đang chống đỡ cú Smash của Nishikawa: accuracy đã bị trừ 50% theo sát thương kỹ năng Nishikawa, KHÔNG cộng thêm:
+			var is_nishi_smash = is_incoming_smash and opponent_player and opponent_player.stats and (opponent_player.stats.character_id == "nishikawa" or opponent_player.stats.special_skill_id == "golden_smash")
+			if not is_nishi_smash:
+				stats.accuracy = min(100.0, stats.accuracy + 15.0)
 			stats.consume_flow()
 	elif shot_type == "smash":
 		if is_chance_ball:

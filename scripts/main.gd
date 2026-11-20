@@ -140,7 +140,7 @@ var lbl_bgm_vol_match: Label = null
 # Virtual Mobile Controls (Touchpad + Circular Buttons J, K, L)
 const VirtualTouchPadClass = preload("res://scripts/ui/virtual_touch_pad.gd")
 var virtual_touch_pad: Control = null
-var touch_controls_enabled: bool = true
+var touch_controls_enabled: bool = false
 var btn_touch_toggle: Button = null
 
 # Audio (Smash, Phong, Rít giày, Sấm sét, Isabel Block & Slowmo, Dây vợt net, Gió Fuji, Chém cầu sau sân, Trọng tài)
@@ -327,16 +327,22 @@ func _ready() -> void:
 			
 			btn_touch_toggle = Button.new()
 			btn_touch_toggle.custom_minimum_size = Vector2(80, 28)
-			btn_touch_toggle.text = "BẬT"
+			btn_touch_toggle.text = "TẮT"
 			btn_touch_toggle.pressed.connect(func():
 				touch_controls_enabled = not touch_controls_enabled
 				_update_settings_ui()
 				if virtual_touch_pad:
 					virtual_touch_pad.visible = touch_controls_enabled and (not main_menu or not main_menu.visible)
+				if controls_bar:
+					controls_bar.visible = (not touch_controls_enabled) and (not main_menu or not main_menu.visible)
 			)
 			touch_row.add_child(btn_touch_toggle)
 			vbox.add_child(touch_row)
 		
+	# Tự động nhận diện thiết bị: Mặc định TẮT trên Desktop/PC, chỉ BẬT trên Mobile/Touchscreen
+	var is_mobile = OS.has_feature("mobile") or OS.has_feature("web_android") or OS.has_feature("web_ios")
+	touch_controls_enabled = is_mobile
+	
 	_update_settings_ui()
 	_setup_hud_stamina_bars()
 	
@@ -394,7 +400,7 @@ func _set_in_game_hud_visible(show: bool) -> void:
 	if scoreboard:
 		scoreboard.visible = false # Legacy scoreboard stays hidden
 	if controls_bar:
-		controls_bar.visible = show
+		controls_bar.visible = show and not touch_controls_enabled
 	if btn_char_select:
 		btn_char_select.visible = show
 	if btn_settings:
