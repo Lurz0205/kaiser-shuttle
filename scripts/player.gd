@@ -1781,8 +1781,13 @@ func _execute_hit(shot_type: String, hit_status: Dictionary = {}) -> void:
 		
 		# TIÊU HAO THỂ LỰC PHÒNG THỦ KHI CHỐNG ĐỠ CÚ SMASH:
 		# Khi Isabel kích hoạt Mirage Counter: Khiên ảo ảnh triệt tiêu lực ép, không tốn thể lực phòng thủ
+		# Với Smash sấm sét (Boom Smash), sát thương thể lực 25.0 được xử lý riêng bên dưới
 		if stats and shot_type != "mirage_counter" and not is_wall_auto_counter:
-			stats.on_smash_defended(quality, is_perfect, balance)
+			if not is_golden_boom_smash:
+				var contact_x = shuttlecock.global_position.x if shuttlecock else global_position.x
+				var smash_dist = abs(contact_x - shuttlecock.launch_from.x) if (shuttlecock and shuttlecock.launch_from != Vector2.ZERO) else 600.0
+				var s_speed = shuttlecock.velocity.length() if shuttlecock else 0.0
+				stats.on_smash_defended(quality, is_perfect, balance, smash_dist, is_underhand, s_speed)
 			
 		if is_golden_boom_smash:
 			# CÚ SMASH SẤM SÉT (GOLDEN BOOM SMASH): SÁT THƯƠNG 25% TỔNG THỂ LỰC (25.0) VÀ TRỪ 40% ACCURACY ĐANG CÓ!
@@ -2118,7 +2123,12 @@ func _execute_hit(shot_type: String, hit_status: Dictionary = {}) -> void:
 	elif actual_shot != "mirage_counter":
 		if stats:
 			# Clear: -3.0 thể lực, Drop: -1.5 thể lực
-			stats.on_reset_shot(actual_shot)
+			# QUAN TRỌNG: Khi đỡ cú smash, thể lực đã được tính trọn gói trong on_smash_defended (hoặc Golden Boom Smash)!
+			# Không cộng dồn on_reset_shot để tránh người thủ bị trừ 2 lần thể lực khiến Nishikawa spam đập bào mòn!
+			if not is_incoming_smash:
+				stats.on_reset_shot(actual_shot)
+			else:
+				stats.reset_torque()
 		swing_cooldown = SWING_COOLDOWN_MAX
 	else:
 		swing_cooldown = SWING_COOLDOWN_MAX

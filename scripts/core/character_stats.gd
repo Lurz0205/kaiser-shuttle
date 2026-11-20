@@ -146,26 +146,47 @@ func on_smash_executed(is_boom: bool = false, is_chance_ball: bool = false) -> v
 	consume_stamina_action(drain)
 
 
-## Tiêu hao thể lực của người phòng thủ khi đỡ cú Smash:
-## Dựa vào mức độ thăng bằng, độ chính xác và thể lực hiện tại:
-## Nếu defender đang có thể lực, balance và accuracy cao -> chỉ tốn thể lực bình thường (2.5 - 3.0). Kẻ spam smash sẽ tự thua do cạn thể lực!
-## Nếu defender đang bị dồn ép (balance thấp, accuracy thấp, mệt mỏi) hoặc timing kém -> mới chịu hao thể lực nặng hơn.
-func on_smash_defended(quality: float, is_perfect: bool, defender_balance: float = 100.0) -> void:
-	if is_perfect:
-		consume_stamina_action(2.5)
+## Tiêu hao thể lực của người phòng thủ khi đỡ cú Smash (chống spam đập của Nishikawa):
+## 1. Perfect block: -1.0 thể lực
+## 2. Đỡ bình thường (trong hitbox, tư thế tốt, timing chuẩn): -2.0 thể lực
+## 3. Đỡ lúc mất thế (mất cân bằng, chính xác thấp, thể lực yếu, khoảng cách gần, tốc độ cao): -2.0 đến -6.0 thể lực
+func on_smash_defended(quality: float, is_perfect: bool, defender_balance: float = 100.0, smash_dist: float = 600.0, is_underhand: bool = false, shuttle_speed: float = 0.0) -> void:
+	# 1. Perfect Block: Đỡ hoàn hảo tại đỉnh điểm, bảo toàn thể lực (-1.0 thể lực)
+	if is_perfect or quality >= 0.95:
+		consume_stamina_action(1.0)
 		return
 		
-	var is_solid = (defender_balance >= 65.0 and accuracy >= 65.0 and stamina >= 50.0 and quality >= 0.80)
-	if is_solid:
-		# Tư thế vững vàng, chỉ số tốt: Đỡ smash nhẹ nhàng (3.0 thể lực), bên spam đập sẽ tự kiệt sức
-		consume_stamina_action(3.0)
-	else:
-		# Người phòng thủ đang bị thất thế / mất thăng bằng / mệt mỏi:
-		var vulnerability = clamp((100.0 - defender_balance) / 100.0 * 0.5 + (100.0 - accuracy) / 100.0 * 0.5, 0.0, 1.0)
-		var drain = lerp(4.0, 8.5, vulnerability)
-		if quality < 0.75:
-			drain += 2.0
-		consume_stamina_action(drain)
+	# 2. Đánh giá mức độ bất lợi / mất thế (Vulnerability Factor: 0.0 -> 1.0):
+	# - Mất cân bằng: balance < 65
+	var v_balance = clamp((65.0 - defender_balance) / 55.0, 0.0, 1.0)
+	# - Độ chính xác suy giảm: accuracy < 55
+	var v_accuracy = clamp((55.0 - accuracy) / 45.0, 0.0, 1.0)
+	# - Thể lực đang kiệt quệ: stamina < 40
+	var v_stamina = clamp((40.0 - stamina) / 35.0, 0.0, 1.0)
+	# - Timing với tay / chất lượng tiếp xúc: quality < 0.80
+	var v_quality = clamp((0.80 - quality) / 0.40, 0.0, 1.0)
+	# - Đập ở cự ly gần / sát lưới (smash_dist < 520px): phản xạ gắt hơn
+	var v_dist = clamp((520.0 - smash_dist) / 280.0, 0.0, 1.0)
+	# - Tiếp xúc thấp sát sàn (underhand dig)
+	var v_underhand = 0.20 if is_underhand else 0.0
+	# - Tốc độ cầu cao (nếu có truyền vào, > 1100 px/s)
+	var v_speed = clamp((shuttle_speed - 1100.0) / 400.0, 0.0, 1.0) * 0.15 if shuttle_speed > 1100.0 else 0.0
+	
+	# Tổng hợp chỉ số mất thế:
+	var vulnerability = clamp(
+		v_balance * 0.25 +
+		v_accuracy * 0.20 +
+		v_stamina * 0.20 +
+		v_quality * 0.20 +
+		v_dist * 0.15 +
+		v_underhand +
+		v_speed,
+		0.0, 1.0
+	)
+	
+	# Đỡ bình thường: 2.0 thể lực | Mất thế: scale từ 2.0 đến 6.0 thể lực
+	var drain = lerp(2.0, 6.0, vulnerability)
+	consume_stamina_action(drain)
 
 
 ## Cơ chế "Kinetic Reset": 1 cú Drop êm ái hoặc Clear thả lỏng hồi 100% torque (nhưng TUYỆT ĐỐI không hồi thể lực khi đánh cầu!)
