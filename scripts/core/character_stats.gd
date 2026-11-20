@@ -122,8 +122,8 @@ func is_stamina_critical() -> bool:
 func on_smash_executed(is_boom: bool = false, is_chance_ball: bool = false) -> void:
 	if is_chance_ball:
 		# ĐẬP DỨT ĐIỂM CẦU NON (CHANCE BALL / KILL SMASH):
-		# Tiêu hao đúng 10 thể lực, không bị tích tụ torque mỏi tay
-		consume_stamina_action(10.0)
+		var drain_cb = 2.0 if character_id == "nishikawa" else 4.0
+		consume_stamina_action(drain_cb)
 		smash_torque = 1.0
 		consecutive_smashes = 0
 		return
@@ -132,12 +132,17 @@ func on_smash_executed(is_boom: bool = false, is_chance_ball: bool = false) -> v
 	if consecutive_smashes == 1:
 		smash_torque = 1.0
 	elif consecutive_smashes == 2:
-		smash_torque = 0.82
+		smash_torque = 0.94 if character_id == "nishikawa" else 0.84
 	else:
-		smash_torque = 0.64
+		smash_torque = 0.88 if character_id == "nishikawa" else 0.70
 	
-	# Tiêu hao thể lực cho cú smash (18.0 thường, 24.0 boom smash)
-	var drain = 24.0 if is_boom else 18.0
+	# Tiêu hao thể lực cho cú smash:
+	# Nishikawa là Đệ Nhất Pháo Thủ (Power 98), sinh ra để smash dồn ép đối thủ -> tiêu hao cực ít thể lực (3-5 điểm)!
+	var drain = 0.0
+	if character_id == "nishikawa":
+		drain = 5.0 if is_boom else 3.0
+	else:
+		drain = 9.0 if is_boom else 6.0
 	consume_stamina_action(drain)
 
 

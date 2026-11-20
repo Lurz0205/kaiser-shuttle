@@ -755,7 +755,8 @@ func _process_player_input(delta: float) -> void:
 			velocity.y = JUMP_FORCE
 			jump_taken.emit(Vector2(global_position.x, current_ground_y), facing)
 			if stats:
-				stats.consume_stamina_action(5.0)
+				var jump_drain = 2.0 if (stats.character_id == "nishikawa") else 4.0
+				stats.consume_stamina_action(jump_drain)
 		touch_jump_pressed = false
 	
 	# Swing / Shot trigger: Player can ALWAYS swing anytime!
