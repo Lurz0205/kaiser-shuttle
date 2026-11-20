@@ -10,6 +10,7 @@ const CustomIcon = preload("res://scripts/ui/custom_icon.gd")
 
 signal start_match_requested(player_char: String, rival_char: String, difficulty: int, target_points: int, match_sets: int)
 signal start_pvp_match_requested(room_code: String, is_host: bool, player_char: String, target_points: int, match_sets: int)
+signal spectate_room_requested(room_code: String)
 signal settings_updated(squeak: bool, bgm_enabled: bool, bgm_vol: float)
 
 enum MenuState {
@@ -52,7 +53,7 @@ var pvp_sets_btns: Dictionary = {}
 # Settings parameters
 var squeak_enabled: bool = true
 var bgm_match_enabled: bool = true
-var bgm_match_volume: float = 0.30
+var bgm_match_volume: float = 0.20
 
 # UI Panels
 var title_panel: Control
@@ -617,6 +618,8 @@ func _create_stat_bar(stat_name: String, val: int, col: Color) -> HBoxContainer:
 
 func _create_clean_button(text: String, col: Color, min_size: Vector2, font_size: int = 14) -> Button:
 	var b = Button.new()
+	b.focus_mode = Control.FOCUS_NONE
+	b.pressed.connect(b.release_focus)
 	b.text = text
 	b.custom_minimum_size = min_size
 	b.add_theme_font_size_override("font_size", font_size)
@@ -968,9 +971,13 @@ func _build_pvp_panel(sb_setup: StyleBoxFlat) -> void:
 	pvp_room_input.add_theme_font_size_override("font_size", 16)
 	input_row.add_child(pvp_room_input)
 	
-	var btn_join = _create_clean_button("KẾT NỐI (JOIN)", Color(0.35, 0.75, 1.0), Vector2(140, 38), 13)
+	var btn_join = _create_clean_button("THI ĐẤU (P2)", Color(0.35, 0.75, 1.0), Vector2(110, 38), 12)
 	btn_join.pressed.connect(_on_guest_join_room)
 	input_row.add_child(btn_join)
+	
+	var btn_spec = _create_clean_button("👁 XEM (KHÁN GIẢ)", Color(0.85, 0.45, 0.95), Vector2(140, 38), 12)
+	btn_spec.pressed.connect(_on_spectate_room)
+	input_row.add_child(btn_spec)
 	jv.add_child(input_row)
 	
 	# Status Bar & Back Button
@@ -1125,6 +1132,25 @@ func _on_guest_join_room() -> void:
 	if net_manager:
 		net_manager.join_room(code, pvp_selected_char)
 
+func _on_spectate_room() -> void:
+	if not pvp_room_input: return
+	var code = pvp_room_input.text.strip_edges().to_upper()
+	if code.is_empty():
+		if pvp_status_lbl:
+			pvp_status_lbl.text = "Lỗi: Vui lòng nhập mã phòng để vào xem!"
+			pvp_status_lbl.modulate = Color(1.0, 0.4, 0.4)
+		return
+	pvp_current_code = code
+	pvp_is_host = false
+	pvp_is_connected = false
+	pvp_is_counting_down = false
+	if btn_pvp_start: btn_pvp_start.visible = false
+	if pvp_countdown_lbl: pvp_countdown_lbl.visible = false
+	if pvp_status_lbl:
+		pvp_status_lbl.text = "Đang kết nối xem phòng [%s] trên WebSocket Server..." % code
+		pvp_status_lbl.modulate = Color(0.85, 0.45, 0.95)
+	spectate_room_requested.emit(code)
+
 func _on_net_status_changed(st: String) -> void:
 	if not pvp_status_lbl: return
 	match st:
@@ -1132,6 +1158,9 @@ func _on_net_status_changed(st: String) -> void:
 			pvp_status_lbl.text = "Phòng [%s] đang mở. Đang chờ đối thủ vào..." % pvp_current_code
 		"connecting":
 			pvp_status_lbl.text = "Đang kết nối tới phòng [%s] qua WebSocket Server..." % pvp_current_code
+		"spectating":
+			pvp_status_lbl.text = "👁 Đã kết nối với tư cách khán giả phòng [%s]!" % pvp_current_code
+			pvp_status_lbl.modulate = Color(0.85, 0.45, 0.95)
 		"disconnected":
 			pvp_status_lbl.text = "Kết nối đã ngắt."
 			pvp_status_lbl.modulate = Color(1.0, 0.4, 0.4)

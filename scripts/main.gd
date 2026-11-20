@@ -136,10 +136,15 @@ var pvp_landing_grace_timer: float = 0.0
 @onready var btn_hard: Button = $HUD/SettingsPanel/VBox/DifficultyRow/BtnHard
 @onready var btn_squeak: Button = $HUD/SettingsPanel/VBox/SqueakRow/BtnSqueak
 var bgm_match_enabled: bool = true
-var bgm_match_volume: float = 0.30
+var bgm_match_volume: float = 0.20
 var btn_bgm_match: Button = null
 var slider_bgm_match: HSlider = null
 var lbl_bgm_vol_match: Label = null
+
+# Spectator Mode Parameters
+var is_spectator: bool = false
+var spectator_banner: Panel = null
+var btn_spectator_leave: Button = null
 
 # Virtual Mobile Controls (Touchpad + Circular Buttons J, K, L)
 const VirtualTouchPadClass = preload("res://scripts/ui/virtual_touch_pad.gd")
@@ -266,18 +271,43 @@ func _ready() -> void:
 	add_child(amb_player)
 	amb_player.play()
 	
+	# Đảm bảo game tiếp tục chạy nền mượt mà khi chuyển tab hoặc cửa sổ không active
+	OS.low_processor_usage_mode = false
+	
 	if btn_settings:
-		btn_settings.pressed.connect(_toggle_settings_panel)
+		btn_settings.focus_mode = Control.FOCUS_NONE
+		btn_settings.pressed.connect(func():
+			btn_settings.release_focus()
+			_toggle_settings_panel()
+		)
 	if btn_close_settings:
-		btn_close_settings.pressed.connect(func(): if settings_panel: settings_panel.visible = false)
+		btn_close_settings.focus_mode = Control.FOCUS_NONE
+		btn_close_settings.pressed.connect(func():
+			btn_close_settings.release_focus()
+			if settings_panel: settings_panel.visible = false
+		)
 	
 	if btn_easy and btn_medium and btn_hard:
-		btn_easy.pressed.connect(func(): set_ai_difficulty(0))
-		btn_medium.pressed.connect(func(): set_ai_difficulty(1))
-		btn_hard.pressed.connect(func(): set_ai_difficulty(2))
+		btn_easy.focus_mode = Control.FOCUS_NONE
+		btn_medium.focus_mode = Control.FOCUS_NONE
+		btn_hard.focus_mode = Control.FOCUS_NONE
+		btn_easy.pressed.connect(func():
+			btn_easy.release_focus()
+			set_ai_difficulty(0)
+		)
+		btn_medium.pressed.connect(func():
+			btn_medium.release_focus()
+			set_ai_difficulty(1)
+		)
+		btn_hard.pressed.connect(func():
+			btn_hard.release_focus()
+			set_ai_difficulty(2)
+		)
 	
 	if btn_squeak:
+		btn_squeak.focus_mode = Control.FOCUS_NONE
 		btn_squeak.pressed.connect(func():
+			btn_squeak.release_focus()
 			squeak_enabled = not squeak_enabled
 			_update_settings_ui()
 		)
@@ -294,9 +324,11 @@ func _ready() -> void:
 			bgm_row.add_child(lbl_bgm)
 			
 			btn_bgm_match = Button.new()
+			btn_bgm_match.focus_mode = Control.FOCUS_NONE
 			btn_bgm_match.custom_minimum_size = Vector2(80, 28)
 			btn_bgm_match.text = "BẬT"
 			btn_bgm_match.pressed.connect(func():
+				btn_bgm_match.release_focus()
 				bgm_match_enabled = not bgm_match_enabled
 				_update_settings_ui()
 				_apply_match_bgm()
@@ -306,11 +338,12 @@ func _ready() -> void:
 			
 			var vol_row = HBoxContainer.new()
 			lbl_bgm_vol_match = Label.new()
-			lbl_bgm_vol_match.text = "Âm lượng nhạc: 30%"
+			lbl_bgm_vol_match.text = "Âm lượng nhạc: 20%"
 			lbl_bgm_vol_match.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 			vol_row.add_child(lbl_bgm_vol_match)
 			
 			slider_bgm_match = HSlider.new()
+			slider_bgm_match.focus_mode = Control.FOCUS_NONE
 			slider_bgm_match.custom_minimum_size = Vector2(110, 24)
 			slider_bgm_match.min_value = 0.0
 			slider_bgm_match.max_value = 1.0
@@ -331,9 +364,11 @@ func _ready() -> void:
 			touch_row.add_child(lbl_touch)
 			
 			btn_touch_toggle = Button.new()
+			btn_touch_toggle.focus_mode = Control.FOCUS_NONE
 			btn_touch_toggle.custom_minimum_size = Vector2(80, 28)
 			btn_touch_toggle.text = "TẮT"
 			btn_touch_toggle.pressed.connect(func():
+				btn_touch_toggle.release_focus()
 				touch_controls_enabled = not touch_controls_enabled
 				_update_settings_ui()
 				if virtual_touch_pad:
@@ -351,9 +386,13 @@ func _ready() -> void:
 			fs_row.add_child(lbl_fs)
 			
 			var btn_fs_toggle = Button.new()
+			btn_fs_toggle.focus_mode = Control.FOCUS_NONE
 			btn_fs_toggle.custom_minimum_size = Vector2(80, 28)
 			btn_fs_toggle.text = "BẬT/TẮT"
-			btn_fs_toggle.pressed.connect(_toggle_fullscreen)
+			btn_fs_toggle.pressed.connect(func():
+				btn_fs_toggle.release_focus()
+				_toggle_fullscreen()
+			)
 			fs_row.add_child(btn_fs_toggle)
 			vbox.add_child(fs_row)
 		
@@ -363,6 +402,7 @@ func _ready() -> void:
 	
 	# Nút Toàn Màn Hình (Fullscreen) ở góc trên bên phải màn hình
 	btn_fullscreen = Button.new()
+	btn_fullscreen.focus_mode = Control.FOCUS_NONE
 	btn_fullscreen.name = "BtnFullscreen"
 	btn_fullscreen.text = "⛶ FULL"
 	btn_fullscreen.custom_minimum_size = Vector2(74, 30)
@@ -382,7 +422,10 @@ func _ready() -> void:
 	fs_sb.corner_radius_bottom_left = 6
 	btn_fullscreen.add_theme_stylebox_override("normal", fs_sb)
 	btn_fullscreen.add_theme_color_override("font_color", Color(0.35, 0.90, 1.0))
-	btn_fullscreen.pressed.connect(_toggle_fullscreen)
+	btn_fullscreen.pressed.connect(func():
+		btn_fullscreen.release_focus()
+		_toggle_fullscreen()
+	)
 	$HUD.add_child(btn_fullscreen)
 	
 	_update_settings_ui()
@@ -400,6 +443,7 @@ func _ready() -> void:
 	main_menu.set_network_manager(net_manager)
 	main_menu.start_match_requested.connect(_on_menu_start_match)
 	main_menu.start_pvp_match_requested.connect(_on_menu_start_pvp_match)
+	main_menu.spectate_room_requested.connect(_on_menu_spectate_room)
 	main_menu.settings_updated.connect(_on_menu_settings_updated)
 	
 	# Khởi tạo Touchpad di chuyển (kéo qua lại) & Cụm phím ảo J, K, L (Vector Logo)
@@ -411,7 +455,9 @@ func _ready() -> void:
 	virtual_touch_pad.visible = false
 	
 	if btn_char_select:
+		btn_char_select.focus_mode = Control.FOCUS_NONE
 		btn_char_select.pressed.connect(func():
+			btn_char_select.release_focus()
 			_set_in_game_hud_visible(false)
 			main_menu.switch_state(MainMenuController.MenuState.MATCH_SETUP)
 			main_menu.visible = true
@@ -422,6 +468,9 @@ func _ready() -> void:
 		label_player_badge.text = player.stats.character_name.to_upper()
 	if label_rival_badge and ai_rival and ai_rival.stats:
 		label_rival_badge.text = ai_rival.stats.character_name.to_upper()
+		
+	# Khử toàn bộ keyboard/space focus trên mọi nút bấm
+	_strip_keyboard_focus($HUD)
 		
 	# Phát nhạc nền sảnh chờ BWF Li-Ning
 	if bgm_lobby:
@@ -608,16 +657,16 @@ func _on_menu_start_match(p_id: String, r_id: String, diff: int, target_points: 
 	_setup_serve("player")
 	_play_umpire_opening_call("player")
 		
-	# Bật hoặc tắt nhạc nền trận đấu theo thiết lập
-	_apply_match_bgm()
+	# Bật hoặc tắt nhạc nền trận đấu theo thiết lập (bắt đầu lại bài nhạc từ đầu)
+	_apply_match_bgm(true)
 
 
-func _on_menu_settings_updated(sq: bool, bgm_en: bool = true, bgm_vol: float = 0.30) -> void:
+func _on_menu_settings_updated(sq: bool, bgm_en: bool = true, bgm_vol: float = 0.20) -> void:
 	squeak_enabled = sq
 	bgm_match_enabled = bgm_en
 	bgm_match_volume = bgm_vol
 	_update_settings_ui()
-	_apply_match_bgm()
+	_apply_match_bgm(false)
 
 func _create_char_stats(char_id: String) -> CharacterStats:
 	match char_id:
@@ -629,6 +678,7 @@ func _create_char_stats(char_id: String) -> CharacterStats:
 func _on_menu_start_pvp_match(room_code: String, is_host: bool, local_char: String, target_points: int, match_sets: int) -> void:
 	is_pvp_active = true
 	is_pvp_host = is_host
+	is_spectator = false
 	pvp_room_code = room_code
 	pvp_local_char = local_char
 	target_match_points = target_points
@@ -705,9 +755,164 @@ func _on_menu_start_pvp_match(room_code: String, is_host: bool, local_char: Stri
 	_update_scoreboard()
 	_setup_serve("player")
 	_show_banner("BẠN ĐANG Ở SÂN TRÁI - ĐỐI THỦ Ở SÂN PHẢI!", Color(0.2, 0.9, 0.8))
+	_play_umpire_opening_call("player")
 	
-	# Bật hoặc tắt nhạc nền trận đấu theo thiết lập
-	_apply_match_bgm()
+	# Bật hoặc tắt nhạc nền trận đấu theo thiết lập (bắt đầu lại bài nhạc từ đầu)
+	_apply_match_bgm(true)
+
+
+func _on_menu_spectate_room(room_code: String) -> void:
+	is_spectator = true
+	is_pvp_active = true
+	is_pvp_host = false
+	pvp_room_code = room_code.to_upper().strip_edges()
+	if net_manager:
+		net_manager.join_spectator(pvp_room_code)
+
+
+func _start_spectator_mode(data: Dictionary) -> void:
+	is_spectator = true
+	is_pvp_active = true
+	is_pvp_host = false
+	pvp_room_code = str(data.get("code", pvp_room_code))
+	target_match_points = int(data.get("pts", 11))
+	total_match_sets = int(data.get("sets", 1))
+	current_set_index = 0
+	score_player = int(data.get("p1_pts", 0))
+	score_ai = int(data.get("p2_pts", 0))
+	sets_won_player = int(data.get("p1_sets", 0))
+	sets_won_ai = int(data.get("p2_sets", 0))
+	var srv = str(data.get("current_server", "p1"))
+	current_server = "player" if srv == "p1" or srv == "player" else "ai"
+	
+	if shuttlecock:
+		shuttlecock.is_network_client = true
+	if match_over_dialog:
+		match_over_dialog.visible = false
+		
+	main_menu.visible = false
+	_set_in_game_hud_visible(true)
+	if virtual_touch_pad:
+		virtual_touch_pad.visible = false
+	if controls_bar:
+		controls_bar.visible = false
+	if btn_char_select:
+		btn_char_select.visible = false
+		
+	# Cả hai bên đều là puppet đối với spectator
+	if player:
+		player.is_ai = false
+		player.is_remote_puppet = true
+		player.court_side = "player"
+		player.facing = 1.0
+		var p1_char = str(data.get("p1_char", "nishikawa"))
+		player.stats = _create_char_stats(p1_char)
+		player.move_speed_x = lerp(230.0, 265.0, (player.stats.agility - 40.0) / 59.0)
+		player.opponent_player = ai_rival
+		if label_player_badge:
+			label_player_badge.text = "P1: " + player.stats.character_name.to_upper()
+			
+	if ai_rival:
+		ai_rival.is_ai = false
+		ai_rival.is_remote_puppet = true
+		ai_rival.court_side = "ai"
+		ai_rival.facing = -1.0
+		var p2_char = str(data.get("p2_char", "wall"))
+		ai_rival.stats = _create_char_stats(p2_char)
+		ai_rival.move_speed_x = lerp(230.0, 265.0, (ai_rival.stats.agility - 40.0) / 59.0)
+		ai_rival.opponent_player = player
+		if label_rival_badge:
+			label_rival_badge.text = "P2: " + ai_rival.stats.character_name.to_upper()
+			
+	if bwf_scoreboard:
+		bwf_scoreboard.reset_scoreboard(total_match_sets)
+		bwf_scoreboard.set_match_mode(total_match_sets)
+		var p1_name = "P1 (" + player.stats.character_name.split("(")[0].strip_edges() + ")"
+		var p2_name = "P2 (" + ai_rival.stats.character_name.split("(")[0].strip_edges() + ")"
+		bwf_scoreboard.set_players(p1_name, p2_name, "JP", "DK")
+		bwf_scoreboard.update_current_score(score_player, score_ai)
+		bwf_scoreboard.set_sets_won(sets_won_player, sets_won_ai)
+		bwf_scoreboard.set_server(current_server != "player")
+		
+	_update_scoreboard()
+	_update_hud_stamina_bars()
+	_show_spectator_banner()
+	_apply_match_bgm(false)
+
+
+func _show_spectator_banner() -> void:
+	if not spectator_banner:
+		spectator_banner = Panel.new()
+		spectator_banner.name = "SpectatorBanner"
+		spectator_banner.custom_minimum_size = Vector2(460, 36)
+		spectator_banner.position = Vector2(410, 14)
+		
+		var sb = StyleBoxFlat.new()
+		sb.bg_color = Color(0.08, 0.05, 0.16, 0.92)
+		sb.border_width_left = 1
+		sb.border_width_top = 1
+		sb.border_width_right = 1
+		sb.border_width_bottom = 1
+		sb.border_color = Color(0.85, 0.45, 0.95, 0.8)
+		sb.corner_radius_top_left = 6
+		sb.corner_radius_top_right = 6
+		sb.corner_radius_bottom_right = 6
+		sb.corner_radius_bottom_left = 6
+		spectator_banner.add_theme_stylebox_override("panel", sb)
+		
+		var hbox = HBoxContainer.new()
+		hbox.alignment = BoxContainer.ALIGNMENT_CENTER
+		hbox.anchors_preset = Control.PRESET_FULL_RECT
+		hbox.add_theme_constant_override("separation", 16)
+		spectator_banner.add_child(hbox)
+		
+		var lbl = Label.new()
+		lbl.name = "LabelSpec"
+		lbl.text = "👁 CHẾ ĐỘ KHÁN GIẢ • PHÒNG: " + pvp_room_code
+		lbl.add_theme_font_size_override("font_size", 13)
+		lbl.modulate = Color(0.92, 0.65, 1.0)
+		hbox.add_child(lbl)
+		
+		btn_spectator_leave = Button.new()
+		btn_spectator_leave.focus_mode = Control.FOCUS_NONE
+		btn_spectator_leave.text = "THOÁT (RỜI PHÒNG)"
+		btn_spectator_leave.custom_minimum_size = Vector2(130, 26)
+		btn_spectator_leave.add_theme_font_size_override("font_size", 11)
+		
+		var sb_btn = StyleBoxFlat.new()
+		sb_btn.bg_color = Color(0.70, 0.20, 0.25, 0.85)
+		sb_btn.corner_radius_top_left = 4
+		sb_btn.corner_radius_top_right = 4
+		sb_btn.corner_radius_bottom_right = 4
+		sb_btn.corner_radius_bottom_left = 4
+		btn_spectator_leave.add_theme_stylebox_override("normal", sb_btn)
+		btn_spectator_leave.pressed.connect(func():
+			btn_spectator_leave.release_focus()
+			_on_spectator_leave()
+		)
+		hbox.add_child(btn_spectator_leave)
+		
+		$HUD.add_child(spectator_banner)
+		
+	var lbl = spectator_banner.find_child("LabelSpec", true, false) as Label
+	if lbl:
+		lbl.text = "👁 CHẾ ĐỘ KHÁN GIẢ • PHÒNG: " + pvp_room_code
+	spectator_banner.visible = true
+	_strip_keyboard_focus(spectator_banner)
+
+
+func _on_spectator_leave() -> void:
+	is_spectator = false
+	is_pvp_active = false
+	if net_manager:
+		net_manager.disconnect_peer()
+	if spectator_banner:
+		spectator_banner.visible = false
+	_set_in_game_hud_visible(false)
+	if main_menu:
+		main_menu.switch_state(MainMenuController.MenuState.PVP_LOBBY)
+		main_menu.visible = true
+	_apply_menu_bgm()
 
 func _on_network_packet_received(data: Dictionary) -> void:
 	if not is_pvp_active:
@@ -897,6 +1102,126 @@ func _on_network_packet_received(data: Dictionary) -> void:
 			if is_pvp_host and current_state == MatchState.SERVE and current_server == "ai":
 				_execute_serve("ai", str(data.get("shot_type", "clear")))
 
+		"spectator_joined":
+			_start_spectator_mode(data)
+
+		"spec_sync":
+			if not is_spectator: return
+			var role = str(data.get("role", "p1"))
+			var target_node = player if role == "p1" else ai_rival
+			if target_node:
+				target_node.global_position.x = lerp(target_node.global_position.x, float(data.get("x", target_node.global_position.x)), 0.5)
+				target_node.global_position.y = lerp(target_node.global_position.y, float(data.get("y", target_node.global_position.y)), 0.5)
+				target_node.velocity.x = float(data.get("vx", 0.0))
+				target_node.velocity.y = float(data.get("vy", 0.0))
+				target_node.facing = float(data.get("f", 1.0 if role == "p1" else -1.0))
+				target_node.is_swinging = bool(data.get("sw", false))
+				target_node.is_diving = bool(data.get("dv", false))
+				target_node.walk_phase = float(data.get("wp", target_node.walk_phase))
+				target_node.balance = float(data.get("bal", 100.0))
+				if target_node.stats:
+					if data.has("stm"): target_node.stats.stamina = float(data.get("stm", target_node.stats.stamina))
+					if data.has("cap"): target_node.stats.max_stamina_cap = float(data.get("cap", target_node.stats.max_stamina_cap))
+					if data.has("acc"): target_node.stats.accuracy = float(data.get("acc", target_node.stats.accuracy))
+
+		"spec_shot":
+			if not is_spectator: return
+			var role = str(data.get("role", "p1"))
+			var hitter_node = player if role == "p1" else ai_rival
+			var from_pt = Vector2(float(data.get("from_x", 400.0)), float(data.get("from_y", 400.0)))
+			var target_pt = Vector2(float(data.get("target_x", 890.0 if role == "p1" else 390.0)), float(data.get("target_y", 550.0)))
+			var s_type = str(data.get("shot_type", "clear"))
+			var err = float(data.get("err", 0.0))
+			var is_perf = bool(data.get("is_perf", false))
+			var is_jump = bool(data.get("is_jump", false))
+			var t_mult = float(data.get("t_mult", 1.0))
+			var t_lvl = int(data.get("t_lvl", 0))
+			var q = float(data.get("quality", 0.8))
+			var hitter_str = "player" if role == "p1" else "ai"
+			
+			if hitter_node:
+				hitter_node.is_swinging = true
+				hitter_node.swing_timer = 0.0
+				hitter_node.can_hit = false
+				if hitter_node.stats and data.has("stm"):
+					hitter_node.stats.stamina = float(data.get("stm", hitter_node.stats.stamina))
+					hitter_node.stats.max_stamina_cap = float(data.get("cap", hitter_node.stats.max_stamina_cap))
+					hitter_node.stats.accuracy = float(data.get("acc", hitter_node.stats.accuracy))
+					
+			var other_node = ai_rival if role == "p1" else player
+			if other_node:
+				other_node.can_hit = true
+				
+			var is_cinematic = (s_type == "boom_smash" and is_perf) or (s_type == "tsubame_gaeshi") or (s_type == "mirage_counter")
+			if is_cinematic and hitter_node:
+				hitter_node.pending_special_target = target_pt
+				hitter_node.pending_special_shot = s_type
+				hitter_node.pending_special_from = from_pt
+				hitter_node.pending_special_err = err
+				hitter_node.pending_special_is_perfect = is_perf
+				hitter_node.pending_special_is_jump_smash = is_jump
+				hitter_node.current_tension_mult = t_mult
+				hitter_node.current_tension_level = t_lvl
+				
+				if shuttlecock:
+					shuttlecock.is_active = false
+					shuttlecock.is_suspended_in_smash_slowmo = true
+					shuttlecock.suspended_smash_pos = from_pt
+					shuttlecock.global_position = from_pt
+					shuttlecock.velocity = Vector2.ZERO
+					shuttlecock.last_hitter = hitter_str
+					shuttlecock.is_serve = false
+			else:
+				if shuttlecock:
+					shuttlecock.last_hitter = hitter_str
+					shuttlecock.is_serve = false
+					shuttlecock.launch_to_target_2d(from_pt, target_pt, s_type, err, is_perf, is_jump, t_mult, t_lvl)
+					
+			_on_shot_hit(s_type, is_perf or is_jump or s_type == "smash", q, is_perf, is_jump, from_pt, hitter_str)
+
+		"spec_serve":
+			if not is_spectator: return
+			var role = str(data.get("role", "p1"))
+			var s_type = str(data.get("shot_type", "clear"))
+			var server_str = "player" if role == "p1" else "ai"
+			_execute_serve(server_str, s_type)
+
+		"spec_score":
+			if not is_spectator: return
+			var winner = str(data.get("winner", "player"))
+			var reason = str(data.get("reason", "ĐIỂM"))
+			score_player = int(data.get("p1_pts", score_player))
+			score_ai = int(data.get("p2_pts", score_ai))
+			sets_won_player = int(data.get("p1_sets", sets_won_player))
+			sets_won_ai = int(data.get("p2_sets", sets_won_ai))
+			var srv = str(data.get("next_server", "player"))
+			current_server = "player" if srv == "player" or srv == "p1" else "ai"
+			current_state = MatchState.POINT_OVER
+			
+			_update_scoreboard()
+			if bwf_scoreboard:
+				bwf_scoreboard.update_current_score(score_player, score_ai)
+				bwf_scoreboard.set_sets_won(sets_won_player, sets_won_ai)
+				bwf_scoreboard.set_server(current_server != "player")
+				
+			var winner_label = "P1 (SÂN TRÁI)" if winner == "player" else "P2 (SÂN PHẢI)"
+			_show_banner("ĐIỂM CHO %s! - %s" % [winner_label, reason], Color(0.95, 0.85, 0.25), true, 1.5)
+			
+			get_tree().create_timer(1.8).timeout.connect(func():
+				if is_pvp_active and is_spectator:
+					_setup_serve(current_server)
+			)
+
+		"spec_match_over":
+			if not is_spectator: return
+			var winner = str(data.get("winner", "player"))
+			var champ = "P1 (" + player.stats.character_name + ")" if (player and player.stats and winner == "player") else "P2 (" + (ai_rival.stats.character_name if ai_rival and ai_rival.stats else "RIVAL") + ")"
+			_show_match_over_dialog(champ)
+
+		"room_closed":
+			if is_spectator:
+				_show_banner("PHÒNG THI ĐẤU ĐÃ ĐÓNG.", Color(1.0, 0.4, 0.4), true, 4.0)
+
 func _on_network_peer_disconnected(reason: String) -> void:
 	if is_pvp_active:
 		_show_banner("ĐỐI THỦ ĐÃ NGẮT KẾT NỐI! (" + reason + ")", Color(1.0, 0.4, 0.4))
@@ -907,6 +1232,26 @@ func _on_network_peer_disconnected(reason: String) -> void:
 				main_menu.visible = true
 				_set_in_game_hud_visible(false)
 		)
+
+func _strip_keyboard_focus(root_node: Node) -> void:
+	if not root_node:
+		return
+	if root_node is BaseButton:
+		root_node.focus_mode = Control.FOCUS_NONE
+		if not root_node.pressed.is_connected(root_node.release_focus):
+			root_node.pressed.connect(root_node.release_focus)
+	elif root_node is Control and not (root_node is LineEdit or root_node is TextEdit):
+		root_node.focus_mode = Control.FOCUS_NONE
+	for child in root_node.get_children():
+		_strip_keyboard_focus(child)
+
+func _input(event: InputEvent) -> void:
+	# Khử hoàn toàn lỗi bấm SPACE / ENTER vô tình kích hoạt các nút UI (Đổi tướng, Cài đặt, Fullscreen, v.v.)
+	# Các nút đó giờ chỉ cho phép dùng chuột click, không phím tắt, không enter hay space để thay click chuột
+	if event is InputEventKey and (event.keycode in [KEY_SPACE, KEY_ENTER, KEY_KP_ENTER]):
+		var cur_focus = get_viewport().gui_get_focus_owner()
+		if cur_focus is BaseButton:
+			cur_focus.release_focus()
 
 func _unhandled_input(event: InputEvent) -> void:
 	if main_menu and main_menu.visible:
@@ -919,20 +1264,13 @@ func _unhandled_input(event: InputEvent) -> void:
 		return
 		
 	if event is InputEventKey and event.pressed and not event.echo:
-		if event.keycode == KEY_C:
-			_toggle_character_select()
-		elif event.keycode == KEY_ESCAPE:
-			_set_in_game_hud_visible(false)
-			main_menu.switch_state(MainMenuController.MenuState.TITLE)
-			main_menu.visible = true
-		elif event.keycode == KEY_1:
-			set_ai_difficulty(0)
-		elif event.keycode == KEY_2:
-			set_ai_difficulty(1)
-		elif event.keycode == KEY_3:
-			set_ai_difficulty(2)
-		elif event.keycode == KEY_O:
-			_toggle_settings_panel()
+		if event.keycode == KEY_ESCAPE:
+			if is_spectator:
+				_on_spectator_leave()
+			else:
+				_set_in_game_hud_visible(false)
+				main_menu.switch_state(MainMenuController.MenuState.TITLE)
+				main_menu.visible = true
 
 
 func set_ai_difficulty(diff: int) -> void:
@@ -983,14 +1321,14 @@ func _update_settings_ui() -> void:
 		btn_touch_toggle.modulate = Color(1.2, 3.2, 1.2) if touch_controls_enabled else Color(1.8, 0.6, 0.6)
 
 
-func _apply_match_bgm() -> void:
+func _apply_match_bgm(restart_from_beginning: bool = false) -> void:
 	if not bgm_lobby:
 		return
 	if bgm_match_enabled:
 		var target_db = linear_to_db(clamp(bgm_match_volume, 0.001, 1.0))
-		if not bgm_lobby.playing:
-			bgm_lobby.volume_db = target_db
-			bgm_lobby.play()
+		bgm_lobby.volume_db = target_db
+		if restart_from_beginning or not bgm_lobby.playing:
+			bgm_lobby.play(0.0)
 		else:
 			var tw = create_tween()
 			tw.tween_property(bgm_lobby, "volume_db", target_db, 0.5)
@@ -1122,7 +1460,7 @@ func _process(delta: float) -> void:
 		_redraw_effects()
 	
 	# Authoritative WebSocket PvP Multiplayer Sync (Mirrored 100% independent low-latency)
-	if is_pvp_active and net_manager:
+	if is_pvp_active and not is_spectator and net_manager:
 		net_manager.send_packet({
 			"t": "sync",
 			"x": player.global_position.x,
@@ -1150,11 +1488,11 @@ func _process(delta: float) -> void:
 		prev_shuttle_x = shuttlecock.global_position.x
 	
 	# In SERVE state: player input to serve
-	if current_state == MatchState.SERVE:
+	if current_state == MatchState.SERVE and not is_spectator:
 		_process_serve_state()
 	
 	# Reset match key (R)
-	if Input.is_key_pressed(KEY_R):
+	if Input.is_key_pressed(KEY_R) and not is_pvp_active:
 		score_player = 0
 		score_ai = 0
 		_update_scoreboard()
@@ -1200,14 +1538,17 @@ func _play_umpire_opening_call(server: String = "player") -> void:
 	is_umpire_speaking = true
 	if sfx_low_ball_play:
 		sfx_low_ball_play.play()
-	if label_banner:
-		label_banner.visible = false
-		label_banner.text = ""
 	
-	get_tree().create_timer(1.7).timeout.connect(func():
+	var call_duration: float = 2.88
+	if sfx_low_ball_play and sfx_low_ball_play.stream:
+		call_duration = max(call_duration, sfx_low_ball_play.stream.get_length())
+	
+	_show_banner("TRỌNG TÀI BẮT ĐẦU TRẬN ĐẤU (PLAY)...", Color(1.0, 0.9, 0.3))
+	
+	get_tree().create_timer(call_duration).timeout.connect(func():
 		is_umpire_speaking = false
 		if current_state == MatchState.SERVE:
-			var server_name = "PLAYER" if server == "player" else "RIVAL AI"
+			var server_name = "BẠN" if server == "player" else ("ĐỐI THỦ" if is_pvp_active else "RIVAL AI")
 			_show_banner("%s GIAO CẦU (BẤM J HOẶC K)" % server_name, Color(1.0, 1.0, 1.0))
 			if server == "ai" and not is_pvp_active:
 				get_tree().create_timer(0.8).timeout.connect(func():
@@ -2361,6 +2702,7 @@ func _show_match_over_dialog(champ: String) -> void:
 		vbox.add_child(btn_row)
 		
 		var btn_again = Button.new()
+		btn_again.focus_mode = Control.FOCUS_NONE
 		btn_again.text = "CHƠI LẠI (PLAY AGAIN)"
 		btn_again.custom_minimum_size = Vector2(190, 42)
 		btn_again.add_theme_font_size_override("font_size", 13)
@@ -2376,10 +2718,14 @@ func _show_match_over_dialog(champ: String) -> void:
 		sb_again.corner_radius_bottom_right = 6
 		sb_again.corner_radius_bottom_left = 6
 		btn_again.add_theme_stylebox_override("normal", sb_again)
-		btn_again.pressed.connect(_on_match_over_play_again)
+		btn_again.pressed.connect(func():
+			btn_again.release_focus()
+			_on_match_over_play_again()
+		)
 		btn_row.add_child(btn_again)
 		
 		var btn_menu = Button.new()
+		btn_menu.focus_mode = Control.FOCUS_NONE
 		btn_menu.text = "MENU CHÍNH (MAIN MENU)"
 		btn_menu.custom_minimum_size = Vector2(190, 42)
 		btn_menu.add_theme_font_size_override("font_size", 13)
@@ -2395,10 +2741,14 @@ func _show_match_over_dialog(champ: String) -> void:
 		sb_menu.corner_radius_bottom_right = 6
 		sb_menu.corner_radius_bottom_left = 6
 		btn_menu.add_theme_stylebox_override("normal", sb_menu)
-		btn_menu.pressed.connect(_on_match_over_to_menu)
+		btn_menu.pressed.connect(func():
+			btn_menu.release_focus()
+			_on_match_over_to_menu()
+		)
 		btn_row.add_child(btn_menu)
 		
 		$HUD.add_child(match_over_dialog)
+		_strip_keyboard_focus(match_over_dialog)
 	
 	var lbl_title = match_over_dialog.find_child("LabelTitle", true, false) as Label
 	var lbl_score_res = match_over_dialog.find_child("LabelScoreRes", true, false) as Label

@@ -177,7 +177,9 @@ func _build_ui() -> void:
 	root_vbox.add_child(btn_row)
 	
 	var btn_start = Button.new()
-	btn_start.text = "BẮT ĐẦU TRẬN ĐẤU (ENTER)"
+	btn_start.focus_mode = Control.FOCUS_NONE
+	btn_start.pressed.connect(btn_start.release_focus)
+	btn_start.text = "BẮT ĐẦU TRẬN ĐẤU"
 	btn_start.custom_minimum_size = Vector2(240, 42)
 	btn_start.add_theme_font_size_override("font_size", 16)
 	btn_start.modulate = Color(1.2, 1.1, 0.5)
@@ -185,7 +187,9 @@ func _build_ui() -> void:
 	btn_row.add_child(btn_start)
 	
 	var btn_close = Button.new()
-	btn_close.text = "ĐÓNG (ESC)"
+	btn_close.focus_mode = Control.FOCUS_NONE
+	btn_close.pressed.connect(btn_close.release_focus)
+	btn_close.text = "ĐÓNG"
 	btn_close.custom_minimum_size = Vector2(130, 42)
 	btn_close.pressed.connect(close)
 	btn_row.add_child(btn_close)
@@ -260,6 +264,8 @@ func _create_character_card(char_id: String) -> PanelContainer:
 	vbox.add_child(b_row)
 	
 	var btn_p = Button.new()
+	btn_p.focus_mode = Control.FOCUS_NONE
+	btn_p.pressed.connect(btn_p.release_focus)
 	btn_p.name = "BtnPlayer"
 	btn_p.text = "CHỌN PLAYER"
 	btn_p.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -267,6 +273,8 @@ func _create_character_card(char_id: String) -> PanelContainer:
 	b_row.add_child(btn_p)
 	
 	var btn_r = Button.new()
+	btn_r.focus_mode = Control.FOCUS_NONE
+	btn_r.pressed.connect(btn_r.release_focus)
 	btn_r.name = "BtnRival"
 	btn_r.text = "CHỌN AI"
 	btn_r.size_flags_horizontal = Control.SIZE_EXPAND_FILL

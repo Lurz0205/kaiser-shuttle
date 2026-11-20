@@ -3,6 +3,7 @@ extends Node
 
 signal connection_status_changed(status: String)
 signal peer_connected(is_host: bool, room_code: String)
+signal spectator_connected(room_code: String, room_data: Dictionary)
 signal peer_disconnected(reason: String)
 signal packet_received(data: Dictionary)
 signal ping_updated(ping_ms: int)
@@ -14,6 +15,7 @@ signal ping_updated(ping_ms: int)
 var ws: WebSocketPeer = WebSocketPeer.new()
 var is_active: bool = false
 var is_host: bool = false
+var is_spectator: bool = false
 var current_room: String = ""
 var last_status: String = "idle"
 var current_ping: int = 0
@@ -21,7 +23,7 @@ var ping_timer: float = 0.0
 var last_ping_sent_msec: int = 0
 var connection_timeout_timer: float = 0.0
 
-var pending_action: String = "" # "host" or "join"
+var pending_action: String = "" # "host", "join", or "spectate"
 var pending_char: String = "nishikawa"
 var pending_pts: int = 11
 var pending_sets: int = 1
@@ -79,6 +81,12 @@ func _physics_process(delta: float) -> void:
 						"char": pending_char
 					}
 					send_packet(pkt)
+				elif act == "spectate":
+					var pkt = {
+						"t": "join_spectator",
+						"code": current_room
+					}
+					send_packet(pkt)
 
 			# Handle Ping / Pong (every 1.5 seconds)
 			ping_timer += delta
@@ -134,6 +142,14 @@ func _handle_server_packet(data: Dictionary) -> void:
 			connection_status_changed.emit("connected")
 			peer_connected.emit(true, current_room)
 
+		"spectator_joined":
+			current_room = str(data.get("code", current_room))
+			last_status = "spectating"
+			is_spectator = true
+			connection_status_changed.emit("spectating")
+			spectator_connected.emit(current_room, data)
+			packet_received.emit(data)
+
 		"opponent_left":
 			peer_disconnected.emit("Đối thủ đã thoát khỏi phòng.")
 
@@ -147,6 +163,7 @@ func _handle_server_packet(data: Dictionary) -> void:
 func host_room(code: String, char_id: String = "nishikawa", pts: int = 11, sets: int = 1) -> void:
 	is_active = true
 	is_host = true
+	is_spectator = false
 	current_room = code.to_upper().strip_edges()
 	pending_action = "host"
 	pending_char = char_id
@@ -159,9 +176,20 @@ func host_room(code: String, char_id: String = "nishikawa", pts: int = 11, sets:
 func join_room(code: String, char_id: String = "wall") -> void:
 	is_active = true
 	is_host = false
+	is_spectator = false
 	current_room = code.to_upper().strip_edges()
 	pending_action = "join"
 	pending_char = char_id
+	connection_timeout_timer = 0.0
+
+	_connect_if_needed()
+
+func join_spectator(code: String) -> void:
+	is_active = true
+	is_host = false
+	is_spectator = true
+	current_room = code.to_upper().strip_edges()
+	pending_action = "spectate"
 	connection_timeout_timer = 0.0
 
 	_connect_if_needed()

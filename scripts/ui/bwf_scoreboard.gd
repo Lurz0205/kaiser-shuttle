@@ -79,6 +79,20 @@ func finish_set(set_idx: int, winner_is_rival: bool) -> void:
 		set_winners[set_idx] = 1 if winner_is_rival else 0
 	refresh_display()
 
+func set_sets_won(s1: int, s2: int) -> void:
+	set_winners = [-1, -1, -1]
+	var idx = 0
+	for i in range(s1):
+		if idx < 3:
+			set_winners[idx] = 0
+			idx += 1
+	for i in range(s2):
+		if idx < 3:
+			set_winners[idx] = 1
+			idx += 1
+	current_active_set = clamp(s1 + s2, 0, 2)
+	refresh_display()
+
 func advance_to_next_set() -> void:
 	current_active_set += 1
 	refresh_display()
