@@ -33,6 +33,7 @@ var max_x: float = 620.0 # Stay on left before net at 640
 # Hit mechanics
 var can_hit: bool = true # ONE-HIT RULE
 var is_serving_phase: bool = true # Lock movement during serve
+var is_server_turn: bool = false # Authoritative flag: True if player is designated server
 var prev_key_j: bool = false
 var prev_key_k: bool = false
 var prev_key_l: bool = false
@@ -778,6 +779,10 @@ func _process_player_input(delta: float) -> void:
 	prev_key_l = cur_l
 	
 	if shot_pressed != "":
+		# Khóa hoàn toàn lệnh đánh khi đang đợi đối phương giao cầu (bên nhận cầu không vung vợt bừa bãi trước khi cầu bay qua lưới)
+		if is_serving_phase and not is_server_turn:
+			return
+
 		# CHỈ CHO PHÉP VUNG VỢT 0.5S 1 LẦN (SWING COOLDOWN):
 		if swing_cooldown > 0.0:
 			return

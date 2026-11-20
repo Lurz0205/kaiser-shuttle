@@ -9,9 +9,9 @@ extends Control
 const CustomIcon = preload("res://scripts/ui/custom_icon.gd")
 
 signal start_match_requested(player_char: String, rival_char: String, difficulty: int, target_points: int, match_sets: int)
-signal start_pvp_match_requested(room_code: String, is_host: bool, player_char: String, target_points: int, match_sets: int)
+signal start_pvp_match_requested(room_code: String, is_host: bool, player_char: String, target_points: int, match_sets: int, first_server: String)
 signal spectate_room_requested(room_code: String)
-signal settings_updated(squeak: bool, bgm_enabled: bool, bgm_vol: float)
+signal settings_updated(squeak: bool, bgm_enabled: bool, bgm_vol: float, low_gfx: bool)
 
 enum MenuState {
 	TITLE,
@@ -40,10 +40,12 @@ var pvp_current_code: String = ""
 var pvp_selected_char: String = "nishikawa"
 var pvp_selected_points: int = 11
 var pvp_selected_sets: int = 1
+var pvp_first_server: String = "p1"
 var pvp_is_host: bool = false
 var pvp_is_connected: bool = false
 var btn_pvp_start: Button
 var pvp_countdown_lbl: Label
+var pvp_char_desc_lbl: Label
 var pvp_countdown_timer: float = 0.0
 var pvp_is_counting_down: bool = false
 var pvp_char_btns: Dictionary = {}
@@ -54,6 +56,7 @@ var pvp_sets_btns: Dictionary = {}
 var squeak_enabled: bool = true
 var bgm_match_enabled: bool = true
 var bgm_match_volume: float = 0.20
+var low_graphics_mode: bool = false
 
 # UI Panels
 var title_panel: Control
@@ -134,7 +137,7 @@ func _process(delta: float) -> void:
 			pvp_is_counting_down = false
 			if pvp_countdown_lbl:
 				pvp_countdown_lbl.text = "VÀO SÂN!"
-			start_pvp_match_requested.emit(pvp_current_code, pvp_is_host, pvp_selected_char, pvp_selected_points, pvp_selected_sets)
+			start_pvp_match_requested.emit(pvp_current_code, pvp_is_host, pvp_selected_char, pvp_selected_points, pvp_selected_sets, pvp_first_server)
 			visible = false
 
 func _draw() -> void:
@@ -417,9 +420,9 @@ func _build_ui() -> void:
 	add_child(settings_panel)
 	
 	var set_box = PanelContainer.new()
-	set_box.custom_minimum_size = Vector2(490, 390)
-	set_box.size = Vector2(490, 390)
-	set_box.position = Vector2(395, 165)
+	set_box.custom_minimum_size = Vector2(510, 440)
+	set_box.size = Vector2(510, 440)
+	set_box.position = Vector2(385, 140)
 	set_box.add_theme_stylebox_override("panel", sb_setup)
 	settings_panel.add_child(set_box)
 	
@@ -454,7 +457,7 @@ func _build_ui() -> void:
 		squeak_enabled = not squeak_enabled
 		btn_sq.text = "BẬT" if squeak_enabled else "TẮT"
 		btn_sq.modulate = Color(0.3, 0.9, 0.4) if squeak_enabled else Color(0.7, 0.7, 0.7)
-		settings_updated.emit(squeak_enabled, bgm_match_enabled, bgm_match_volume)
+		settings_updated.emit(squeak_enabled, bgm_match_enabled, bgm_match_volume, low_graphics_mode)
 	)
 	squeak_row.add_child(btn_sq)
 	set_vbox.add_child(squeak_row)
@@ -473,7 +476,7 @@ func _build_ui() -> void:
 		bgm_match_enabled = not bgm_match_enabled
 		btn_bgm.text = "BẬT" if bgm_match_enabled else "TẮT"
 		btn_bgm.modulate = Color(0.3, 0.9, 0.4) if bgm_match_enabled else Color(0.7, 0.7, 0.7)
-		settings_updated.emit(squeak_enabled, bgm_match_enabled, bgm_match_volume)
+		settings_updated.emit(squeak_enabled, bgm_match_enabled, bgm_match_volume, low_graphics_mode)
 	)
 	bgm_row.add_child(btn_bgm)
 	set_vbox.add_child(bgm_row)
@@ -497,10 +500,28 @@ func _build_ui() -> void:
 	slider_bgm.value_changed.connect(func(val: float):
 		bgm_match_volume = val
 		lbl_bgm_vol.text = "Âm lượng nhạc nền: %d%%" % int(round(val * 100.0))
-		settings_updated.emit(squeak_enabled, bgm_match_enabled, bgm_match_volume)
+		settings_updated.emit(squeak_enabled, bgm_match_enabled, bgm_match_volume, low_graphics_mode)
 	)
 	bgm_vol_row.add_child(slider_bgm)
 	set_vbox.add_child(bgm_vol_row)
+	
+	# Low Graphics Mode Toggle (Chế độ cấu hình thấp cho máy yếu)
+	var gfx_row = HBoxContainer.new()
+	var lbl_gfx = Label.new()
+	lbl_gfx.text = "Cấu hình đồ họa (Low Graphics):"
+	lbl_gfx.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	lbl_gfx.add_theme_font_size_override("font_size", 13)
+	gfx_row.add_child(lbl_gfx)
+	
+	var btn_gfx = _create_clean_button("CAO (CHUẨN)", Color(0.3, 0.9, 0.4), Vector2(120, 30), 12)
+	btn_gfx.pressed.connect(func():
+		low_graphics_mode = not low_graphics_mode
+		btn_gfx.text = "THẤP (MƯỢT)" if low_graphics_mode else "CAO (CHUẨN)"
+		btn_gfx.modulate = Color(0.95, 0.82, 0.25) if low_graphics_mode else Color(0.3, 0.9, 0.4)
+		settings_updated.emit(squeak_enabled, bgm_match_enabled, bgm_match_volume, low_graphics_mode)
+	)
+	gfx_row.add_child(btn_gfx)
+	set_vbox.add_child(gfx_row)
 	
 	var set_close_row = HBoxContainer.new()
 	set_close_row.alignment = BoxContainer.ALIGNMENT_CENTER
@@ -836,7 +857,7 @@ func _build_pvp_panel(sb_setup: StyleBoxFlat) -> void:
 	lbl_p.text = "ĐIỂM:"
 	lbl_p.add_theme_font_size_override("font_size", 12)
 	pts_box.add_child(lbl_p)
-	for pts in [11, 21]:
+	for pts in [11, 15, 21]:
 		var b = _create_clean_button(str(pts) + " ĐIỂM", Color(0.95, 0.82, 0.25), Vector2(75, 32), 11)
 		b.pressed.connect(func(): _select_pvp_pts(pts))
 		pts_box.add_child(b)
@@ -856,6 +877,13 @@ func _build_pvp_panel(sb_setup: StyleBoxFlat) -> void:
 		sets_box.add_child(b)
 		pvp_sets_btns[s_cnt] = b
 	cfg_row.add_child(sets_box)
+	
+	# Skill description banner below config row
+	pvp_char_desc_lbl = Label.new()
+	pvp_char_desc_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	pvp_char_desc_lbl.add_theme_font_size_override("font_size", 11)
+	pvp_char_desc_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	vbox.add_child(pvp_char_desc_lbl)
 	
 	var sep = HSeparator.new()
 	vbox.add_child(sep)
@@ -1079,6 +1107,10 @@ func _update_pvp_controls() -> void:
 	for s in pvp_sets_btns:
 		var b = pvp_sets_btns[s]
 		b.modulate = Color(1.3, 1.3, 1.3) if s == pvp_selected_sets else Color(0.6, 0.6, 0.6)
+	if pvp_char_desc_lbl and CHAR_DATA.has(pvp_selected_char):
+		var cd = CHAR_DATA[pvp_selected_char]
+		pvp_char_desc_lbl.text = "⚡ TUYỆT KỸ [%s - %s]: %s" % [cd["name"], cd["skill_name"], cd["skill_desc"]]
+		pvp_char_desc_lbl.modulate = cd["color"]
 
 func _select_pvp_char(cid: String) -> void:
 	pvp_selected_char = cid
@@ -1194,8 +1226,10 @@ func _on_host_press_start_match() -> void:
 		return
 	if btn_pvp_start:
 		btn_pvp_start.visible = false
+	var first_srv = "p1" if randf() < 0.5 else "p2"
+	pvp_first_server = first_srv
 	if net_manager:
-		net_manager.start_match(pvp_selected_points, pvp_selected_sets)
+		net_manager.start_match(pvp_selected_points, pvp_selected_sets, first_srv)
 	_start_pvp_countdown()
 
 func _on_net_packet_received(data: Dictionary) -> void:
@@ -1203,6 +1237,8 @@ func _on_net_packet_received(data: Dictionary) -> void:
 	if t == "lobby_start" or t == "countdown_start":
 		pvp_selected_points = int(data.get("pts", pvp_selected_points))
 		pvp_selected_sets = int(data.get("sets", pvp_selected_sets))
+		if data.has("first_server"):
+			pvp_first_server = str(data.get("first_server"))
 		_start_pvp_countdown()
 
 func _start_pvp_countdown() -> void:

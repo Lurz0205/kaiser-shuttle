@@ -152,6 +152,9 @@ var virtual_touch_pad: Control = null
 var touch_controls_enabled: bool = false
 var btn_touch_toggle: Button = null
 var btn_fullscreen: Button = null
+var low_graphics_mode: bool = false
+var btn_low_gfx_toggle: Button = null
+var prev_key_r: bool = false
 
 # Audio (Smash, Phong, Rít giày, Sấm sét, Isabel Block & Slowmo, Dây vợt net, Gió Fuji, Chém cầu sau sân, Trọng tài)
 @onready var sfx_smash: AudioStreamPlayer = $Audio/SFXSmash
@@ -395,18 +398,37 @@ func _ready() -> void:
 			)
 			fs_row.add_child(btn_fs_toggle)
 			vbox.add_child(fs_row)
+			
+			# Hàng cấu hình đồ họa thấp (Low Graphics Mode) cho máy yếu
+			var gfx_row = HBoxContainer.new()
+			var lbl_gfx = Label.new()
+			lbl_gfx.text = "Cấu hình đồ họa:"
+			lbl_gfx.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			gfx_row.add_child(lbl_gfx)
+			
+			btn_low_gfx_toggle = Button.new()
+			btn_low_gfx_toggle.focus_mode = Control.FOCUS_NONE
+			btn_low_gfx_toggle.custom_minimum_size = Vector2(90, 28)
+			btn_low_gfx_toggle.text = "CAO (CHUẨN)"
+			btn_low_gfx_toggle.pressed.connect(func():
+				btn_low_gfx_toggle.release_focus()
+				low_graphics_mode = not low_graphics_mode
+				_update_settings_ui()
+			)
+			gfx_row.add_child(btn_low_gfx_toggle)
+			vbox.add_child(gfx_row)
 		
 	# Tự động nhận diện thiết bị: Mặc định TẮT trên Desktop/PC, chỉ BẬT trên Mobile/Touchscreen
 	var is_mobile = OS.has_feature("mobile") or OS.has_feature("web_android") or OS.has_feature("web_ios")
 	touch_controls_enabled = is_mobile
 	
-	# Nút Toàn Màn Hình (Fullscreen) ở góc trên bên phải màn hình
+	# Nút Toàn Màn Hình (Fullscreen) ở góc trên bên phải màn hình (Căn chỉnh tuyệt đối, không đè nút Cài đặt)
 	btn_fullscreen = Button.new()
 	btn_fullscreen.focus_mode = Control.FOCUS_NONE
 	btn_fullscreen.name = "BtnFullscreen"
 	btn_fullscreen.text = "⛶ FULL"
-	btn_fullscreen.custom_minimum_size = Vector2(74, 30)
-	btn_fullscreen.position = Vector2(1190.0, 14.0)
+	btn_fullscreen.custom_minimum_size = Vector2(70, 32)
+	btn_fullscreen.position = Vector2(1194.0, 16.0)
 	btn_fullscreen.tooltip_text = "Bật / Tắt Toàn màn hình (Fullscreen)"
 	
 	var fs_sb = StyleBoxFlat.new()
@@ -493,7 +515,8 @@ func _set_in_game_hud_visible(show: bool) -> void:
 	if controls_bar:
 		controls_bar.visible = show and not touch_controls_enabled
 	if btn_char_select:
-		btn_char_select.visible = show
+		# KHÓA ĐỔI TƯỚNG TRONG TRẬN: Trong bất kỳ trận đấu nào (PvP hoặc AI), nút đổi tướng luôn ẩn
+		btn_char_select.visible = false
 	if btn_settings:
 		btn_settings.visible = show
 	if not show and label_banner:
@@ -578,6 +601,9 @@ func _toggle_fullscreen() -> void:
 
 
 func _toggle_character_select() -> void:
+	# Khóa hoàn toàn đổi tướng khi đang trong trận đấu (PvP hoặc AI)
+	if is_pvp_active or is_spectator or current_state == MatchState.RALLY or current_state == MatchState.SERVE or current_state == MatchState.POINT_OVER:
+		return
 	if not main_menu:
 		return
 	if main_menu.visible and main_menu.current_state == MainMenuController.MenuState.MATCH_SETUP:
@@ -661,10 +687,11 @@ func _on_menu_start_match(p_id: String, r_id: String, diff: int, target_points: 
 	_apply_match_bgm(true)
 
 
-func _on_menu_settings_updated(sq: bool, bgm_en: bool = true, bgm_vol: float = 0.20) -> void:
+func _on_menu_settings_updated(sq: bool, bgm_en: bool = true, bgm_vol: float = 0.20, low_gfx: bool = false) -> void:
 	squeak_enabled = sq
 	bgm_match_enabled = bgm_en
 	bgm_match_volume = bgm_vol
+	low_graphics_mode = low_gfx
 	_update_settings_ui()
 	_apply_match_bgm(false)
 
@@ -675,7 +702,7 @@ func _create_char_stats(char_id: String) -> CharacterStats:
 		"wall": return CharacterStats.create_wall()
 		_: return CharacterStats.create_nishikawa()
 
-func _on_menu_start_pvp_match(room_code: String, is_host: bool, local_char: String, target_points: int, match_sets: int) -> void:
+func _on_menu_start_pvp_match(room_code: String, is_host: bool, local_char: String, target_points: int, match_sets: int, first_server_role: String = "p1") -> void:
 	is_pvp_active = true
 	is_pvp_host = is_host
 	is_spectator = false
@@ -688,7 +715,10 @@ func _on_menu_start_pvp_match(room_code: String, is_host: bool, local_char: Stri
 	sets_won_ai = 0
 	score_player = 0
 	score_ai = 0
-	current_server = "player"
+	
+	# Xác định quyền giao cầu ban đầu (Authoritative First Serve Coin Toss):
+	var i_serve_first = (is_host and first_server_role == "p1") or (not is_host and first_server_role == "p2")
+	current_server = "player" if i_serve_first else "ai"
 	
 	if shuttlecock:
 		shuttlecock.is_network_client = not is_host
@@ -725,7 +755,8 @@ func _on_menu_start_pvp_match(room_code: String, is_host: bool, local_char: Stri
 			"t": "init",
 			"char": local_char,
 			"pts": target_points,
-			"sets": match_sets
+			"sets": match_sets,
+			"first_server": first_server_role
 		})
 	else:
 		ai_rival.stats = _create_char_stats("nishikawa")
@@ -750,15 +781,27 @@ func _on_menu_start_pvp_match(room_code: String, is_host: bool, local_char: Stri
 			ai_rival.stats.character_name.to_upper()
 		)
 		bwf_scoreboard.update_current_score(0, 0)
-		bwf_scoreboard.set_server(false)
+		bwf_scoreboard.set_server(current_server != "player")
 		
 	_update_scoreboard()
-	_setup_serve("player")
-	_show_banner("BẠN ĐANG Ở SÂN TRÁI - ĐỐI THỦ Ở SÂN PHẢI!", Color(0.2, 0.9, 0.8))
-	_play_umpire_opening_call("player")
+	_setup_serve(current_server)
 	
 	# Bật hoặc tắt nhạc nền trận đấu theo thiết lập (bắt đầu lại bài nhạc từ đầu)
 	_apply_match_bgm(true)
+
+	# Hoạt cảnh Tung Đồng Xu ngẫu nhiên (Coin Toss) trước trận đấu:
+	_show_banner("🪙 ĐANG TUNG ĐỒNG XU QUYẾT ĐỊNH QUYỀN GIAO CẦU...", Color(1.0, 0.9, 0.3))
+	get_tree().create_timer(1.2).timeout.connect(func():
+		if not is_pvp_active: return
+		if current_server == "player":
+			_show_banner("🪙 BẠN THẮNG ĐỒNG XU: BẠN ĐƯỢC QUYỀN GIAO CẦU TRƯỚC!", Color(0.2, 1.0, 0.6))
+		else:
+			_show_banner("🪙 ĐỐI THỦ THẮNG ĐỒNG XU: ĐỐI THỦ ĐƯỢC QUYỀN GIAO CẦU TRƯỚC!", Color(1.0, 0.85, 0.2))
+		get_tree().create_timer(1.0).timeout.connect(func():
+			if not is_pvp_active: return
+			_play_umpire_opening_call(current_server)
+		)
+	)
 
 
 func _on_menu_spectate_room(room_code: String) -> void:
@@ -1023,6 +1066,8 @@ func _on_network_packet_received(data: Dictionary) -> void:
 			if main_menu and main_menu.visible:
 				main_menu.pvp_selected_points = int(data.get("pts", target_match_points))
 				main_menu.pvp_selected_sets = int(data.get("sets", total_match_sets))
+				if data.has("first_server"):
+					main_menu.pvp_first_server = str(data.get("first_server"))
 				main_menu._start_pvp_countdown()
 
 		"init":
@@ -1030,6 +1075,10 @@ func _on_network_packet_received(data: Dictionary) -> void:
 				var host_char = str(data.get("char", "nishikawa"))
 				target_match_points = int(data.get("pts", 11))
 				total_match_sets = int(data.get("sets", 1))
+				if data.has("first_server"):
+					var fs = str(data.get("first_server"))
+					current_server = "player" if fs == "p2" else "ai"
+					_setup_serve(current_server)
 				ai_rival.stats = _create_char_stats(host_char)
 				ai_rival.move_speed_x = lerp(230.0, 265.0, (ai_rival.stats.agility - 40.0) / 59.0)
 				if bwf_scoreboard:
@@ -1318,6 +1367,13 @@ func _update_settings_ui() -> void:
 		btn_touch_toggle.text = "BẬT" if touch_controls_enabled else "TẮT"
 		btn_touch_toggle.modulate = Color(1.2, 3.2, 1.2) if touch_controls_enabled else Color(1.8, 0.6, 0.6)
 
+	if btn_low_gfx_toggle:
+		btn_low_gfx_toggle.text = "THẤP (MƯỢT)" if low_graphics_mode else "CAO (CHUẨN)"
+		btn_low_gfx_toggle.modulate = Color(3.5, 2.5, 0.4) if low_graphics_mode else Color(1.2, 3.2, 1.2)
+	var floor_refl = get_node_or_null("FloorReflection")
+	if floor_refl:
+		floor_refl.visible = not low_graphics_mode
+
 
 func _apply_match_bgm(restart_from_beginning: bool = false) -> void:
 	if not bgm_lobby:
@@ -1489,8 +1545,10 @@ func _process(delta: float) -> void:
 	if current_state == MatchState.SERVE and not is_spectator:
 		_process_serve_state()
 	
-	# Reset match key (R)
-	if Input.is_key_pressed(KEY_R) and not is_pvp_active:
+	# Reset match key (R) - KHÓA HOÀN TOÀN khi đang trong trận PVP, Spectator, hoặc khi ngoài menu (chỉ dùng trong trận với AI)
+	var cur_r = Input.is_key_pressed(KEY_R)
+	var can_reset_r = not is_pvp_active and not is_spectator and not (main_menu and main_menu.visible) and (current_state == MatchState.SERVE or current_state == MatchState.RALLY or current_state == MatchState.POINT_OVER)
+	if cur_r and not prev_key_r and can_reset_r:
 		score_player = 0
 		score_ai = 0
 		_update_scoreboard()
@@ -1499,6 +1557,7 @@ func _process(delta: float) -> void:
 		_setup_serve("player")
 		if sfx_low_ball_play:
 			sfx_low_ball_play.play()
+	prev_key_r = cur_r
 
 
 func _update_stats_display() -> void:
@@ -1642,9 +1701,11 @@ func _setup_serve(server: String) -> void:
 	if player:
 		player.reset_position(390.0, FLOOR_Y)
 		player.is_serving_phase = true
+		player.is_server_turn = (server == "player")
 	if ai_rival:
 		ai_rival.reset_position(890.0, FLOOR_Y)
 		ai_rival.is_serving_phase = true
+		ai_rival.is_server_turn = (server == "ai")
 	
 	var serve_pos = Vector2(390.0, FLOOR_Y - 35.0) if server == "player" else Vector2(890.0, FLOOR_Y - 35.0)
 	if shuttlecock:
@@ -1654,6 +1715,9 @@ func _setup_serve(server: String) -> void:
 		shuttlecock.is_serve = false
 	prev_shuttle_x = serve_pos.x
 	
+	if bwf_scoreboard:
+		bwf_scoreboard.set_server(server != "player")
+	
 	if is_umpire_speaking:
 		if label_banner:
 			label_banner.visible = false
@@ -1661,7 +1725,7 @@ func _setup_serve(server: String) -> void:
 	else:
 		var server_name = "BẠN" if server == "player" else ("ĐỐI THỦ" if is_pvp_active else "RIVAL AI")
 		if is_pvp_active and server == "ai":
-			_show_banner("ĐỐI THỦ ĐANG GIAO CẦU...", Color(1.0, 0.9, 0.4))
+			_show_banner("ĐỐI THỦ ĐANG GIAO CẦU (CHỜ ĐÓN CẦU)...", Color(1.0, 0.9, 0.4))
 		else:
 			_show_banner("%s GIAO CẦU (BẤM J HOẶC K)" % server_name, Color(1.0, 1.0, 1.0))
 		
@@ -1894,13 +1958,16 @@ func _on_shot_hit(shot_type: String, is_smash: bool, quality: float, is_perfect:
 
 
 func _trigger_perfect_impact_effect(hit_pos: Vector2, hitter: String = "player") -> void:
-	# 1. Đảo màu toàn bộ game sang trắng đen (không flash màn hình trắng)
+	# 1. Đảo màu toàn bộ game sang trắng đen (Chế độ đồ họa thấp: bỏ qua shader để chống giật)
 	flash_alpha = 0.0
 	if flash_rect:
 		flash_rect.visible = false
-	if grayscale_rect and grayscale_rect.material:
+	if not low_graphics_mode and grayscale_rect and grayscale_rect.material:
 		grayscale_rect.visible = true
 		grayscale_rect.material.set_shader_parameter("grayscale_amount", 1.0)
+	else:
+		if grayscale_rect:
+			grayscale_rect.visible = false
 	
 	# 2. Phát âm thanh tích điện giật sấm sét (Electric Sound) trong lúc ngưng đọng
 	if sfx_electric:
@@ -2068,12 +2135,12 @@ func _trigger_aoi_cinematic_slowmo(hit_pos: Vector2, hitter: String = "player") 
 func _generate_nishikawa_branches() -> void:
 	impact_lightning_branches.clear()
 	# CHỈ 1 ĐỢT TỎA DUY NHẤT: Bùng nổ từ tâm ra ngoài trong suốt 1s slow-mo
-	var n_bolts: int = 16
+	var n_bolts: int = 6 if low_graphics_mode else 16
 	var bolts: Array = []
 	for b_idx in range(n_bolts):
 		var base_ang = (TAU / float(n_bolts)) * b_idx + randf_range(-0.25, 0.25)
-		var max_len = randf_range(220.0, 310.0)
-		var n_segs = randi_range(7, 9)
+		var max_len = randf_range(160.0, 240.0) if low_graphics_mode else randf_range(220.0, 310.0)
+		var n_segs = 3 if low_graphics_mode else randi_range(7, 9)
 		
 		var pts: Array[Vector2] = [Vector2.ZERO]
 		var cur_v = Vector2.ZERO
@@ -2082,13 +2149,13 @@ func _generate_nishikawa_branches() -> void:
 		
 		for s in range(n_segs):
 			var s_len = (max_len / float(n_segs)) * randf_range(0.85, 1.25)
-			var zigzag = perp * randf_range(-25.0, 25.0)
+			var zigzag = perp * randf_range(-14.0, 14.0) if low_graphics_mode else (perp * randf_range(-25.0, 25.0))
 			cur_v += dir_main * s_len + zigzag
 			pts.append(cur_v)
 		
-		# Nhánh phụ (Sub-branches rễ cây sấm sét)
+		# Nhánh phụ (Sub-branches rễ cây sấm sét) - Tắt hoàn toàn trong chế độ cấu hình thấp để chống lag
 		var sub_data: Array = []
-		if randf() < 0.75 and pts.size() >= 4:
+		if not low_graphics_mode and randf() < 0.75 and pts.size() >= 4:
 			var f_idx = randi_range(2, pts.size() - 2)
 			var f_pt = pts[f_idx]
 			var f_ang = base_ang + randf_range(0.40, 0.75) * (1.0 if randf() < 0.5 else -1.0)
@@ -2108,12 +2175,13 @@ func _generate_nishikawa_branches() -> void:
 			"max_len": max_len
 		})
 	
-	# Hạt tia lửa điện (flying sparks) của đợt duy nhất này
+	# Hạt tia lửa điện (flying sparks) của đợt duy nhất này - Tắt trong chế độ cấu hình thấp
 	var sparks: Array = []
-	for sp in range(20):
-		var sp_ang = randf_range(0, TAU)
-		var sp_speed = randf_range(180.0, 320.0)
-		sparks.append({"ang": sp_ang, "speed": sp_speed, "len": randf_range(14.0, 30.0)})
+	if not low_graphics_mode:
+		for sp in range(20):
+			var sp_ang = randf_range(0, TAU)
+			var sp_speed = randf_range(180.0, 320.0)
+			sparks.append({"ang": sp_ang, "speed": sp_speed, "len": randf_range(14.0, 30.0)})
 	
 	impact_lightning_branches = [{
 		"bolts": bolts,
@@ -2132,6 +2200,22 @@ func _on_nishikawa_lightning_draw() -> void:
 	# Vì NishikawaLightning là Node2D trong world Main (đứng trước HUD / GrayscaleRect),
 	# nên vị trí trực tiếp trong world space là impact_lightning_pos!
 	var origin = impact_lightning_pos
+	
+	# Chế độ đồ họa thấp: Chỉ vẽ 1 vòng sáng và các đường sét chính tinh giản
+	if low_graphics_mode:
+		nishikawa_lightning.draw_circle(origin, 18.0 * (1.0 - t * 0.7), Color(1.0, 0.85, 0.25, 0.85))
+		if not impact_lightning_branches.is_empty():
+			var wave_data_low = impact_lightning_branches[0]
+			var bolts_low: Array = wave_data_low["bolts"]
+			var wave_alpha_low = clamp(1.0 - t * 0.7, 0.0, 1.0)
+			for b in bolts_low:
+				var pts: Array[Vector2] = b["pts"]
+				if pts.size() >= 2:
+					var simple_pts = PackedVector2Array()
+					for pt in pts:
+						simple_pts.append(origin + pt)
+					nishikawa_lightning.draw_polyline(simple_pts, Color(1.0, 0.9, 0.35, wave_alpha_low * 0.9), 2.5, true)
+		return
 	
 	# 1. Tâm cầu năng lượng chớp giật
 	var pulse_speed = 1.6 if impact_lightning_in_slowmo else 6.0
@@ -2262,6 +2346,11 @@ func _on_aoi_shield_draw() -> void:
 	var r_main = lerp(20.0, 76.0, expand_t)
 	var r_outer = lerp(24.0, 115.0, expand_t)
 	var alpha = 1.0 - pow(p, 1.3)
+	
+	# Chế độ đồ họa thấp: Chỉ vẽ 1 vòng khiên lục giác đơn giản nhẹ nhàng
+	if low_graphics_mode:
+		aoi_shield.draw_arc(aoi_shield_center, r_main, 0, TAU, 16, Color(0.3, 0.8, 1.0, alpha * 0.85), 2.5, true)
+		return
 	
 	# 1. Soft radial energy core glow
 	aoi_shield.draw_circle(aoi_shield_center, r_main * 0.65, Color(0.12, 0.60, 1.0, alpha * 0.28))
@@ -2875,8 +2964,9 @@ func _on_effects_overlay_draw() -> void:
 	# 7. Ground Shockwave
 	if shockwave_alpha > 0.01:
 		var sw_col = Color(1.0, 0.95, 0.5, shockwave_alpha)
-		effects_overlay.draw_arc(Vector2(shockwave_pos.x, FLOOR_Y), shockwave_radius, 0, TAU, 36, sw_col, 4.0, true)
-		effects_overlay.draw_arc(Vector2(shockwave_pos.x, FLOOR_Y), shockwave_radius * 0.7, 0, TAU, 28, Color(1.0, 1.0, 1.0, shockwave_alpha * 0.7), 2.5, true)
+		effects_overlay.draw_arc(Vector2(shockwave_pos.x, FLOOR_Y), shockwave_radius, 0, TAU, 16 if low_graphics_mode else 36, sw_col, 3.5, true)
+		if not low_graphics_mode:
+			effects_overlay.draw_arc(Vector2(shockwave_pos.x, FLOOR_Y), shockwave_radius * 0.7, 0, TAU, 28, Color(1.0, 1.0, 1.0, shockwave_alpha * 0.7), 2.5, true)
 		
 	# 8. Golden Anime Perfect Impact Burst (Rực rỡ, lấp lánh và biến mất sau 0.4s)
 	if perfect_burst_timer > 0.0:
@@ -2887,16 +2977,16 @@ func _on_effects_overlay_draw() -> void:
 		var col_burst = Color(perfect_burst_col.r, perfect_burst_col.g, perfect_burst_col.b, burst_alpha * 0.95)
 		
 		# Vòng hào quang sáng rực
-		effects_overlay.draw_arc(perfect_burst_pos, r_outer, 0, TAU, 36, col_burst, 3.5, true)
-		effects_overlay.draw_arc(perfect_burst_pos, r_inner, 0, TAU, 28, Color(1.0, 1.0, 1.0, burst_alpha), 2.0, true)
-		
-		# 8 tia chớp năng lượng phát tán theo các góc
-		for i in range(8):
-			var ang = (TAU / 8.0) * i + p_prog * 0.45
-			var dir = Vector2(cos(ang), sin(ang))
-			var p1 = perfect_burst_pos + dir * (r_inner * 0.6)
-			var p2 = perfect_burst_pos + dir * (r_outer * 1.15)
-			effects_overlay.draw_line(p1, p2, col_burst, 2.5, true)
+		effects_overlay.draw_arc(perfect_burst_pos, r_outer, 0, TAU, 16 if low_graphics_mode else 36, col_burst, 3.0, true)
+		if not low_graphics_mode:
+			effects_overlay.draw_arc(perfect_burst_pos, r_inner, 0, TAU, 28, Color(1.0, 1.0, 1.0, burst_alpha), 2.0, true)
+			# 8 tia chớp năng lượng phát tán theo các góc
+			for i in range(8):
+				var ang = (TAU / 8.0) * i + p_prog * 0.45
+				var dir = Vector2(cos(ang), sin(ang))
+				var p1 = perfect_burst_pos + dir * (r_inner * 0.6)
+				var p2 = perfect_burst_pos + dir * (r_outer * 1.15)
+				effects_overlay.draw_line(p1, p2, col_burst, 2.5, true)
 	
 	# 9. Jump Takeoff Burst & Floor Dust Skid Effects (Hiệu ứng dậm nhảy mặt sàn)
 	for eff in jump_takeoff_effects:
@@ -2906,23 +2996,23 @@ func _on_effects_overlay_draw() -> void:
 		var p_pos: Vector2 = eff["pos"]
 		var alpha: float = (1.0 - prog) * 0.90
 		
-		# Vòng nén sàn elip nở rộng sang 2 bên
-		var rx = 16.0 + prog * 58.0
-		var ry = 4.0 + prog * 9.0
-		var ring_col = Color(1.0, 0.95, 0.75, alpha * 0.85)
-		effects_overlay.draw_arc(p_pos, rx, 0, TAU, 28, ring_col, 3.0 * (1.0 - prog * 0.6), true)
-		
 		# Vệt bụi quét sàn dạt sang 2 bên chân
 		var skid_len = 14.0 + prog * 48.0
 		var dust_col = Color(0.95, 0.95, 1.0, alpha * 0.75)
-		effects_overlay.draw_line(p_pos + Vector2(-8, -2), p_pos + Vector2(-skid_len, -2), dust_col, 2.5 * (1.0 - prog * 0.5), true)
-		effects_overlay.draw_line(p_pos + Vector2(8, -2), p_pos + Vector2(skid_len, -2), dust_col, 2.5 * (1.0 - prog * 0.5), true)
+		effects_overlay.draw_line(p_pos + Vector2(-8, -2), p_pos + Vector2(-skid_len, -2), dust_col, 2.0 * (1.0 - prog * 0.5), true)
+		effects_overlay.draw_line(p_pos + Vector2(8, -2), p_pos + Vector2(skid_len, -2), dust_col, 2.0 * (1.0 - prog * 0.5), true)
 		
-		# Tia khí đẩy bật nhảy vọt lên
-		for off_x in [-14.0, 0.0, 14.0]:
-			var y_start = p_pos.y - 4.0 - prog * 8.0
-			var y_end = y_start - (14.0 + prog * 28.0)
-			effects_overlay.draw_line(Vector2(p_pos.x + off_x, y_start), Vector2(p_pos.x + off_x, y_end), Color(1.0, 1.0, 1.0, alpha * 0.6), 2.0, true)
+		if not low_graphics_mode:
+			# Vòng nén sàn elip nở rộng sang 2 bên
+			var rx = 16.0 + prog * 58.0
+			var ry = 4.0 + prog * 9.0
+			var ring_col = Color(1.0, 0.95, 0.75, alpha * 0.85)
+			effects_overlay.draw_arc(p_pos, rx, 0, TAU, 24, ring_col, 2.5 * (1.0 - prog * 0.6), true)
+			# Tia khí đẩy bật nhảy vọt lên
+			for off_x in [-14.0, 0.0, 14.0]:
+				var y_start = p_pos.y - 4.0 - prog * 8.0
+				var y_end = y_start - (14.0 + prog * 28.0)
+				effects_overlay.draw_line(Vector2(p_pos.x + off_x, y_start), Vector2(p_pos.x + off_x, y_end), Color(1.0, 1.0, 1.0, alpha * 0.6), 2.0, true)
 	
 	# 10. Fuji Emerald Gale Vortex (Hiệu ứng ngưng đọng slow-mo Cơn lốc xanh)
 	if fuji_slowmo_active:
@@ -2931,26 +3021,7 @@ func _on_effects_overlay_draw() -> void:
 		var center = fuji_slowmo_center
 		var facing_dir = fuji_slowmo_facing
 		
-		# A. Lốc xoáy ngọc bích tâm điểm (Vortex Eye Aura)
-		var r_eye = 16.0 + p_prog * 24.0
-		effects_overlay.draw_circle(center, r_eye * 0.65, Color(0.85, 2.5, 1.3, alpha * 0.40))
-		effects_overlay.draw_circle(center, r_eye * 1.35, Color(0.20, 1.85, 0.60, alpha * 0.22))
-		
-		# B. Các vòng sóng xung kích gió bão nở rộng (Expanding Wind Pressure Rings)
-		var r_ring1 = 20.0 + p_prog * 85.0
-		effects_overlay.draw_arc(center, r_ring1, 0, TAU, 36, Color(0.30, 2.0, 0.75, alpha * 0.85), 3.0, true)
-		effects_overlay.draw_arc(center, r_ring1 * 0.65, 0, TAU, 28, Color(0.90, 2.6, 1.4, alpha * 0.90), 1.8, true)
-		
-		# C. 3 dải lưỡi gió xoáy lượn vòng (Gale Vortex Blades)
-		var base_spin = p_prog * 14.0 * facing_dir
-		for b in range(3):
-			var ang_start = base_spin + (TAU / 3.0) * b
-			var ang_end = ang_start + PI * 0.75
-			var r_blade = 28.0 + p_prog * 38.0 + b * 6.0
-			effects_overlay.draw_arc(center, r_blade, ang_start, ang_end, 20, Color(0.25, 2.2, 0.70, alpha * 0.90), 3.2, true)
-			effects_overlay.draw_arc(center, r_blade, ang_start + 0.1, ang_end - 0.1, 16, Color(0.90, 2.8, 1.5, alpha * 0.98), 1.5, true)
-			
-		# D. Nhát chém xé gió chéo (Razor Wind Slash Path)
+		# Nhát chém xé gió chéo (Razor Wind Slash Path)
 		var slash_len = 60.0 + p_prog * 95.0
 		var slash_ang = (-0.42 if facing_dir > 0 else -PI + 0.42)
 		var slash_vec = Vector2(cos(slash_ang), sin(slash_ang)) * slash_len
@@ -2959,28 +3030,49 @@ func _on_effects_overlay_draw() -> void:
 		effects_overlay.draw_line(p_start, p_end, Color(0.20, 1.8, 0.55, alpha * 0.55), 7.5, true)
 		effects_overlay.draw_line(p_start, p_end, Color(0.85, 2.6, 1.4, alpha * 0.95), 2.8, true)
 		
-		# E. Bầy lá trúc bay lượn xoáy ốc trong slow-mo (Slow-mo Orbiting Bamboo Leaves)
-		for lf in fuji_slowmo_leaves:
-			var ang = lf["ang0"] + p_prog * lf["spin_speed"] * lf["spin_dir"]
-			var dist = lf["dist0"] + p_prog * lf["dist_speed"]
-			var leaf_pos = center + Vector2(cos(ang), sin(ang)) * dist
-			var leaf_rot = ang + p_prog * 6.0
-			var sz = lf["size"]
-			var col = lf["col"]
-			col.a = alpha * 0.95
+		# Chế độ đồ họa thấp: Bỏ qua bầy lá trúc và đa tầng lốc xoáy để tránh drop FPS
+		if not low_graphics_mode:
+			# A. Lốc xoáy ngọc bích tâm điểm (Vortex Eye Aura)
+			var r_eye = 16.0 + p_prog * 24.0
+			effects_overlay.draw_circle(center, r_eye * 0.65, Color(0.85, 2.5, 1.3, alpha * 0.40))
+			effects_overlay.draw_circle(center, r_eye * 1.35, Color(0.20, 1.85, 0.60, alpha * 0.22))
 			
-			var cos_r = cos(leaf_rot)
-			var sin_r = sin(leaf_rot)
-			var pts = PackedVector2Array([
-				leaf_pos + Vector2(-sz * 0.7 * cos_r, -sz * 0.7 * sin_r),
-				leaf_pos + Vector2(-sz * 0.25 * cos_r + sz * 0.38 * sin_r, -sz * 0.25 * sin_r - sz * 0.38 * cos_r),
-				leaf_pos + Vector2(sz * 0.45 * cos_r + sz * 0.30 * sin_r, sz * 0.45 * sin_r - sz * 0.30 * cos_r),
-				leaf_pos + Vector2(sz * 1.0 * cos_r, sz * 1.0 * sin_r),
-				leaf_pos + Vector2(sz * 0.45 * cos_r - sz * 0.30 * sin_r, sz * 0.45 * sin_r + sz * 0.30 * cos_r),
-				leaf_pos + Vector2(-sz * 0.25 * cos_r - sz * 0.38 * sin_r, -sz * 0.25 * sin_r + sz * 0.38 * cos_r)
-			])
-			effects_overlay.draw_colored_polygon(pts, col)
-			effects_overlay.draw_polyline(pts, Color(0.9, 2.4, 1.2, alpha * 0.8), 1.0, true)
+			# B. Các vòng sóng xung kích gió bão nở rộng (Expanding Wind Pressure Rings)
+			var r_ring1 = 20.0 + p_prog * 85.0
+			effects_overlay.draw_arc(center, r_ring1, 0, TAU, 36, Color(0.30, 2.0, 0.75, alpha * 0.85), 3.0, true)
+			effects_overlay.draw_arc(center, r_ring1 * 0.65, 0, TAU, 28, Color(0.90, 2.6, 1.4, alpha * 0.90), 1.8, true)
+			
+			# C. 3 dải lưỡi gió xoáy lượn vòng (Gale Vortex Blades)
+			var base_spin = p_prog * 14.0 * facing_dir
+			for b in range(3):
+				var ang_start = base_spin + (TAU / 3.0) * b
+				var ang_end = ang_start + PI * 0.75
+				var r_blade = 28.0 + p_prog * 38.0 + b * 6.0
+				effects_overlay.draw_arc(center, r_blade, ang_start, ang_end, 20, Color(0.25, 2.2, 0.70, alpha * 0.90), 3.2, true)
+				effects_overlay.draw_arc(center, r_blade, ang_start + 0.1, ang_end - 0.1, 16, Color(0.90, 2.8, 1.5, alpha * 0.98), 1.5, true)
+				
+			# E. Bầy lá trúc bay lượn xoáy ốc trong slow-mo (Slow-mo Orbiting Bamboo Leaves)
+			for lf in fuji_slowmo_leaves:
+				var ang = lf["ang0"] + p_prog * lf["spin_speed"] * lf["spin_dir"]
+				var dist = lf["dist0"] + p_prog * lf["dist_speed"]
+				var leaf_pos = center + Vector2(cos(ang), sin(ang)) * dist
+				var leaf_rot = ang + p_prog * 6.0
+				var sz = lf["size"]
+				var col = lf["col"]
+				col.a = alpha * 0.95
+				
+				var cos_r = cos(leaf_rot)
+				var sin_r = sin(leaf_rot)
+				var pts = PackedVector2Array([
+					leaf_pos + Vector2(-sz * 0.7 * cos_r, -sz * 0.7 * sin_r),
+					leaf_pos + Vector2(-sz * 0.25 * cos_r + sz * 0.38 * sin_r, -sz * 0.25 * sin_r - sz * 0.38 * cos_r),
+					leaf_pos + Vector2(sz * 0.45 * cos_r + sz * 0.30 * sin_r, sz * 0.45 * sin_r - sz * 0.30 * cos_r),
+					leaf_pos + Vector2(sz * 1.0 * cos_r, sz * 1.0 * sin_r),
+					leaf_pos + Vector2(sz * 0.45 * cos_r - sz * 0.30 * sin_r, sz * 0.45 * sin_r + sz * 0.30 * cos_r),
+					leaf_pos + Vector2(-sz * 0.25 * cos_r - sz * 0.38 * sin_r, -sz * 0.25 * sin_r + sz * 0.38 * cos_r)
+				])
+				effects_overlay.draw_colored_polygon(pts, col)
+				effects_overlay.draw_polyline(pts, Color(0.9, 2.4, 1.2, alpha * 0.8), 1.0, true)
 	
 	# 11. Floating Combat Text (Popup PERFECT bay nhẹ lên trên)
 	if floating_text_mgr:

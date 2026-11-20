@@ -198,16 +198,24 @@ wss.on('connection', (ws) => {
                 room.sets = data.sets || room.sets;
                 room.status = 'playing';
 
+                // Authoritative first server coin toss: p1 or p2
+                const firstServer = (data.first_server === 'p1' || data.first_server === 'p2')
+                    ? data.first_server
+                    : (Math.random() < 0.5 ? 'p1' : 'p2');
+                room.current_server = firstServer;
+
                 const countdownMsg = {
                     t: 'countdown_start',
                     seconds: 3,
                     pts: room.pts,
                     sets: room.sets,
                     p1_char: room.p1_char,
-                    p2_char: room.p2_char
+                    p2_char: room.p2_char,
+                    first_server: firstServer
                 };
                 broadcastToRoom(room, countdownMsg);
                 broadcastToSpectators(room, countdownMsg);
+                console.log(`[MATCH START] Room: ${ws.roomCode} - First Serve: ${firstServer}`);
                 break;
             }
 

@@ -210,12 +210,15 @@ func _connect_if_needed() -> void:
 		connection_status_changed.emit("error")
 		peer_disconnected.emit("Không thể mở kết nối tới " + server_url)
 
-func start_match(pts: int, sets: int) -> void:
-	send_packet({
+func start_match(pts: int, sets: int, first_server: String = "") -> void:
+	var pkt = {
 		"t": "start_match",
 		"pts": pts,
 		"sets": sets
-	})
+	}
+	if not first_server.is_empty():
+		pkt["first_server"] = first_server
+	send_packet(pkt)
 
 func send_packet(data: Dictionary) -> void:
 	if ws.get_ready_state() == WebSocketPeer.STATE_OPEN:
