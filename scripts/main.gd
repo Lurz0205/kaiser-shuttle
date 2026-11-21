@@ -447,7 +447,7 @@ func _ready() -> void:
 	var is_mobile = OS.has_feature("mobile") or OS.has_feature("web_android") or OS.has_feature("web_ios")
 	if OS.has_feature("web"):
 		var js_mobile = JavaScriptBridge.eval("Boolean(/Android|iPhone|iPad|iPod/i.test(navigator.userAgent) || (navigator.maxTouchPoints && navigator.maxTouchPoints > 1))")
-		if js_mobile == true:
+		if js_mobile == true or str(js_mobile).to_lower() == "true":
 			is_mobile = true
 	touch_controls_enabled = is_mobile
 	
@@ -490,12 +490,21 @@ func _ready() -> void:
 	
 	# Khởi tạo Main Menu & Match Setup (Kaiser Shuttle UI)
 	main_menu = MainMenuController.new()
+	main_menu.touch_controls_enabled = touch_controls_enabled
 	$HUD.add_child(main_menu)
 	main_menu.set_network_manager(net_manager)
 	main_menu.start_match_requested.connect(_on_menu_start_match)
 	main_menu.start_pvp_match_requested.connect(_on_menu_start_pvp_match)
 	main_menu.spectate_room_requested.connect(_on_menu_spectate_room)
 	main_menu.settings_updated.connect(_on_menu_settings_updated)
+	main_menu.touch_toggle_requested.connect(func(en: bool):
+		touch_controls_enabled = en
+		_update_settings_ui()
+		if virtual_touch_pad:
+			virtual_touch_pad.visible = touch_controls_enabled and (not main_menu or not main_menu.visible)
+		if controls_bar:
+			controls_bar.visible = (not touch_controls_enabled) and (not main_menu or not main_menu.visible)
+	)
 	
 	# Khởi tạo Touchpad di chuyển (kéo qua lại) & Cụm phím ảo J, K, L (Vector Logo)
 	virtual_touch_pad = VirtualTouchPadClass.new()
@@ -672,6 +681,7 @@ func _on_menu_start_match(p_id: String, r_id: String, diff: int, target_points: 
 	if virtual_touch_pad:
 		virtual_touch_pad.set_target_player(player)
 	if player:
+		player.character_id = p_id
 		match p_id:
 			"nishikawa": player.stats = CharacterStats.create_nishikawa()
 			"fuji": player.stats = CharacterStats.create_fuji()
@@ -683,6 +693,7 @@ func _on_menu_start_match(p_id: String, r_id: String, diff: int, target_points: 
 			player.stats.reset_torque()
 		
 	if ai_rival:
+		ai_rival.character_id = r_id
 		match r_id:
 			"nishikawa": ai_rival.stats = CharacterStats.create_nishikawa()
 			"fuji": ai_rival.stats = CharacterStats.create_fuji()
@@ -790,12 +801,14 @@ func _on_menu_start_pvp_match(room_code: String, is_host: bool, local_char: Stri
 	ai_rival.min_x = 660.0
 	ai_rival.max_x = 1260.0
 	
+	player.character_id = local_char
 	player.stats = _create_char_stats(local_char)
 	player.move_speed_x = lerp(207.0, 238.5, (player.stats.agility - 40.0) / 59.0)
 	
 	var r_char = opponent_char
 	if r_char.is_empty():
 		r_char = "wall" if local_char != "wall" else "nishikawa"
+	ai_rival.character_id = r_char
 	ai_rival.stats = _create_char_stats(r_char)
 	ai_rival.move_speed_x = lerp(207.0, 238.5, (ai_rival.stats.agility - 40.0) / 59.0)
 	
@@ -1467,6 +1480,14 @@ func _input(event: InputEvent) -> void:
 			cur_focus.release_focus()
 
 func _unhandled_input(event: InputEvent) -> void:
+	if (event is InputEventScreenTouch or event is InputEventScreenDrag) and not touch_controls_enabled:
+		touch_controls_enabled = true
+		if virtual_touch_pad and (not main_menu or not main_menu.visible):
+			virtual_touch_pad.visible = true
+		if controls_bar:
+			controls_bar.visible = false
+		_update_settings_ui()
+		
 	if main_menu and main_menu.visible:
 		if event is InputEventKey and event.pressed and not event.echo:
 			if event.keycode == KEY_ESCAPE:
@@ -1532,6 +1553,11 @@ func _update_settings_ui() -> void:
 	if btn_touch_toggle:
 		btn_touch_toggle.text = "BẬT" if touch_controls_enabled else "TẮT"
 		btn_touch_toggle.modulate = Color(1.2, 3.2, 1.2) if touch_controls_enabled else Color(1.8, 0.6, 0.6)
+	if main_menu:
+		main_menu.touch_controls_enabled = touch_controls_enabled
+		if main_menu.btn_touch_toggle_menu:
+			main_menu.btn_touch_toggle_menu.text = "BẬT" if touch_controls_enabled else "TẮT"
+			main_menu.btn_touch_toggle_menu.modulate = Color(0.2, 1.0, 0.4) if touch_controls_enabled else Color(1.0, 0.4, 0.4)
 
 	if btn_low_gfx_toggle:
 		btn_low_gfx_toggle.text = "[ BẬT ]" if low_graphics_mode else "[ TẮT ]"

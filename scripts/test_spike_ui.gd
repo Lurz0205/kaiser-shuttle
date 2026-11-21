@@ -63,6 +63,7 @@ func _init() -> void:
 	menu.start_match_requested.connect(func(p, r, d, pts, sets):
 		match_started[0] = true
 	)
+	menu._state_switch_cooldown_until = 0
 	menu._confirm_and_start_match()
 	assert(match_started[0], "start_match_requested emitted successfully")
 	print("✓ Test 8: AI Match starting signal verified")
@@ -165,4 +166,5 @@ func _init() -> void:
 	print("✓ Test 15: Responsive Touchpad layout and 100% action triggering verified")
 	
 	print("=== ALL 15 ADVANCED UI, MOBILE CONTROLS & ORIENTATION TESTS PASSED 100% ===")
+	quit()
 	quit(0)

@@ -173,22 +173,20 @@
             window.addEventListener('load', enterFullscreenAndLandscape, { once: true });
         }
 
-        // B. Chạm bất kỳ đâu trên màn hình sẽ kích hoạt toàn màn hình và xoay ngang
-        function triggerImmediateAutoFullscreen() {
+        // B. Chạm màn hình sẽ kích hoạt toàn màn hình và xoay ngang (Có debounce tránh spam sự kiện)
+        var lastFSTime = 0;
+        function triggerImmediateAutoFullscreen(e) {
+            var now = Date.now();
+            if (now - lastFSTime < 1200) return;
             var isFS = document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement;
             if (!isFS) {
+                lastFSTime = now;
                 enterFullscreenAndLandscape();
-            }
-
-            var cv = document.querySelector('canvas') || document.getElementById('canvas');
-            if (cv) {
-                try { cv.focus(); } catch(e) {}
             }
         }
 
-        ['pointerdown', 'touchstart', 'touchend', 'click'].forEach(function(evt) {
-            window.addEventListener(evt, triggerImmediateAutoFullscreen, { passive: true });
-        });
+        window.addEventListener('touchstart', triggerImmediateAutoFullscreen, { passive: true });
+        window.addEventListener('pointerdown', triggerImmediateAutoFullscreen, { passive: true });
     }
 
     // -------------------------------------------------------------

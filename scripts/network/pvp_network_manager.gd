@@ -181,6 +181,9 @@ func _handle_server_packet(data: Dictionary) -> void:
 		_:
 			packet_received.emit(data)
 
+func create_room(char_id: String = "nishikawa", pts: int = 11, sets: int = 1, player_name: String = "PLAYER") -> void:
+	host_room("", char_id, pts, sets, player_name)
+
 func host_room(code: String, char_id: String = "nishikawa", pts: int = 11, sets: int = 1, player_name: String = "PLAYER") -> void:
 	is_active = true
 	is_host = true

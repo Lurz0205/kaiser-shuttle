@@ -20,6 +20,11 @@ var squeak_cooldown: float = 0.0
 @export var tuning: GameTuning
 @export var ai_difficulty: int = 1 # 0: EASY (Dễ), 1: MEDIUM (TB), 2: HARD (Khó)
 @export var stats: CharacterStats
+var character_id: String = "":
+	set(val):
+		character_id = val
+		if stats and stats.character_id != val:
+			stats.character_id = val
 
 # Movement parameters (Athletic badminton footwork scale) - Giảm còn 90% (220.5 px/s)
 var move_speed_x: float = 220.5

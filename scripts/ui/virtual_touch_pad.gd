@@ -54,10 +54,12 @@ var btn_l_air_prog: float = 0.0
 var _last_viewport_size: Vector2 = Vector2.ZERO
 
 func _ready() -> void:
+	z_index = 150
 	mouse_filter = MOUSE_FILTER_IGNORE
 	set_anchors_preset(PRESET_FULL_RECT)
 	anchor_right = 1.0
 	anchor_bottom = 1.0
+	custom_minimum_size = Vector2(1280, 720)
 	
 	var vp = get_viewport()
 	if vp:

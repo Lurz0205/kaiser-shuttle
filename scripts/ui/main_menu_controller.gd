@@ -51,6 +51,11 @@ signal start_match_requested(player_char: String, rival_char: String, difficulty
 signal start_pvp_match_requested(room_code: String, is_host: bool, player_char: String, target_points: int, match_sets: int, first_server: String, opponent_char: String, player_name: String, opponent_name: String)
 signal spectate_room_requested(room_code: String)
 signal settings_updated(squeak: bool, bgm_enabled: bool, bgm_vol: float, low_gfx: bool)
+signal touch_toggle_requested(enabled: bool)
+
+var _state_switch_cooldown_until: int = 0
+var touch_controls_enabled: bool = false
+var btn_touch_toggle_menu: Button = null
 
 enum MenuState {
 	TITLE,          # Màn hình bắt đầu (Press any key / touch)
@@ -328,6 +333,7 @@ func _process(delta: float) -> void:
 
 func switch_state(new_state: MenuState) -> void:
 	current_state = new_state
+	_state_switch_cooldown_until = Time.get_ticks_msec() + 350
 	
 	# Switch background between Title Arena and Lobby Locker Room
 	if global_bg:
@@ -609,8 +615,8 @@ func _build_top_bar() -> void:
 	# Currencies: Gold Coin & Locked Next Feature ("chưa có cứ ổ khóa thôi")
 	row.add_child(VSeparator.new())
 	
-	# 1. Real Gold Coin Pill
-	row.add_child(_create_currency_pill_tex(TEX_COIN, "20,869K", Color(1.0, 0.82, 0.25)))
+	# 1. Real Gold Coin Pill (Số dư 0 & Khóa tính năng giao dịch)
+	row.add_child(_create_currency_pill_tex(TEX_COIN, "0", Color(1.0, 0.82, 0.25)))
 	
 	# 2. Next Locked Feature Pill (Ổ khóa hoàng kim 3D)
 	var lock_pill = PanelContainer.new()
@@ -694,20 +700,17 @@ func _create_currency_pill_tex(tex: Texture2D, amount_str: String, col: Color) -
 	h.add_theme_constant_override("separation", 6)
 	m.add_child(h)
 	
-	var icon = _create_tex_icon(tex, Vector2(22, 22))
+	var icon = _create_tex_icon(tex, Vector2(20, 20))
 	h.add_child(icon)
 	
 	var lbl = Label.new()
-	lbl.text = amount_str
+	lbl.text = "0"
 	lbl.add_theme_font_size_override("font_size", 12)
 	lbl.modulate = Color(0.96, 0.96, 0.96)
 	h.add_child(lbl)
 	
-	var add_lbl = Label.new()
-	add_lbl.text = "+"
-	add_lbl.add_theme_font_size_override("font_size", 12)
-	add_lbl.modulate = Color(col.r, col.g, col.b, 0.8)
-	h.add_child(add_lbl)
+	var lock_icon = _create_tex_icon(TEX_PADLOCK, Vector2(13, 13))
+	h.add_child(lock_icon)
 	
 	return p
 
@@ -787,8 +790,12 @@ func _build_title_panel() -> void:
 	sp.custom_minimum_size = Vector2(0, 36)
 	center.add_child(sp)
 	
-	var btn_start_any = _create_clean_button("CHẠM HOẶC NHẤN PHÍM BẤT KỲ ĐỂ VÀO SẢNH", Color(1.0, 0.85, 0.25), Vector2(380, 52), 15)
-	btn_start_any.pressed.connect(func(): switch_state(MenuState.LOBBY))
+	var btn_start_any = _create_clean_button("▶  CHẠM ĐỂ VÀO SẢNH (PRESS TO START)", Color(1.0, 0.85, 0.25), Vector2(380, 52), 15)
+	btn_start_any.pressed.connect(func():
+		if Time.get_ticks_msec() < _state_switch_cooldown_until:
+			return
+		switch_state(MenuState.LOBBY)
+	)
 	var b_row = HBoxContainer.new()
 	b_row.alignment = BoxContainer.ALIGNMENT_CENTER
 	b_row.add_child(btn_start_any)
@@ -796,9 +803,11 @@ func _build_title_panel() -> void:
 
 func _unhandled_input(event: InputEvent) -> void:
 	if current_state == MenuState.TITLE and visible:
-		if (event is InputEventKey and event.pressed) or (event is InputEventScreenTouch and event.pressed) or (event is InputEventMouseButton and event.pressed):
-			switch_state(MenuState.LOBBY)
-			get_viewport().set_input_as_handled()
+		if event is InputEventKey and event.pressed and not event.echo:
+			if event.keycode == KEY_SPACE or event.keycode == KEY_ENTER or event.keycode == KEY_KP_ENTER:
+				if Time.get_ticks_msec() >= _state_switch_cooldown_until:
+					switch_state(MenuState.LOBBY)
+					get_viewport().set_input_as_handled()
 
 # ==========================================================
 # 3. MAIN LOBBY SCREEN (Hero Standee, Widgets, Primary CTA)
@@ -978,7 +987,11 @@ func _build_lobby_panel() -> void:
 	btn_play_cta.add_theme_stylebox_override("hover", sb_cta_h)
 	btn_play_cta.add_theme_stylebox_override("focus", sb_cta_h)
 	
-	btn_play_cta.pressed.connect(func(): switch_state(MenuState.MATCH_SELECT))
+	btn_play_cta.pressed.connect(func():
+		if Time.get_ticks_msec() < _state_switch_cooldown_until:
+			return
+		switch_state(MenuState.MATCH_SELECT)
+	)
 	btn_row.add_child(btn_play_cta)
 	cta_box.add_child(btn_row)
 
@@ -1078,7 +1091,9 @@ func _build_match_select_panel() -> void:
 		"Đấu thời gian thực qua WebRTC/WebSocket.\nTạo phòng & Thách đấu bạn bè toàn cầu!",
 		"SẴN SÀNG",
 		false,
-		func(): switch_state(MenuState.PVP_LOBBY)
+		func():
+			if Time.get_ticks_msec() < _state_switch_cooldown_until: return
+			switch_state(MenuState.PVP_LOBBY)
 	))
 	
 	# 2. AI Rival Card (Studio Gold Trophy Icon)
@@ -1090,7 +1105,9 @@ func _build_match_select_panel() -> void:
 		"Đấu đơn với AI thông minh BWF.\nTùy chỉnh độ khó Dễ - Trung Bình - Khó.",
 		"SẴN SÀNG",
 		false,
-		func(): switch_state(MenuState.MATCH_SETUP)
+		func():
+			if Time.get_ticks_msec() < _state_switch_cooldown_until: return
+			switch_state(MenuState.MATCH_SETUP)
 	))
 	
 	# 3. Training Card (Studio Gold Padlock Icon)
@@ -1442,7 +1459,7 @@ func _build_pvp_panel() -> void:
 	cfg_row.add_child(name_box)
 	cfg_row.add_child(VSeparator.new())
 	
-	# Character selector
+	# Character selector (Đầy đủ cả 3 siêu sao BWF)
 	var char_box = HBoxContainer.new()
 	char_box.add_theme_constant_override("separation", 6)
 	var lbl_c = Label.new()
@@ -1451,7 +1468,7 @@ func _build_pvp_panel() -> void:
 	lbl_c.modulate = Color(0.75, 0.82, 0.90)
 	char_box.add_child(lbl_c)
 	for cid in ["nishikawa", "fuji", "wall"]:
-		var b = _create_clean_button(CHAR_DATA[cid]["name"], CHAR_DATA[cid]["color"], Vector2(96, 30), 11)
+		var b = _create_clean_button(CHAR_DATA[cid]["name"], CHAR_DATA[cid]["color"], Vector2(92, 30), 11)
 		b.pressed.connect(func(): _select_pvp_char(cid))
 		char_box.add_child(b)
 		pvp_char_btns[cid] = b
@@ -2099,6 +2116,25 @@ func _build_settings_gfx_tab() -> VBoxContainer:
 	shk_row.add_child(btn_shk)
 	v.add_child(shk_row)
 	
+	# Hàng cài đặt phím ảo cảm ứng (Mobile Virtual Touch Pad)
+	var touch_row = HBoxContainer.new()
+	touch_row.mouse_filter = Control.MOUSE_FILTER_PASS
+	var lbl_touch = Label.new()
+	lbl_touch.text = "Phím cảm ứng ảo di động (Virtual Touch Pad):"
+	lbl_touch.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	lbl_touch.add_theme_font_size_override("font_size", 13)
+	touch_row.add_child(lbl_touch)
+	
+	btn_touch_toggle_menu = _create_clean_button("BẬT" if touch_controls_enabled else "TẮT", Color(0.2, 1.0, 0.4) if touch_controls_enabled else Color(1.0, 0.4, 0.4), Vector2(90, 32), 12)
+	btn_touch_toggle_menu.pressed.connect(func():
+		touch_controls_enabled = not touch_controls_enabled
+		btn_touch_toggle_menu.text = "BẬT" if touch_controls_enabled else "TẮT"
+		btn_touch_toggle_menu.modulate = Color(0.2, 1.0, 0.4) if touch_controls_enabled else Color(1.0, 0.4, 0.4)
+		touch_toggle_requested.emit(touch_controls_enabled)
+	)
+	touch_row.add_child(btn_touch_toggle_menu)
+	v.add_child(touch_row)
+	
 	return v
 
 func _build_settings_account_tab() -> VBoxContainer:
@@ -2426,6 +2462,8 @@ func _update_setup_cards() -> void:
 		label_matchup_summary.text = "KÈO ĐẤU:  [PLAYER: %s]   VS   [AI: %s]   •   ĐỘ KHÓ: [%s]   •   CHẠM: [%d ĐIỂM]   •   [%s]" % [p_name, r_name, diff_str, selected_target_points, set_str]
 
 func _confirm_and_start_match() -> void:
+	if Time.get_ticks_msec() < _state_switch_cooldown_until:
+		return
 	start_match_requested.emit(selected_player_id, selected_rival_id, selected_difficulty, selected_target_points, selected_match_sets)
 	visible = false
 
@@ -2647,7 +2685,7 @@ func _update_pvp_controls() -> void:
 func _on_host_create_room() -> void:
 	pvp_is_host = true
 	if net_manager:
-		net_manager.create_room()
+		net_manager.host_room("", pvp_selected_char, pvp_selected_points, pvp_selected_sets, pvp_player_name)
 		if pvp_status_lbl:
 			pvp_status_lbl.text = "● ĐANG TẠO PHÒNG..."
 			pvp_status_lbl.modulate = Color(1.0, 0.85, 0.3)
@@ -2659,7 +2697,7 @@ func _on_client_join_room() -> void:
 		return
 	pvp_current_code = code
 	if net_manager:
-		net_manager.join_room(code)
+		net_manager.join_room(code, pvp_selected_char, pvp_player_name)
 		if pvp_status_lbl:
 			pvp_status_lbl.text = "● ĐANG KẾT NỐI: " + code
 			pvp_status_lbl.modulate = Color(0.35, 0.75, 1.0)
@@ -2681,7 +2719,11 @@ func _on_pvp_start_pressed() -> void:
 			"type": "start_match",
 			"first_server": pvp_first_server,
 			"pts": pvp_selected_points,
-			"sets": pvp_selected_sets
+			"sets": pvp_selected_sets,
+			"host_char": pvp_selected_char,
+			"guest_char": pvp_opponent_char,
+			"host_name": pvp_player_name,
+			"guest_name": pvp_opponent_name
 		})
 	_start_pvp_countdown()
 
@@ -2728,6 +2770,13 @@ func _on_net_packet_received(pkt: Dictionary) -> void:
 	elif ptype == "char_pick":
 		pvp_opponent_char = str(pkt.get("char", "wall"))
 		pvp_opponent_name = str(pkt.get("player_name", "PLAYER 2"))
+		if net_manager and not pkt.has("is_ack"):
+			net_manager.send_packet({
+				"type": "char_pick",
+				"char": pvp_selected_char,
+				"player_name": pvp_player_name,
+				"is_ack": true
+			})
 	elif ptype == "match_config":
 		pvp_selected_points = int(pkt.get("pts", 11))
 		pvp_selected_sets = int(pkt.get("sets", 1))
@@ -2736,4 +2785,8 @@ func _on_net_packet_received(pkt: Dictionary) -> void:
 		pvp_first_server = str(pkt.get("first_server", "p1"))
 		pvp_selected_points = int(pkt.get("pts", pvp_selected_points))
 		pvp_selected_sets = int(pkt.get("sets", pvp_selected_sets))
+		if pkt.has("host_char"):
+			pvp_opponent_char = str(pkt.get("host_char"))
+		if pkt.has("host_name"):
+			pvp_opponent_name = str(pkt.get("host_name"))
 		_start_pvp_countdown()
