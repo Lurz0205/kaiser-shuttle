@@ -1,7 +1,12 @@
-[gd_scene load_steps=3 format=3]
+[gd_scene load_steps=4 format=3]
 
 [ext_resource type="Script" path="res://scripts/ui/bwf_scoreboard.gd" id="1_script"]
 [ext_resource type="Texture2D" path="res://assets/ui/scoreboard_bwf_base.png" id="2_base"]
+
+[sub_resource type="SystemFont" id="SystemFont_bwf_name"]
+font_names = PackedStringArray("Bahnschrift", "Segoe UI", "Arial", "Sans-Serif")
+font_weight = 700
+subpixel_positioning = 1
 
 [node name="BWFScoreboard" type="Control"]
 custom_minimum_size = Vector2(440, 64)
@@ -34,6 +39,7 @@ offset_top = 2.0
 offset_right = 274.0
 offset_bottom = 32.0
 theme_override_colors/font_color = Color(0.08, 0.08, 0.12, 1)
+theme_override_fonts/font = SubResource("SystemFont_bwf_name")
 theme_override_font_sizes/font_size = 15
 text = "MOMOTA"
 vertical_alignment = 1
@@ -45,6 +51,7 @@ offset_top = 33.0
 offset_right = 274.0
 offset_bottom = 63.0
 theme_override_colors/font_color = Color(0.08, 0.08, 0.12, 1)
+theme_override_fonts/font = SubResource("SystemFont_bwf_name")
 theme_override_font_sizes/font_size = 15
 text = "AXELSEN"
 vertical_alignment = 1

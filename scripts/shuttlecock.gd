@@ -105,8 +105,8 @@ func _ready() -> void:
 	if not tuning:
 		tuning = load("res://resources/GameTuning.tres")
 	
-	if OS.has_feature("web"):
-		low_graphics_mode = true
+	# Mặc định đồ họa cao kể cả trên Web
+	low_graphics_mode = false
 	
 	if trail:
 		trail.top_level = true

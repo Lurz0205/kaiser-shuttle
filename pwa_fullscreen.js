@@ -7,6 +7,7 @@
     // 1. Triệt để khử Cache cũ & Hủy đăng ký ServiceWorker cũ
     // Đảm bảo thiết bị di động luôn tự động tải về bản cập nhật mới nhất
     // mà người dùng KHÔNG BAO GIỜ phải tự xóa dữ liệu duyệt web thủ công.
+    // CHỈ GIỮ LẠI DUY NHẤT 'kaiser_player_name' TRONG LOCALSTORAGE.
     // -------------------------------------------------------------
     try {
         if ('serviceWorker' in navigator) {
@@ -25,8 +26,25 @@
                 }
             }).catch(function() {});
         }
+        if ('localStorage' in window) {
+            var keepKey = 'kaiser_player_name';
+            var savedName = localStorage.getItem(keepKey);
+            var keysToRemove = [];
+            for (var k = 0; k < localStorage.length; k++) {
+                var kName = localStorage.key(k);
+                if (kName && kName !== keepKey) {
+                    keysToRemove.push(kName);
+                }
+            }
+            for (var r = 0; r < keysToRemove.length; r++) {
+                localStorage.removeItem(keysToRemove[r]);
+            }
+            if (savedName) {
+                localStorage.setItem(keepKey, savedName);
+            }
+        }
     } catch (e) {
-        console.warn('[Kaiser] Cache purge check:', e);
+        console.warn('[Kaiser] Cache & Storage purge check:', e);
     }
 
     // -------------------------------------------------------------

@@ -236,10 +236,8 @@ func _ready() -> void:
 	shuttlecock.landed.connect(_on_shuttlecock_landed)
 	shuttlecock.hit_net.connect(_on_shuttlecock_hit_net)
 	
-	if OS.has_feature("web"):
-		low_graphics_mode = true
-	else:
-		low_graphics_mode = false
+	# Mặc định đồ họa cao kể cả trên Web
+	low_graphics_mode = false
 	if shuttlecock and shuttlecock.has_method("set_low_graphics"):
 		shuttlecock.set_low_graphics(low_graphics_mode)
 	

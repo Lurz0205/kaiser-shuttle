@@ -25,7 +25,19 @@ var max_sets: int = 3
 
 func _ready() -> void:
 	_ensure_nodes()
+	_apply_bold_names()
 	refresh_display()
+
+func _apply_bold_names() -> void:
+	var bold_font = SystemFont.new()
+	bold_font.font_names = PackedStringArray(["Bahnschrift", "Segoe UI", "Arial", "Sans-Serif"])
+	bold_font.font_weight = 700
+	if name_p1:
+		name_p1.add_theme_font_override("font", bold_font)
+		name_p1.add_theme_font_size_override("font_size", 15)
+	if name_p2:
+		name_p2.add_theme_font_override("font", bold_font)
+		name_p2.add_theme_font_size_override("font_size", 15)
 
 func _ensure_nodes() -> void:
 	if not name_p1:

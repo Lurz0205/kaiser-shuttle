@@ -208,10 +208,8 @@ func _ready() -> void:
 	grow_horizontal = Control.GROW_DIRECTION_BOTH
 	grow_vertical = Control.GROW_DIRECTION_BOTH
 	
-	if OS.has_feature("web"):
-		low_graphics_mode = true
-	else:
-		low_graphics_mode = false
+	# Mặc định đồ họa cao kể cả trên Web
+	low_graphics_mode = false
 		
 	pvp_player_name = _load_saved_player_name()
 	
@@ -2609,25 +2607,12 @@ func _on_avatar_selected(idx: int) -> void:
 	if avatar_picker_modal:
 		avatar_picker_modal.visible = false
 
-func _save_selected_avatar(idx: int) -> void:
-	if OS.has_feature("web"):
-		JavaScriptBridge.eval("try { localStorage.setItem('kaiser_avatar', '%d'); } catch(e){}" % idx)
-	var f = FileAccess.open("user://player_avatar.txt", FileAccess.WRITE)
-	if f:
-		f.store_string(str(idx))
+func _save_selected_avatar(_idx: int) -> void:
+	# Chỉ lưu tên người chơi theo yêu cầu. Không lưu avatar vào file/localStorage để tránh cache cũ.
+	pass
 
 func _load_selected_avatar() -> void:
-	if OS.has_feature("web"):
-		var js_av = JavaScriptBridge.eval("localStorage.getItem('kaiser_avatar')")
-		if js_av != null and str(js_av).is_valid_int():
-			current_avatar_idx = clamp(int(js_av), 0, AVATAR_LIST.size() - 1)
-			return
-	if FileAccess.file_exists("user://player_avatar.txt"):
-		var f = FileAccess.open("user://player_avatar.txt", FileAccess.READ)
-		if f:
-			var txt = f.get_as_text().strip_edges()
-			if txt.is_valid_int():
-				current_avatar_idx = clamp(int(txt), 0, AVATAR_LIST.size() - 1)
+	current_avatar_idx = 0
 
 func _select_pvp_char(cid: String) -> void:
 	pvp_selected_char = cid
