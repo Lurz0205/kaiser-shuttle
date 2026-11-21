@@ -265,101 +265,14 @@
     };
 
     window.kaiserOpenCodeInputModal = function(initialCode) {
-        // Remove existing modal if any
-        var old = document.getElementById('kaiser_code_modal');
-        if (old) old.remove();
-
-        var overlay = document.createElement('div');
-        overlay.id = 'kaiser_code_modal';
-        overlay.style.cssText = 'position:fixed;top:0;left:0;width:100vw;height:100vh;background:rgba(4,8,16,0.85);z-index:999999;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(6px);font-family:sans-serif;touch-action:manipulation;';
-
-        var card = document.createElement('div');
-        card.style.cssText = 'background:#0f172a;border:2px solid #38bdf8;border-radius:14px;padding:24px;width:90%;max-width:380px;box-shadow:0 12px 36px rgba(0,0,0,0.7);text-align:center;box-sizing:border-box;color:#fff;';
-
-        var title = document.createElement('h3');
-        title.innerText = 'NHẬP MÃ PHÒNG (PVP)';
-        title.style.cssText = 'margin:0 0 8px 0;font-size:18px;color:#38bdf8;letter-spacing:1px;font-weight:bold;';
-        card.appendChild(title);
-
-        var sub = document.createElement('div');
-        sub.innerText = 'Gõ mã hoặc bấm nút Dán bên dưới để vào phòng';
-        sub.style.cssText = 'font-size:12px;color:#94a3b8;margin-bottom:18px;line-height:1.4;';
-        card.appendChild(sub);
-
-        var input = document.createElement('input');
-        input.id = 'kaiser_code_input';
-        input.type = 'text';
-        input.maxLength = 6;
-        input.value = initialCode || '';
-        input.placeholder = 'MÃ PHÒNG (VD: 8899)';
-        input.autocomplete = 'off';
-        input.autocapitalize = 'characters';
-        input.inputMode = 'text';
-        input.style.cssText = 'width:100%;height:52px;font-size:22px;font-weight:bold;text-align:center;color:#f8fafc;background:#1e293b;border:2px solid #64748b;border-radius:10px;outline:none;letter-spacing:4px;box-sizing:border-box;margin-bottom:16px;text-transform:uppercase;';
-        input.onfocus = function() { input.style.borderColor = '#38bdf8'; };
-        input.onblur = function() { input.style.borderColor = '#64748b'; };
-        input.oninput = function() { input.value = input.value.toUpperCase(); };
-        card.appendChild(input);
-
-        var btnRow = document.createElement('div');
-        btnRow.style.cssText = 'display:flex;gap:10px;margin-bottom:12px;';
-
-        var btnPaste = document.createElement('button');
-        btnPaste.innerHTML = '📋 DÁN MÃ';
-        btnPaste.style.cssText = 'flex:1;height:44px;background:#f59e0b;color:#000;font-weight:bold;font-size:14px;border:none;border-radius:8px;cursor:pointer;touch-action:manipulation;';
-        btnPaste.onclick = async function() {
-            var txt = await window.kaiserReadClipboard();
-            if (txt) {
-                var match = txt.match(/[a-zA-Z0-9]{4,6}/);
-                input.value = match ? match[0].toUpperCase() : txt.slice(0, 6).toUpperCase();
-                btnPaste.innerHTML = '✓ ĐÃ DÁN!';
-                setTimeout(function() { btnPaste.innerHTML = '📋 DÁN MÃ'; }, 1500);
-            } else {
-                var manual = window.prompt('Dán hoặc nhập mã phòng vào đây:', input.value);
-                if (manual !== null) {
-                    var m2 = manual.trim().match(/[a-zA-Z0-9]{4,6}/);
-                    input.value = m2 ? m2[0].toUpperCase() : manual.trim().slice(0, 6).toUpperCase();
-                }
-            }
-        };
-        btnRow.appendChild(btnPaste);
-
-        var btnConfirm = document.createElement('button');
-        btnConfirm.innerHTML = '✓ XÁC NHẬN';
-        btnConfirm.style.cssText = 'flex:1.2;height:44px;background:#0284c7;color:#fff;font-weight:bold;font-size:14px;border:none;border-radius:8px;cursor:pointer;touch-action:manipulation;';
-        btnConfirm.onclick = function() {
-            var val = input.value.trim().toUpperCase();
-            window._kaiserRoomCode = val;
+        var res = window.prompt('Nhập hoặc dán mã phòng PvP (4-6 ký tự):', initialCode || '');
+        if (res !== null) {
+            var match = res.trim().match(/[a-zA-Z0-9]{4,6}/);
+            var code = match ? match[0].toUpperCase() : res.trim().slice(0, 6).toUpperCase();
+            window._kaiserRoomCode = code;
             window._kaiserCodeUpdated = true;
-            overlay.remove();
-            var canvas = document.querySelector('canvas') || document.getElementById('canvas');
-            if (canvas) canvas.focus();
-        };
-        btnRow.appendChild(btnConfirm);
-        card.appendChild(btnRow);
-
-        var btnClose = document.createElement('button');
-        btnClose.innerHTML = '✕ ĐÓNG';
-        btnClose.style.cssText = 'width:100%;height:36px;background:transparent;color:#94a3b8;font-size:13px;border:1px solid #475569;border-radius:8px;cursor:pointer;touch-action:manipulation;';
-        btnClose.onclick = function() {
-            overlay.remove();
-            var canvas = document.querySelector('canvas') || document.getElementById('canvas');
-            if (canvas) canvas.focus();
-        };
-        card.appendChild(btnClose);
-
-        input.onkeydown = function(e) {
-            if (e.key === 'Enter') {
-                btnConfirm.click();
-            }
-        };
-
-        overlay.appendChild(card);
-        document.body.appendChild(overlay);
-
-        setTimeout(function() {
-            input.focus();
-            input.select();
-        }, 50);
+            return code;
+        }
+        return '';
     };
 })();

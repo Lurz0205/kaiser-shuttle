@@ -820,6 +820,38 @@ func _save_player_name(name_str: String) -> void:
 	if f:
 		f.store_string(clean)
 
+func _is_mobile_environment() -> bool:
+	if OS.has_feature("mobile") or DisplayServer.is_touchscreen_available():
+		return true
+	if OS.has_feature("web"):
+		return bool(JavaScriptBridge.eval("/Android|iPhone|iPad|iPod|Touch/i.test(navigator.userAgent)"))
+	return false
+
+func _open_mobile_text_prompt(target_line_edit: LineEdit, title: String, max_len: int = 12) -> void:
+	if not target_line_edit:
+		return
+	if OS.has_feature("web"):
+		var cur_val = target_line_edit.text.strip_edges()
+		var js_code = "window.prompt(" + JSON.stringify(title) + ", " + JSON.stringify(cur_val) + ")"
+		var res = JavaScriptBridge.eval(js_code)
+		if res != null and res is String:
+			var txt = (res as String).strip_edges()
+			if max_len > 0 and txt.length() > max_len:
+				txt = txt.substr(0, max_len)
+			target_line_edit.text = txt
+			target_line_edit.text_changed.emit(txt)
+			if target_line_edit == pvp_name_input:
+				pvp_player_name = txt if not txt.is_empty() else "PLAYER 1"
+				_save_player_name(pvp_player_name)
+			elif target_line_edit == pvp_room_input:
+				pvp_current_code = txt.to_upper()
+			elif title.find("Server") != -1:
+				if net_manager:
+					net_manager.set_custom_server_url(txt)
+	else:
+		DisplayServer.virtual_keyboard_show(target_line_edit.text)
+		target_line_edit.grab_focus()
+
 func _build_pvp_panel(sb_setup: StyleBoxFlat) -> void:
 	pvp_panel = Control.new()
 	pvp_panel.custom_minimum_size = Vector2(1280, 720)
@@ -898,12 +930,26 @@ func _build_pvp_panel(sb_setup: StyleBoxFlat) -> void:
 	sb_name.corner_radius_bottom_left = 4
 	pvp_name_input.add_theme_stylebox_override("normal", sb_name)
 	pvp_name_input.add_theme_stylebox_override("focus", sb_name)
+	pvp_name_input.mouse_filter = Control.MOUSE_FILTER_STOP
+	pvp_name_input.focus_mode = Control.FOCUS_ALL
 	pvp_name_input.text_changed.connect(func(new_text: String):
 		var clean = new_text.strip_edges().to_upper()
 		pvp_player_name = clean if not clean.is_empty() else "PLAYER 1"
 		_save_player_name(pvp_player_name)
 	)
+	pvp_name_input.gui_input.connect(func(ev):
+		if _is_mobile_environment():
+			if (ev is InputEventScreenTouch and ev.pressed) or (ev is InputEventMouseButton and ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT):
+				_open_mobile_text_prompt(pvp_name_input, "Nhập tên người chơi (tối đa 12 ký tự):", 12)
+				get_viewport().set_input_as_handled()
+	)
 	name_box.add_child(pvp_name_input)
+
+	var btn_edit_name = _create_clean_button("✏ ĐỔI TÊN", Color(0.3, 0.85, 0.7), Vector2(75, 32), 11)
+	btn_edit_name.pressed.connect(func():
+		_open_mobile_text_prompt(pvp_name_input, "Nhập tên người chơi (tối đa 12 ký tự):", 12)
+	)
+	name_box.add_child(btn_edit_name)
 	cfg_row.add_child(name_box)
 	
 	# Character picker
@@ -1074,15 +1120,16 @@ func _build_pvp_panel(sb_setup: StyleBoxFlat) -> void:
 	pvp_room_input.mouse_filter = Control.MOUSE_FILTER_STOP
 	pvp_room_input.focus_mode = Control.FOCUS_ALL
 	
-	# Xử lý phím tắt & chạm click mở modal chuẩn HTML Native trên Web / Mobile:
+	# Xử lý phím tắt & chạm click mở modal chuẩn trên Web / Mobile:
 	pvp_room_input.gui_input.connect(func(ev):
 		if ev is InputEventKey and ev.pressed:
 			if (ev.keycode == KEY_V) and (ev.ctrl_pressed or ev.meta_pressed):
 				_on_paste_room_code_pressed()
 				get_viewport().set_input_as_handled()
-		elif ev is InputEventMouseButton and ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT:
-			if OS.has_feature("web"):
-				JavaScriptBridge.eval("window.kaiserOpenCodeInputModal('" + pvp_room_input.text.strip_edges() + "')")
+		elif _is_mobile_environment():
+			if (ev is InputEventScreenTouch and ev.pressed) or (ev is InputEventMouseButton and ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT):
+				_open_mobile_text_prompt(pvp_room_input, "Nhập hoặc dán mã phòng PvP (4-6 ký tự):", 6)
+				get_viewport().set_input_as_handled()
 	)
 	input_row.add_child(pvp_room_input)
 	
@@ -1092,10 +1139,7 @@ func _build_pvp_panel(sb_setup: StyleBoxFlat) -> void:
 
 	var btn_type = _create_clean_button("✏ NHẬP", Color(0.30, 0.85, 0.65), Vector2(68, 38), 12)
 	btn_type.pressed.connect(func():
-		if OS.has_feature("web"):
-			JavaScriptBridge.eval("window.kaiserOpenCodeInputModal('" + pvp_room_input.text.strip_edges() + "')")
-		else:
-			pvp_room_input.grab_focus()
+		_open_mobile_text_prompt(pvp_room_input, "Nhập hoặc dán mã phòng PvP (4-6 ký tự):", 6)
 	)
 	input_row.add_child(btn_type)
 	
@@ -1152,7 +1196,19 @@ func _build_pvp_panel(sb_setup: StyleBoxFlat) -> void:
 		if net_manager:
 			net_manager.set_custom_server_url(input_srv.text)
 	)
+	input_srv.gui_input.connect(func(ev):
+		if _is_mobile_environment():
+			if (ev is InputEventScreenTouch and ev.pressed) or (ev is InputEventMouseButton and ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT):
+				_open_mobile_text_prompt(input_srv, "Nhập địa chỉ WebSocket Server:", 150)
+				get_viewport().set_input_as_handled()
+	)
 	server_cfg_row.add_child(input_srv)
+
+	var btn_edit_srv = _create_clean_button("✏ SỬA", Color(0.3, 0.85, 0.7), Vector2(55, 26), 10)
+	btn_edit_srv.pressed.connect(func():
+		_open_mobile_text_prompt(input_srv, "Nhập địa chỉ WebSocket Server:", 150)
+	)
+	server_cfg_row.add_child(btn_edit_srv)
 
 	var btn_localhost = _create_clean_button("LOCALHOST", Color(0.8, 0.8, 0.8), Vector2(85, 26), 10)
 	btn_localhost.pressed.connect(func():
@@ -1253,14 +1309,28 @@ func _on_paste_room_code_pressed() -> void:
 	if OS.has_feature("web"):
 		JavaScriptBridge.eval("""
 			(async function() {
-				var txt = await window.kaiserReadClipboard();
-				if (txt) {
-					var match = txt.match(/[a-zA-Z0-9]{4,6}/);
-					var code = match ? match[0].toUpperCase() : txt.slice(0, 6).toUpperCase();
+				var text = '';
+				try {
+					if (navigator.clipboard && navigator.clipboard.readText) {
+						text = await navigator.clipboard.readText();
+					}
+				} catch(e) {}
+				if (!text && window._kaiserClipboard) {
+					text = window._kaiserClipboard;
+				}
+				if (text) {
+					var match = text.match(/[a-zA-Z0-9]{4,6}/);
+					var code = match ? match[0].toUpperCase() : text.trim().slice(0, 6).toUpperCase();
 					window._kaiserRoomCode = code;
 					window._kaiserCodeUpdated = true;
 				} else {
-					window.kaiserOpenCodeInputModal('');
+					var manual = window.prompt('Dán hoặc nhập mã phòng PvP vào đây:');
+					if (manual !== null) {
+						var m2 = manual.trim().match(/[a-zA-Z0-9]{4,6}/);
+						var code2 = m2 ? m2[0].toUpperCase() : manual.trim().slice(0, 6).toUpperCase();
+						window._kaiserRoomCode = code2;
+						window._kaiserCodeUpdated = true;
+					}
 				}
 			})();
 		""")
