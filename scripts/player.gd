@@ -1666,6 +1666,10 @@ func _execute_dive_rescue(hit_status: Dictionary = {}) -> void:
 	
 	var is_perfect = hit_status.get("is_perfect", false)
 	var quality = hit_status.get("quality", 0.70)
+	if is_ai:
+		var perf_chance = 0.15 if ai_difficulty == 0 else (0.45 if ai_difficulty == 1 else 0.75)
+		is_perfect = (randf() < perf_chance)
+		quality = 1.0 if is_perfect else (0.65 if ai_difficulty == 0 else 0.75)
 	var cur_acc = stats.accuracy if stats else 100.0
 	var cur_sta = stats.stamina if stats else 100.0
 	if stats:
@@ -1792,6 +1796,19 @@ func _execute_hit(shot_type: String, hit_status: Dictionary = {}) -> void:
 	
 	var quality = 1.0 if is_nishikawa_golden_smash else hit_status.get("quality", 0.75)
 	var is_perfect = true if is_nishikawa_golden_smash else hit_status.get("is_perfect", false)
+	
+	# ==========================================================
+	# TỈ LỆ ĐÁNH PERFECT CỦA AI THEO CẤP ĐỘ (DỄ -> TRUNG BÌNH -> KHÓ)
+	# ==========================================================
+	if is_ai and not is_nishikawa_golden_smash:
+		var perf_chance = 0.15 # DỄ: 15% Perfect (phần lớn đánh cơ bản, dễ mắc lỗi/non cầu)
+		if ai_difficulty == 1:
+			perf_chance = 0.48 # TRUNG BÌNH: 48% Perfect (cân bằng, tạo áp lực vừa phải)
+		elif ai_difficulty == 2:
+			perf_chance = 0.80 # KHÓ: 80% Perfect (đẳng cấp giải đấu BWF, dứt điểm hiểm hóc)
+		is_perfect = (randf() < perf_chance)
+		quality = 1.0 if is_perfect else (0.75 if ai_difficulty == 0 else 0.82)
+	
 	var is_underhand = (hit_status.get("zone", "") == "underhand")
 	
 	# ĐỠ CẦU SMASH: Đánh giá Timing tốt / xấu và tác động lên Accuracy & Balance & Thể lực:

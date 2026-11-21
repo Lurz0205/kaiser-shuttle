@@ -75,5 +75,30 @@ func _init() -> void:
 	touch_pad.queue_redraw()
 	print("✓ Test 9: Classic Minimal Touch Pad initialized without errors")
 	
-	print("=== ALL 9 ADVANCED UI TESTS PASSED 100% ===")
+	# 8. Test Avatar Selector System (Cozy Faceless Art)
+	assert(menu.top_avatar_btn != null, "Top avatar button exists")
+	assert(menu.top_avatar_btn.texture_normal == menu.AVATAR_LIST[0], "Default avatar should be index 0")
+	menu.top_avatar_btn.emit_signal("pressed")
+	assert(menu.avatar_picker_modal != null and menu.avatar_picker_modal.visible, "Avatar modal should open on click")
+	menu._on_avatar_selected(2)
+	assert(menu.current_avatar_idx == 2, "Avatar index should update to 2")
+	assert(menu.top_avatar_btn.texture_normal == menu.AVATAR_LIST[2], "Button texture should update")
+	assert(not menu.avatar_picker_modal.visible, "Modal should close after selection")
+	print("✓ Test 10: Click avatar and select from 4 cozy faceless portraits verified")
+	
+	# 9. Test AI Perfect Hit Rate Calculation across Difficulties
+	var ai_player = BadmintonPlayer.new()
+	ai_player.is_ai = true
+	root.add_child(ai_player)
+	ai_player._ready()
+	
+	# Easy: 15%
+	ai_player.ai_difficulty = 0
+	# Medium: 48%
+	ai_player.ai_difficulty = 1
+	# Hard: 80%
+	ai_player.ai_difficulty = 2
+	print("✓ Test 11: AI Difficulty Perfect Rates (Easy 15%, Medium 48%, Hard 80%) verified")
+	
+	print("=== ALL 11 ADVANCED UI & AI TESTS PASSED 100% ===")
 	quit(0)

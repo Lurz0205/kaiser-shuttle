@@ -9,6 +9,9 @@ extends Control
 
 const CustomIcon = preload("res://scripts/ui/custom_icon.gd")
 
+# Full HD Locker Room Lobby Background
+const TEX_LOBBY_BG = preload("res://assets/images/lobby_locker_room.png")
+
 # Studio Pre-rendered High-Quality Icons (0% Vector CPU lag, 100% Anti-Aliased)
 const TEX_SHUTTLECOCK = preload("res://assets/icons/icon_shuttlecock_gold.png")
 const TEX_PADLOCK = preload("res://assets/icons/icon_padlock_gold.png")
@@ -17,6 +20,25 @@ const TEX_AVATAR = preload("res://assets/icons/icon_avatar_pro.png")
 const TEX_PVP = preload("res://assets/icons/icon_duel_pvp.png")
 const TEX_TROPHY = preload("res://assets/icons/icon_trophy_gold.png")
 const TEX_GEAR = preload("res://assets/icons/icon_gear_silver.png")
+
+# 4 Cozy Faceless Avatars
+const AVATAR_LIST = [
+	preload("res://assets/icons/avatars/avatar_0.png"),
+	preload("res://assets/icons/avatars/avatar_1.png"),
+	preload("res://assets/icons/avatars/avatar_2.png"),
+	preload("res://assets/icons/avatars/avatar_3.png")
+]
+var current_avatar_idx: int = 0
+var top_avatar_btn: TextureButton = null
+var avatar_picker_modal: PanelContainer = null
+
+# Studio Pre-rendered Character Skill Icons
+const TEX_SKILL_THUNDER = preload("res://assets/icons/skills/skill_thunder_spike.png")
+const TEX_SKILL_WIND = preload("res://assets/icons/skills/skill_wind_feather.png")
+const TEX_SKILL_SHIELD = preload("res://assets/icons/skills/skill_iron_shield.png")
+const TEX_SKILL_FIRE = preload("res://assets/icons/skills/skill_fire_blade.png")
+const TEX_SKILL_VOID = preload("res://assets/icons/skills/skill_dark_void.png")
+const TEX_SKILL_FROST = preload("res://assets/icons/skills/skill_frost_spike.png")
 
 # Liquid Glass WebGL-inspired Shader
 const SHADER_LIQUID_GLASS = preload("res://shaders/liquid_glass.gdshader")
@@ -124,6 +146,7 @@ const CHAR_DATA = {
 		"stars": 5,
 		"color": Color(1.0, 0.82, 0.22, 1.0),
 		"icon_type": CustomIcon.IconType.LIGHTNING,
+		"skill_icon": TEX_SKILL_THUNDER,
 		"power": 98,
 		"agility": 78,
 		"control": 74,
@@ -140,6 +163,7 @@ const CHAR_DATA = {
 		"stars": 4,
 		"color": Color(0.25, 0.90, 0.60, 1.0),
 		"icon_type": CustomIcon.IconType.FEATHER,
+		"skill_icon": TEX_SKILL_WIND,
 		"power": 76,
 		"agility": 84,
 		"control": 96,
@@ -156,6 +180,7 @@ const CHAR_DATA = {
 		"stars": 5,
 		"color": Color(0.30, 0.75, 1.0, 1.0),
 		"icon_type": CustomIcon.IconType.SHIELD,
+		"skill_icon": TEX_SKILL_SHIELD,
 		"power": 74,
 		"agility": 88,
 		"control": 85,
@@ -167,6 +192,7 @@ const CHAR_DATA = {
 }
 
 func _ready() -> void:
+	_load_selected_avatar()
 	custom_minimum_size = Vector2(1280, 720)
 	size = Vector2(1280, 720)
 	position = Vector2.ZERO
@@ -292,7 +318,7 @@ func _build_ui() -> void:
 	# GLOBAL BACKGROUND (Sân đấu & Phòng thay đồ thể thao cao cấp)
 	# ----------------------------------------------------
 	var global_bg = TextureRect.new()
-	global_bg.texture = preload("res://assets/images/menu_banner.png")
+	global_bg.texture = TEX_LOBBY_BG
 	global_bg.custom_minimum_size = Vector2(1280, 720)
 	global_bg.size = Vector2(1280, 720)
 	global_bg.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
@@ -403,8 +429,18 @@ func _build_top_bar() -> void:
 	prof_box.add_theme_constant_override("separation", 10)
 	prof_box.mouse_filter = Control.MOUSE_FILTER_PASS
 	
-	var av_icon = _create_tex_icon(TEX_AVATAR, Vector2(40, 40))
-	prof_box.add_child(av_icon)
+	# Clickable Avatar Button with Cozy Faceless Art
+	top_avatar_btn = TextureButton.new()
+	top_avatar_btn.texture_normal = AVATAR_LIST[current_avatar_idx]
+	top_avatar_btn.custom_minimum_size = Vector2(42, 42)
+	top_avatar_btn.size = Vector2(42, 42)
+	top_avatar_btn.ignore_texture_size = true
+	top_avatar_btn.stretch_mode = TextureButton.STRETCH_KEEP_ASPECT_CENTERED
+	top_avatar_btn.mouse_filter = Control.MOUSE_FILTER_STOP
+	top_avatar_btn.focus_mode = Control.FOCUS_NONE
+	top_avatar_btn.tooltip_text = "Nhấp để đổi Avatar"
+	top_avatar_btn.pressed.connect(_toggle_avatar_picker)
+	prof_box.add_child(top_avatar_btn)
 	
 	var name_col = VBoxContainer.new()
 	name_col.alignment = BoxContainer.ALIGNMENT_CENTER
@@ -414,7 +450,7 @@ func _build_top_bar() -> void:
 	# Direct Real Name Input Field (Nhập tên thật dễ dàng, không bị đơ)
 	top_name_input = LineEdit.new()
 	top_name_input.text = pvp_player_name
-	top_name_input.custom_minimum_size = Vector2(140, 26)
+	top_name_input.custom_minimum_size = Vector2(140, 28)
 	top_name_input.max_length = 16
 	top_name_input.placeholder_text = "Nhập tên..."
 	top_name_input.mouse_filter = Control.MOUSE_FILTER_STOP
@@ -442,13 +478,6 @@ func _build_top_bar() -> void:
 			pvp_name_input.text = pvp_player_name
 	)
 	name_col.add_child(top_name_input)
-	
-	var rank_lbl = Label.new()
-	rank_lbl.text = "Hạng A • Vận Động Viên Chuyên Nghiệp"
-	rank_lbl.add_theme_font_size_override("font_size", 10)
-	rank_lbl.modulate = Color(0.70, 0.80, 0.90, 0.85)
-	name_col.add_child(rank_lbl)
-	
 	prof_box.add_child(name_col)
 	row.add_child(prof_box)
 	
@@ -485,7 +514,7 @@ func _build_top_bar() -> void:
 	lpm.add_child(lph)
 	lph.add_child(_create_tex_icon(TEX_PADLOCK, Vector2(20, 20)))
 	var lp_lbl = Label.new()
-	lp_lbl.text = "TÍNH NĂNG MỞ RỘNG: [ 🔒 CẤP 10 ]"
+	lp_lbl.text = "TÍNH NĂNG MỞ RỘNG: [ CẤP 10 ]"
 	lp_lbl.add_theme_font_size_override("font_size", 11)
 	lp_lbl.modulate = Color(0.70, 0.76, 0.85)
 	lph.add_child(lp_lbl)
@@ -502,10 +531,10 @@ func _build_top_bar() -> void:
 	tabs_row.mouse_filter = Control.MOUSE_FILTER_PASS
 	
 	var btn_home = _create_nav_tab("Trang Chủ", "lobby", func(): switch_state(MenuState.LOBBY))
-	var btn_shop = _create_nav_tab("Cửa Hàng 🔒", "shop", func(): switch_state(MenuState.SHOP))
-	var btn_quests = _create_nav_tab("Nhiệm Vụ 🔒", "quests", func(): switch_state(MenuState.QUESTS))
+	var btn_shop = _create_nav_tab("Cửa Hàng", "shop", func(): switch_state(MenuState.SHOP))
+	var btn_quests = _create_nav_tab("Nhiệm Vụ", "quests", func(): switch_state(MenuState.QUESTS))
 	var btn_roster = _create_nav_tab("Quản Lý Cầu Thủ", "roster", func(): switch_state(MenuState.ROSTER))
-	var btn_settings = _create_nav_tab("Cài Đặt ⚙", "settings", func(): switch_state(MenuState.SETTINGS))
+	var btn_settings = _create_nav_tab("Cài Đặt", "settings", func(): switch_state(MenuState.SETTINGS))
 	
 	tabs_row.add_child(btn_home)
 	tabs_row.add_child(btn_shop)
@@ -710,7 +739,7 @@ func _build_lobby_panel() -> void:
 	badge_row.add_child(lbl_hero_name)
 	hv.add_child(badge_row)
 	
-	var hero_big_icon = CustomIcon.new(CustomIcon.IconType.LIGHTNING, Vector2(100, 100), Color(1.0, 0.82, 0.25))
+	var hero_big_icon = _create_tex_icon(TEX_SKILL_THUNDER, Vector2(96, 96))
 	hero_big_icon.name = "HeroBigIcon"
 	var ic_row = HBoxContainer.new()
 	ic_row.alignment = BoxContainer.ALIGNMENT_CENTER
@@ -718,9 +747,9 @@ func _build_lobby_panel() -> void:
 	hv.add_child(ic_row)
 	
 	var stars_lbl = Label.new()
-	stars_lbl.text = "★ ★ ★ ★ ★"
+	stars_lbl.text = "[ S+ CẦU THỦ CHỦ LỰC ]"
 	stars_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	stars_lbl.add_theme_font_size_override("font_size", 13)
+	stars_lbl.add_theme_font_size_override("font_size", 12)
 	stars_lbl.modulate = Color(1.0, 0.85, 0.25)
 	hv.add_child(stars_lbl)
 	
@@ -755,7 +784,7 @@ func _build_lobby_panel() -> void:
 	var daily_card = _create_widget_card("ĐIỂM DANH HÀNG NGÀY", "Chuỗi điểm danh: 6 ngày\nNhận 500 Vàng + Quà BWF!", Color(0.30, 0.92, 0.65))
 	left_col.add_child(daily_card)
 	
-	# Bottom Right Call to Action: [ 🏸 TRẬN ĐẤU ] (The Spike Giant Button)
+	# Bottom Right Call to Action: [ TRẬN ĐẤU ] (The Spike Giant Button with Studio Shuttlecock)
 	var cta_box = VBoxContainer.new()
 	cta_box.position = Vector2(920, 510)
 	cta_box.custom_minimum_size = Vector2(330, 160)
@@ -781,13 +810,15 @@ func _build_lobby_panel() -> void:
 	var btn_row = HBoxContainer.new()
 	btn_row.add_theme_constant_override("separation", 10)
 	
-	var btn_gacha = _create_clean_button("CHIÊU MỘ 🔒", Color(0.4, 0.7, 0.95), Vector2(100, 68), 12)
+	var btn_gacha = _create_clean_button("CHIÊU MỘ", Color(0.4, 0.7, 0.95), Vector2(100, 68), 12)
 	btn_gacha.pressed.connect(func(): switch_state(MenuState.SHOP))
 	btn_row.add_child(btn_gacha)
 	
-	# Primary Giant Play Button
+	# Primary Giant Play Button with Studio Shuttlecock Icon
 	var btn_play_cta = Button.new()
-	btn_play_cta.text = "🏸  TRẬN ĐẤU"
+	btn_play_cta.text = " TRẬN ĐẤU"
+	btn_play_cta.icon = TEX_SHUTTLECOCK
+	btn_play_cta.expand_icon = true
 	btn_play_cta.focus_mode = Control.FOCUS_NONE
 	btn_play_cta.mouse_filter = Control.MOUSE_FILTER_STOP
 	btn_play_cta.custom_minimum_size = Vector2(210, 68)
@@ -857,10 +888,9 @@ func _update_hero_standee() -> void:
 	if lbl_hero_passive:
 		lbl_hero_passive.text = data["passive"]
 		
-	var big_icon = hero_standee.find_child("HeroBigIcon", true, false) as CustomIcon
-	if big_icon:
-		big_icon.icon_type = data["icon_type"]
-		big_icon.icon_color = data["color"]
+	var big_icon = hero_standee.find_child("HeroBigIcon", true, false) as TextureRect
+	if big_icon and data.has("skill_icon"):
+		big_icon.texture = data["skill_icon"]
 		
 	# Smooth breathing idle animation
 	if hero_breathing_tween and hero_breathing_tween.is_valid():
@@ -938,7 +968,7 @@ func _build_match_select_panel() -> void:
 		TEX_PADLOCK,
 		Color(0.40, 0.70, 0.95),
 		"Luyện phát cầu, tập smash chuẩn nhịp,\ntập di chuyển bước lướt trên sân.",
-		"🔒 SẮP RA MẮT",
+		"SẮP RA MẮT",
 		true,
 		func(): pass
 	))
@@ -950,7 +980,7 @@ func _build_match_select_panel() -> void:
 		TEX_PADLOCK,
 		Color(0.85, 0.50, 1.0),
 		"Hành trình thiếu niên cầu lông từ giải\nphong trào đến đỉnh cao thế giới BWF.",
-		"🔒 SẮP RA MẮT",
+		"SẮP RA MẮT",
 		true,
 		func(): pass
 	))
@@ -962,7 +992,7 @@ func _build_match_select_panel() -> void:
 		TEX_PADLOCK,
 		Color(1.0, 0.55, 0.30),
 		"Vòng bảng & nhánh knock-out 16 tay vợt\nhạt giống tranh cúp vô địch.",
-		"🔒 SẮP RA MẮT",
+		"SẮP RA MẮT",
 		true,
 		func(): pass
 	))
@@ -1013,7 +1043,7 @@ func _create_mode_card_tex(title: String, tag: String, tex: Texture2D, col: Colo
 	sp.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	v.add_child(sp)
 	
-	var btn = _create_clean_button(status_str if not is_locked else "🔒 SẮP RA MẮT", col if not is_locked else Color(0.5, 0.55, 0.62), Vector2(210, 40), 12)
+	var btn = _create_clean_button(status_str if not is_locked else "SẮP RA MẮT", col if not is_locked else Color(0.5, 0.55, 0.62), Vector2(210, 40), 12)
 	if not is_locked:
 		btn.pressed.connect(on_click)
 	v.add_child(btn)
@@ -1375,13 +1405,13 @@ func _build_pvp_panel() -> void:
 	pvp_host_code_lbl.modulate = Color(1.0, 0.88, 0.3)
 	code_row.add_child(pvp_host_code_lbl)
 	
-	var btn_copy = _create_clean_button("📋 CHÉP MÃ", Color(0.85, 0.85, 0.85), Vector2(100, 34), 11)
+	var btn_copy = _create_clean_button("CHÉP MÃ", Color(0.85, 0.85, 0.85), Vector2(100, 34), 11)
 	btn_copy.pressed.connect(func():
 		if not pvp_current_code.is_empty():
 			if OS.has_feature("web"):
 				JavaScriptBridge.eval("window.kaiserCopy('" + pvp_current_code + "')")
 			DisplayServer.clipboard_set(pvp_current_code)
-			btn_copy.text = "✓ ĐÃ CHÉP"
+			btn_copy.text = "ĐÃ CHÉP"
 	)
 	code_row.add_child(btn_copy)
 	hv.add_child(code_row)
@@ -1498,18 +1528,18 @@ func _build_roster_panel() -> void:
 	grid.mouse_filter = Control.MOUSE_FILTER_PASS
 	grid_scroll.add_child(grid)
 	
-	# Populate characters
+	# Populate characters with pre-rendered HD skill textures
 	for cid in ["nishikawa", "fuji", "wall"]:
 		var data = CHAR_DATA[cid]
-		var c_card = _create_roster_card(cid, data["name"], data["rarity"], data["archetype"], data["color"], data["icon_type"], false)
+		var c_card = _create_roster_card(cid, data["name"], data["rarity"], data["archetype"], data["color"], data["skill_icon"], false)
 		grid.add_child(c_card)
 		
-	# Locked players with studio gold padlock
-	grid.add_child(_create_roster_card("gitae", "HAN GITAE", "S+", "BÃO LỬA (MB)", Color(1.0, 0.4, 0.2), CustomIcon.IconType.FIRE_BLADE, true))
-	grid.add_child(_create_roster_card("raul", "RAUL", "S+", "BÓNG ĐÊM (WS)", Color(0.8, 0.3, 0.9), CustomIcon.IconType.LIGHTNING, true))
-	grid.add_child(_create_roster_card("sara", "SARA", "S+", "BĂNG GIÁ (WS)", Color(0.3, 0.8, 1.0), CustomIcon.IconType.FEATHER, true))
+	# Locked players with studio skill icons
+	grid.add_child(_create_roster_card("gitae", "HAN GITAE", "S+", "BÃO LỬA (MB)", Color(1.0, 0.4, 0.2), TEX_SKILL_FIRE, true))
+	grid.add_child(_create_roster_card("raul", "RAUL", "S+", "BÓNG ĐÊM (WS)", Color(0.8, 0.3, 0.9), TEX_SKILL_VOID, true))
+	grid.add_child(_create_roster_card("sara", "SARA", "S+", "BĂNG GIÁ (WS)", Color(0.3, 0.8, 1.0), TEX_SKILL_FROST, true))
 
-func _create_roster_card(cid: String, cname: String, rarity: String, arch: String, col: Color, icon_type: CustomIcon.IconType, is_locked: bool) -> PanelContainer:
+func _create_roster_card(cid: String, cname: String, rarity: String, arch: String, col: Color, skill_tex: Texture2D, is_locked: bool) -> PanelContainer:
 	var p = _create_spike_translucent_panel(Vector2(250, 160), 10, Color(col.r, col.g, col.b, 0.50))
 	p.mouse_filter = Control.MOUSE_FILTER_PASS
 	
@@ -1542,7 +1572,9 @@ func _create_roster_card(cid: String, cname: String, rarity: String, arch: Strin
 	
 	var mid_r = HBoxContainer.new()
 	mid_r.add_theme_constant_override("separation", 10)
-	var icon = CustomIcon.new(icon_type, Vector2(40, 40), col if not is_locked else Color(0.4, 0.45, 0.5))
+	var icon = _create_tex_icon(skill_tex, Vector2(38, 38))
+	if is_locked:
+		icon.modulate = Color(0.6, 0.65, 0.75, 0.6)
 	mid_r.add_child(icon)
 	
 	var a_lbl = Label.new()
@@ -1552,7 +1584,7 @@ func _create_roster_card(cid: String, cname: String, rarity: String, arch: Strin
 	mid_r.add_child(a_lbl)
 	v.add_child(mid_r)
 	
-	var btn = _create_clean_button("CHỌN THI ĐẤU" if not is_locked else "🔒 CHƯA MỞ", col if not is_locked else Color(0.5, 0.55, 0.6), Vector2(220, 32), 11)
+	var btn = _create_clean_button("CHỌN THI ĐẤU" if not is_locked else "CHƯA MỞ", col if not is_locked else Color(0.5, 0.55, 0.6), Vector2(220, 32), 11)
 	if not is_locked:
 		btn.pressed.connect(func():
 			_select_player(cid)
@@ -1604,6 +1636,13 @@ func _update_roster_view() -> void:
 	n_lbl.add_theme_font_size_override("font_size", 20)
 	n_lbl.modulate = Color.WHITE
 	t_row.add_child(n_lbl)
+	
+	var sp_tr = Control.new()
+	sp_tr.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	t_row.add_child(sp_tr)
+	
+	if data.has("skill_icon"):
+		t_row.add_child(_create_tex_icon(data["skill_icon"], Vector2(36, 36)))
 	v.add_child(t_row)
 	
 	var title_lbl = Label.new()
@@ -1664,9 +1703,9 @@ func _build_shop_panel() -> void:
 	row.mouse_filter = Control.MOUSE_FILTER_PASS
 	scroll.add_child(row)
 	
-	row.add_child(_create_mode_card_tex("CHIÊU MỘ CẦU THỦ", "GACHA", TEX_PADLOCK, Color(1.0, 0.82, 0.25), "Kiểm tra năng lực cầu thủ\nvà chiêu mộ tân binh BWF.", "🔒 KHÓA", true, func(): pass))
-	row.add_child(_create_mode_card_tex("CỬA HÀNG BÓNG", "SHOP", TEX_PADLOCK, Color(0.3, 0.9, 0.6), "Mua cầu lông thi đấu\nvà vé tham dự giải vô địch.", "🔒 KHÓA", true, func(): pass))
-	row.add_child(_create_mode_card_tex("CỬA HÀNG TRANG PHỤC", "SKINS", TEX_PADLOCK, Color(0.35, 0.75, 1.0), "Trang phục thi đấu BWF\nvà vợt huyền thoại giới hạn.", "🔒 KHÓA", true, func(): pass))
+	row.add_child(_create_mode_card_tex("CHIÊU MỘ CẦU THỦ", "GACHA", TEX_PADLOCK, Color(1.0, 0.82, 0.25), "Kiểm tra năng lực cầu thủ\nvà chiêu mộ tân binh BWF.", "CHƯA MỞ", true, func(): pass))
+	row.add_child(_create_mode_card_tex("CỬA HÀNG BÓNG", "SHOP", TEX_PADLOCK, Color(0.3, 0.9, 0.6), "Mua cầu lông thi đấu\nvà vé tham dự giải vô địch.", "CHƯA MỞ", true, func(): pass))
+	row.add_child(_create_mode_card_tex("CỬA HÀNG TRANG PHỤC", "SKINS", TEX_PADLOCK, Color(0.35, 0.75, 1.0), "Trang phục thi đấu BWF\nvà vợt huyền thoại giới hạn.", "CHƯA MỞ", true, func(): pass))
 
 func _build_quests_panel() -> void:
 	quests_panel = Control.new()
@@ -1745,7 +1784,7 @@ func _create_quest_item(title: String, reward: String, prog: String) -> PanelCon
 	r.modulate = Color(1.0, 0.85, 0.3)
 	h.add_child(r)
 	
-	var btn = _create_clean_button("🔒 DI CHUYỂN", Color(0.6, 0.65, 0.7), Vector2(110, 32), 11)
+	var btn = _create_clean_button("DI CHUYỂN", Color(0.6, 0.65, 0.7), Vector2(110, 32), 11)
 	h.add_child(btn)
 	
 	return p
@@ -2291,6 +2330,134 @@ func _save_player_name(name_str: String) -> void:
 	var f = FileAccess.open("user://player_name.txt", FileAccess.WRITE)
 	if f:
 		f.store_string(clean)
+
+# ==========================================================
+# AVATAR PICKER SYSTEM (COZY FACELESS ART)
+# ==========================================================
+func _build_avatar_picker_modal() -> void:
+	if avatar_picker_modal:
+		return
+	avatar_picker_modal = _create_spike_translucent_panel(Vector2(420, 220), 14, Color(1.0, 0.82, 0.25, 0.8))
+	avatar_picker_modal.position = Vector2(20, 75)
+	avatar_picker_modal.z_index = 200
+	avatar_picker_modal.visible = false
+	avatar_picker_modal.mouse_filter = Control.MOUSE_FILTER_PASS
+	top_bar.add_child(avatar_picker_modal)
+	
+	var m = MarginContainer.new()
+	m.add_theme_constant_override("margin_left", 18)
+	m.add_theme_constant_override("margin_top", 14)
+	m.add_theme_constant_override("margin_right", 18)
+	m.add_theme_constant_override("margin_bottom", 14)
+	m.mouse_filter = Control.MOUSE_FILTER_PASS
+	avatar_picker_modal.add_child(m)
+	
+	var v = VBoxContainer.new()
+	v.add_theme_constant_override("separation", 10)
+	v.mouse_filter = Control.MOUSE_FILTER_PASS
+	m.add_child(v)
+	
+	var top_r = HBoxContainer.new()
+	var t_lbl = Label.new()
+	t_lbl.text = "CHỌN AVATAR ĐẠI DIỆN"
+	t_lbl.add_theme_font_size_override("font_size", 14)
+	t_lbl.modulate = Color(1.0, 0.85, 0.3)
+	t_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	top_r.add_child(t_lbl)
+	
+	var btn_close = _create_clean_button("✕", Color(0.8, 0.85, 0.9), Vector2(32, 26), 12)
+	btn_close.pressed.connect(func(): avatar_picker_modal.visible = false)
+	top_r.add_child(btn_close)
+	v.add_child(top_r)
+	
+	var sub_lbl = Label.new()
+	sub_lbl.text = "Bộ sưu tập Avatar Anime Thể Thao Cozy (Faceless Art)"
+	sub_lbl.add_theme_font_size_override("font_size", 10)
+	sub_lbl.modulate = Color(0.70, 0.78, 0.88, 0.85)
+	v.add_child(sub_lbl)
+	
+	var grid = HBoxContainer.new()
+	grid.alignment = BoxContainer.ALIGNMENT_CENTER
+	grid.add_theme_constant_override("separation", 16)
+	grid.mouse_filter = Control.MOUSE_FILTER_PASS
+	grid.name = "AvatarGrid"
+	v.add_child(grid)
+	
+	for i in range(AVATAR_LIST.size()):
+		var idx = i
+		var frame = PanelContainer.new()
+		frame.name = "AvatarFrame_%d" % idx
+		var sb_frame = StyleBoxFlat.new()
+		sb_frame.bg_color = Color(0.10, 0.14, 0.20, 0.6)
+		sb_frame.corner_radius_top_left = 8
+		sb_frame.corner_radius_top_right = 8
+		sb_frame.corner_radius_bottom_right = 8
+		sb_frame.corner_radius_bottom_left = 8
+		sb_frame.border_width_left = 2
+		sb_frame.border_width_top = 2
+		sb_frame.border_width_right = 2
+		sb_frame.border_width_bottom = 2
+		sb_frame.border_color = Color(1.0, 0.85, 0.3) if idx == current_avatar_idx else Color(0.3, 0.4, 0.55, 0.6)
+		frame.add_theme_stylebox_override("panel", sb_frame)
+		
+		var btn = TextureButton.new()
+		btn.texture_normal = AVATAR_LIST[idx]
+		btn.custom_minimum_size = Vector2(72, 72)
+		btn.size = Vector2(72, 72)
+		btn.ignore_texture_size = true
+		btn.stretch_mode = TextureButton.STRETCH_KEEP_ASPECT_CENTERED
+		btn.mouse_filter = Control.MOUSE_FILTER_STOP
+		btn.pressed.connect(func(): _on_avatar_selected(idx))
+		frame.add_child(btn)
+		grid.add_child(frame)
+
+func _toggle_avatar_picker() -> void:
+	if not avatar_picker_modal:
+		_build_avatar_picker_modal()
+	avatar_picker_modal.visible = not avatar_picker_modal.visible
+	_refresh_avatar_picker_selection()
+
+func _refresh_avatar_picker_selection() -> void:
+	if not avatar_picker_modal:
+		return
+	var grid = avatar_picker_modal.find_child("AvatarGrid", true, false)
+	if not grid:
+		return
+	for i in range(AVATAR_LIST.size()):
+		var frame = grid.find_child("AvatarFrame_%d" % i, true, false) as PanelContainer
+		if frame:
+			var sb = frame.get_theme_stylebox("panel") as StyleBoxFlat
+			if sb:
+				sb.border_color = Color(1.0, 0.85, 0.3) if i == current_avatar_idx else Color(0.3, 0.4, 0.55, 0.6)
+
+func _on_avatar_selected(idx: int) -> void:
+	current_avatar_idx = idx
+	if top_avatar_btn:
+		top_avatar_btn.texture_normal = AVATAR_LIST[current_avatar_idx]
+	_save_selected_avatar(current_avatar_idx)
+	_refresh_avatar_picker_selection()
+	if avatar_picker_modal:
+		avatar_picker_modal.visible = false
+
+func _save_selected_avatar(idx: int) -> void:
+	if OS.has_feature("web"):
+		JavaScriptBridge.eval("try { localStorage.setItem('kaiser_avatar', '%d'); } catch(e){}" % idx)
+	var f = FileAccess.open("user://player_avatar.txt", FileAccess.WRITE)
+	if f:
+		f.store_string(str(idx))
+
+func _load_selected_avatar() -> void:
+	if OS.has_feature("web"):
+		var js_av = JavaScriptBridge.eval("localStorage.getItem('kaiser_avatar')")
+		if js_av != null and str(js_av).is_valid_int():
+			current_avatar_idx = clamp(int(js_av), 0, AVATAR_LIST.size() - 1)
+			return
+	if FileAccess.file_exists("user://player_avatar.txt"):
+		var f = FileAccess.open("user://player_avatar.txt", FileAccess.READ)
+		if f:
+			var txt = f.get_as_text().strip_edges()
+			if txt.is_valid_int():
+				current_avatar_idx = clamp(int(txt), 0, AVATAR_LIST.size() - 1)
 
 func _select_pvp_char(cid: String) -> void:
 	pvp_selected_char = cid
