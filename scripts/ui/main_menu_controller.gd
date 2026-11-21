@@ -18,6 +18,7 @@ var global_tint: ColorRect = null
 
 # Studio Pre-rendered High-Quality Icons (0% Vector CPU lag, 100% Anti-Aliased)
 const TEX_SHUTTLECOCK = preload("res://assets/icons/icon_shuttlecock_gold.png")
+const TEX_KAISER_LOGO = preload("res://assets/ui/kaiser_logo.png")
 const TEX_PADLOCK = preload("res://assets/icons/icon_padlock_gold.png")
 const TEX_COIN = preload("res://assets/icons/icon_coin_gold.png")
 const TEX_AVATAR = preload("res://assets/icons/icon_avatar_pro.png")
@@ -771,25 +772,18 @@ func _build_title_panel() -> void:
 	center.mouse_filter = Control.MOUSE_FILTER_PASS
 	title_panel.add_child(center)
 	
-	# High Quality Studio Shuttlecock Image
-	var shuttle_icon = _create_tex_icon(TEX_SHUTTLECOCK, Vector2(110, 110))
-	var shuttle_row = HBoxContainer.new()
-	shuttle_row.alignment = BoxContainer.ALIGNMENT_CENTER
-	shuttle_row.add_child(shuttle_icon)
-	center.add_child(shuttle_row)
-	
-	var lbl_logo = Label.new()
-	lbl_logo.text = "KAISER SHUTTLE"
-	lbl_logo.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	lbl_logo.add_theme_font_size_override("font_size", 54)
-	lbl_logo.modulate = Color(1.0, 0.95, 0.85)
-	center.add_child(lbl_logo)
+	# High-Impact 3D Esports Tournament Logo Emblem (The Spike Style)
+	var logo_icon = _create_tex_icon(TEX_KAISER_LOGO, Vector2(320, 330))
+	var logo_row = HBoxContainer.new()
+	logo_row.alignment = BoxContainer.ALIGNMENT_CENTER
+	logo_row.add_child(logo_icon)
+	center.add_child(logo_row)
 	
 	var lbl_sub = Label.new()
-	lbl_sub.text = "BWF ARCADE BADMINTON • THE SPIKE EDITION"
+	lbl_sub.text = "BWF ARCADE BADMINTON • THE SPIKE CROSS EDITION"
 	lbl_sub.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	lbl_sub.add_theme_font_size_override("font_size", 14)
-	lbl_sub.modulate = Color(0.70, 0.80, 0.92, 0.85)
+	lbl_sub.add_theme_font_size_override("font_size", 15)
+	lbl_sub.modulate = Color(0.85, 0.90, 1.0, 0.90)
 	center.add_child(lbl_sub)
 	
 	var sp = Control.new()

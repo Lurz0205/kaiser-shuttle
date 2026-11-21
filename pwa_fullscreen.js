@@ -27,18 +27,40 @@
             }).catch(function() {});
         }
         // Force fresh load of .pck, .wasm, and .json by bypassing stale browser cache
+        var cacheBuster = 'v=' + Date.now();
         var origFetch = window.fetch;
         if (origFetch) {
             window.fetch = function(input, init) {
                 var url = (typeof input === 'string') ? input : (input && input.url ? input.url : '');
                 if (url && (url.indexOf('.pck') !== -1 || url.indexOf('.wasm') !== -1 || url.indexOf('.json') !== -1)) {
+                    var sep = url.indexOf('?') === -1 ? '?' : '&';
+                    var freshUrl = url + sep + cacheBuster;
+                    if (typeof input === 'string') {
+                        input = freshUrl;
+                    } else if (input && input.url) {
+                        try {
+                            input = new Request(freshUrl, input);
+                        } catch (e) {
+                            input = freshUrl;
+                        }
+                    }
                     if (init) {
-                        init.cache = 'no-cache';
+                        init.cache = 'reload';
                     } else {
-                        init = { cache: 'no-cache' };
+                        init = { cache: 'reload' };
                     }
                 }
                 return origFetch.call(this, input, init);
+            };
+        }
+        var origXHROpen = window.XMLHttpRequest ? window.XMLHttpRequest.prototype.open : null;
+        if (origXHROpen) {
+            window.XMLHttpRequest.prototype.open = function(method, url, async, user, password) {
+                if (typeof url === 'string' && (url.indexOf('.pck') !== -1 || url.indexOf('.wasm') !== -1 || url.indexOf('.json') !== -1)) {
+                    var sep = url.indexOf('?') === -1 ? '?' : '&';
+                    url = url + sep + cacheBuster;
+                }
+                return origXHROpen.call(this, method, url, async, user, password);
             };
         }
         if ('localStorage' in window) {

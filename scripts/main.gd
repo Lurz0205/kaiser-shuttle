@@ -560,15 +560,27 @@ func _ready() -> void:
 func _set_in_game_hud_visible(show: bool) -> void:
 	if bwf_scoreboard:
 		bwf_scoreboard.visible = show
+		if show:
+			bwf_scoreboard.show()
+			bwf_scoreboard.custom_minimum_size = Vector2(440, 64)
+			bwf_scoreboard.size = Vector2(440, 64)
+			bwf_scoreboard.position = Vector2(420.0, 14.0)
+			bwf_scoreboard.z_index = 100
+			if bwf_scoreboard.has_method("refresh_display"):
+				bwf_scoreboard.refresh_display()
 	if scoreboard:
 		scoreboard.visible = false # Legacy scoreboard stays hidden
 	if controls_bar:
 		controls_bar.visible = show and not touch_controls_enabled
+		if show:
+			controls_bar.position = Vector2(180.0, 686.0)
 	if btn_char_select:
 		# KHÓA ĐỔI TƯỚNG TRONG TRẬN: Trong bất kỳ trận đấu nào (PvP hoặc AI), nút đổi tướng luôn ẩn
 		btn_char_select.visible = false
 	if btn_settings:
 		btn_settings.visible = show
+		if show:
+			btn_settings.position = Vector2(1170.0, 16.0)
 	if not show and label_banner:
 		label_banner.visible = false
 	if not show and pill_stats:

@@ -24,6 +24,9 @@ var current_active_set: int = 0
 var max_sets: int = 3
 
 func _ready() -> void:
+	custom_minimum_size = Vector2(440, 64)
+	size = Vector2(440, 64)
+	z_index = 100
 	_ensure_nodes()
 	_apply_bold_names()
 	refresh_display()
