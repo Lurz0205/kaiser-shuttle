@@ -255,12 +255,16 @@ func _ready() -> void:
 	add_child(bg_court)
 	move_child(bg_court, 0)
 	
-	# Đảm bảo gương phản chiếu sàn thi đấu luôn hiển thị sắc nét trên mọi độ phân giải & Fullscreen
+	# Đảm bảo gương phản chiếu sàn thi đấu luôn hiển thị sắc nét trên bản Desktop (.exe)
+	# Riêng bản Web: Tắt hoàn toàn shader screen_texture để khử triệt để GPU stall / crash WebGL
 	var floor_refl = get_node_or_null("FloorReflection")
 	if floor_refl:
-		floor_refl.visible = true
-		_update_floor_reflection()
-		get_viewport().size_changed.connect(_update_floor_reflection)
+		if OS.has_feature("web"):
+			floor_refl.visible = false
+		else:
+			floor_refl.visible = true
+			_update_floor_reflection()
+			get_viewport().size_changed.connect(_update_floor_reflection)
 	
 	# Tách riêng hiệu ứng động (shockwave, burst, jump takeoff) ra overlay độc lập để không vẽ lại toàn bộ sân vận động
 	effects_overlay = Node2D.new()
@@ -1479,7 +1483,7 @@ func _update_settings_ui() -> void:
 		btn_low_gfx_toggle.modulate = Color(3.5, 2.5, 0.4) if low_graphics_mode else Color(1.2, 3.2, 1.2)
 	var floor_refl = get_node_or_null("FloorReflection")
 	if floor_refl:
-		floor_refl.visible = not low_graphics_mode
+		floor_refl.visible = (not low_graphics_mode) and (not OS.has_feature("web"))
 
 
 func _apply_match_bgm(restart_from_beginning: bool = false) -> void:
@@ -1531,10 +1535,11 @@ func _process(delta: float) -> void:
 	if camera:
 		camera.position = Vector2(640.0, 360.0)
 	
-	# Đồng bộ kích thước phản chiếu sàn ngay tức thì khi chuyển đổi Fullscreen / Maximize
-	var cur_win = Vector2(DisplayServer.window_get_size())
-	if cur_win != _last_window_size and cur_win.x > 0.0 and cur_win.y > 0.0:
-		_update_floor_reflection()
+	# Đồng bộ kích thước phản chiếu sàn ngay tức thì khi chuyển đổi Fullscreen / Maximize (Chỉ Desktop)
+	if not OS.has_feature("web"):
+		var cur_win = Vector2(DisplayServer.window_get_size())
+		if cur_win != _last_window_size and cur_win.x > 0.0 and cur_win.y > 0.0:
+			_update_floor_reflection()
 	
 	_update_hud_stamina_bars()
 	
@@ -2099,7 +2104,7 @@ func _trigger_perfect_impact_effect(hit_pos: Vector2, hitter: String = "player")
 	flash_alpha = 0.0
 	if flash_rect:
 		flash_rect.visible = false
-	if not low_graphics_mode and grayscale_rect and grayscale_rect.material:
+	if not low_graphics_mode and not OS.has_feature("web") and grayscale_rect and grayscale_rect.material:
 		grayscale_rect.visible = true
 		grayscale_rect.material.set_shader_parameter("grayscale_amount", 1.0)
 	else:
@@ -3055,6 +3060,8 @@ func _on_match_over_to_menu() -> void:
 var _last_window_size: Vector2 = Vector2.ZERO
 
 func _update_floor_reflection() -> void:
+	if OS.has_feature("web"):
+		return
 	var floor_refl = get_node_or_null("FloorReflection")
 	if not floor_refl or not floor_refl.material:
 		return
