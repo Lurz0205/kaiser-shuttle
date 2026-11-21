@@ -67,6 +67,27 @@ func _run_tests():
         assert((font as SystemFont).font_weight == 700, "Font weight must be 700 bold")
     print("✓ 5. BWF Scoreboard bold player names confirmed")
     
+    # 6. Back Button, Settings & Fullscreen layout
+    assert(main.btn_back_to_lobby != null and main.btn_back_to_lobby.visible, "Back to lobby button must be visible in match")
+    assert(main.btn_back_to_lobby.position.x == 20.0 and main.btn_back_to_lobby.position.y == 16.0, "Back button at (20, 16)")
+    assert(main.btn_settings != null and main.btn_settings.visible, "Settings button must be visible in match")
+    assert(main.btn_settings.position.x == 1088.0 and main.btn_settings.position.y == 16.0, "Settings button at (1088, 16)")
+    assert(main.btn_fullscreen != null and main.btn_fullscreen.visible, "Fullscreen button must be visible in match")
+    assert(main.btn_fullscreen.position.x == 1188.0 and main.btn_fullscreen.position.y == 16.0, "Fullscreen button at (1188, 16)")
+    assert(main.btn_settings.position.x + main.btn_settings.size.x < main.btn_fullscreen.position.x, "Zero collision between settings and fullscreen buttons")
+    print("✓ 6. Back button, settings button and fullscreen button cleanly positioned with zero overlap")
+    
+    # 7. Playable Shuttlecock is 2D Sprite
+    var shuttle_sprite = main.shuttlecock.get_node_or_null("Sprite") as Sprite2D
+    assert(shuttle_sprite != null, "In-game shuttlecock must have Sprite2D")
+    assert(shuttle_sprite.texture != null, "In-game shuttlecock must have 2D texture")
+    print("✓ 7. In-game playable shuttlecock confirmed 2D sprite")
+    
+    # 8. Profile Default Avatar
+    assert(menu.top_avatar_rect != null, "Top avatar must be simple TextureRect")
+    assert(menu.top_avatar_rect.mouse_filter == Control.MOUSE_FILTER_IGNORE, "Avatar must be unclickable")
+    print("✓ 8. Profile default avatar confirmed simple and unclickable")
+    
     print("==================================================")
     print("   ALL TESTS PASSED 100% - GAME IS ROCK SOLID!    ")
     print("==================================================")

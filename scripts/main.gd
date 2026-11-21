@@ -163,6 +163,7 @@ var virtual_touch_pad: Control = null
 var touch_controls_enabled: bool = false
 var btn_touch_toggle: Button = null
 var btn_fullscreen: Button = null
+var btn_back_to_lobby: Button = null
 var low_graphics_mode: bool = false
 var btn_low_gfx_toggle: Button = null
 var prev_key_r: bool = false
@@ -448,14 +449,15 @@ func _ready() -> void:
 				gfx_row.add_child(btn_low_gfx_toggle)
 				vbox.add_child(gfx_row)
 		
-	# Tự động nhận diện thiết bị chính xác: BẬT nút cảm ứng trên Mobile/Tablet, TẮT hoàn toàn trên PC/Desktop
+	# Tự động nhận diện thiết bị chính xác: BẬT nút cảm ứng trên Mobile/Tablet thật, TẮT hoàn toàn trên PC/Desktop
 	var is_mobile: bool = false
-	if OS.has_feature("mobile") or OS.has_feature("android") or OS.has_feature("ios") or OS.has_feature("web_android") or OS.has_feature("web_ios"):
+	if OS.has_feature("android") or OS.has_feature("ios") or OS.has_feature("web_android") or OS.has_feature("web_ios"):
 		is_mobile = true
 	elif OS.has_feature("web"):
 		var js_mobile = JavaScriptBridge.eval("""(function() {
 			var ua = navigator.userAgent || '';
-			return /Android|iPhone|iPad|iPod|Mobile/i.test(ua) || (('ontouchstart' in window) && window.innerWidth < 1100);
+			var isRealMobile = /Android|iPhone|iPad|iPod/i.test(ua) && !(/Windows NT|Macintosh|Linux x86/i.test(ua));
+			return isRealMobile;
 		})()""")
 		if js_mobile == true or str(js_mobile).to_lower() == "true":
 			is_mobile = true
@@ -463,14 +465,54 @@ func _ready() -> void:
 		is_mobile = true
 	touch_controls_enabled = is_mobile
 	
+	# Nút Quay Lại Sảnh ở góc trên bên trái màn hình trong trận (Không quay lại bằng phím ESC)
+	btn_back_to_lobby = Button.new()
+	btn_back_to_lobby.focus_mode = Control.FOCUS_NONE
+	btn_back_to_lobby.name = "BtnBackToLobby"
+	btn_back_to_lobby.text = "‹ SẢNH"
+	btn_back_to_lobby.custom_minimum_size = Vector2(86, 32)
+	btn_back_to_lobby.size = Vector2(86, 32)
+	btn_back_to_lobby.position = Vector2(20.0, 16.0)
+	btn_back_to_lobby.tooltip_text = "Quay lại Sảnh chờ (Lobby)"
+	btn_back_to_lobby.z_index = 100
+	
+	var back_sb = StyleBoxFlat.new()
+	back_sb.bg_color = Color(0.08, 0.12, 0.20, 0.90)
+	back_sb.border_width_left = 1
+	back_sb.border_width_top = 1
+	back_sb.border_width_right = 1
+	back_sb.border_width_bottom = 1
+	back_sb.border_color = Color(0.35, 0.70, 0.95, 0.75)
+	back_sb.corner_radius_top_left = 6
+	back_sb.corner_radius_top_right = 6
+	back_sb.corner_radius_bottom_right = 6
+	back_sb.corner_radius_bottom_left = 6
+	btn_back_to_lobby.add_theme_stylebox_override("normal", back_sb)
+	btn_back_to_lobby.add_theme_color_override("font_color", Color(0.85, 0.92, 1.0))
+	btn_back_to_lobby.pressed.connect(func():
+		btn_back_to_lobby.release_focus()
+		_set_in_game_hud_visible(false)
+		if is_pvp_active and net_manager:
+			net_manager.disconnect_peer()
+			is_pvp_active = false
+		if main_menu:
+			main_menu.switch_state(MainMenuController.MenuState.LOBBY)
+			main_menu.visible = true
+		_apply_menu_bgm()
+	)
+	$HUD.add_child(btn_back_to_lobby)
+	btn_back_to_lobby.visible = false
+	
 	# Nút Toàn Màn Hình (Fullscreen) ở góc trên bên phải màn hình (Căn chỉnh tuyệt đối, không đè nút Cài đặt)
 	btn_fullscreen = Button.new()
 	btn_fullscreen.focus_mode = Control.FOCUS_NONE
 	btn_fullscreen.name = "BtnFullscreen"
 	btn_fullscreen.text = "⛶ FULL"
-	btn_fullscreen.custom_minimum_size = Vector2(70, 32)
-	btn_fullscreen.position = Vector2(1194.0, 16.0)
+	btn_fullscreen.custom_minimum_size = Vector2(76, 32)
+	btn_fullscreen.size = Vector2(76, 32)
+	btn_fullscreen.position = Vector2(1188.0, 16.0)
 	btn_fullscreen.tooltip_text = "Bật / Tắt Toàn màn hình (Fullscreen)"
+	btn_fullscreen.z_index = 100
 	
 	var fs_sb = StyleBoxFlat.new()
 	fs_sb.bg_color = Color(0.06, 0.12, 0.20, 0.88)
@@ -490,6 +532,7 @@ func _ready() -> void:
 		_toggle_fullscreen()
 	)
 	$HUD.add_child(btn_fullscreen)
+	btn_fullscreen.visible = false
 	
 	_update_settings_ui()
 	_setup_hud_stamina_bars()
@@ -568,6 +611,7 @@ func _ready() -> void:
 func _set_in_game_hud_visible(show: bool) -> void:
 	if main_menu and show:
 		main_menu.visible = false
+		
 	if bwf_scoreboard:
 		bwf_scoreboard.visible = show
 		if show:
@@ -580,37 +624,75 @@ func _set_in_game_hud_visible(show: bool) -> void:
 			bwf_scoreboard.move_to_front()
 			if bwf_scoreboard.has_method("refresh_display"):
 				bwf_scoreboard.refresh_display()
+				
 	if scoreboard:
 		scoreboard.visible = false # Legacy scoreboard stays hidden
-	if controls_bar:
-		controls_bar.visible = show and not touch_controls_enabled
+		
+	# Nút QUAY LẠI SẢNH (Góc trên bên trái màn hình trong trận)
+	if btn_back_to_lobby:
+		btn_back_to_lobby.visible = show
 		if show:
-			controls_bar.position = Vector2(180.0, 686.0)
-	if btn_char_select:
-		# KHÓA ĐỔI TƯỚNG TRONG TRẬN: Trong bất kỳ trận đấu nào (PvP hoặc AI), nút đổi tướng luôn ẩn
-		btn_char_select.visible = false
+			btn_back_to_lobby.set_anchors_preset(Control.PRESET_TOP_LEFT)
+			btn_back_to_lobby.position = Vector2(20.0, 16.0)
+			btn_back_to_lobby.size = Vector2(86.0, 32.0)
+			btn_back_to_lobby.z_index = 100
+			btn_back_to_lobby.move_to_front()
+
+	# Nút CÀI ĐẶT (Góc trên bên phải, tách biệt không đè nút Fullscreen)
 	if btn_settings:
 		btn_settings.visible = show
 		if show:
-			btn_settings.position = Vector2(1170.0, 16.0)
+			btn_settings.set_anchors_preset(Control.PRESET_TOP_LEFT)
+			btn_settings.position = Vector2(1088.0, 16.0)
+			btn_settings.size = Vector2(88.0, 32.0)
+			btn_settings.z_index = 100
+			btn_settings.move_to_front()
+
+	# Nút TOÀN MÀN HÌNH (Góc trên bên phải ngoài cùng)
+	if btn_fullscreen:
+		btn_fullscreen.visible = show
+		if show:
+			btn_fullscreen.set_anchors_preset(Control.PRESET_TOP_LEFT)
+			btn_fullscreen.position = Vector2(1188.0, 16.0)
+			btn_fullscreen.size = Vector2(76.0, 32.0)
+			btn_fullscreen.z_index = 100
+			btn_fullscreen.move_to_front()
+
+	if btn_char_select:
+		# KHÓA ĐỔI TƯỚNG TRONG TRẬN: Trong bất kỳ trận đấu nào (PvP hoặc AI), nút đổi tướng luôn ẩn
+		btn_char_select.visible = false
+
+	# Bảng chỉ dẫn phím dưới cùng màn hình (Hiển thị cho bàn phím / Desktop / PC Web)
+	if controls_bar:
+		controls_bar.visible = show and not touch_controls_enabled
+		if show:
+			controls_bar.set_anchors_preset(Control.PRESET_TOP_LEFT)
+			controls_bar.position = Vector2(180.0, 686.0)
+			controls_bar.z_index = 100
+			controls_bar.move_to_front()
+
+	# Các thanh chỉ số thể lực, độ chính xác, nộ khí (Player 1 & Rival)
+	var gauge_nodes = [
+		stamina_bar_bg_player, accuracy_bar_bg_player, flow_bar_bg_player,
+		stamina_bar_bg_ai, accuracy_bar_bg_ai, flow_bar_bg_ai
+	]
+	for g in gauge_nodes:
+		if g:
+			g.visible = show
+			if show:
+				g.z_index = 100
+				g.move_to_front()
+
+	if virtual_touch_pad:
+		virtual_touch_pad.visible = show and touch_controls_enabled
+		if show and touch_controls_enabled:
+			virtual_touch_pad.z_index = 120
+			virtual_touch_pad.move_to_front()
+
 	if not show and label_banner:
 		label_banner.visible = false
 	if not show and pill_stats:
 		pill_stats.visible = false
-	if stamina_bar_bg_player:
-		stamina_bar_bg_player.visible = show
-	if accuracy_bar_bg_player:
-		accuracy_bar_bg_player.visible = show
-	if flow_bar_bg_player:
-		flow_bar_bg_player.visible = show
-	if stamina_bar_bg_ai:
-		stamina_bar_bg_ai.visible = show
-	if accuracy_bar_bg_ai:
-		accuracy_bar_bg_ai.visible = show
-	if flow_bar_bg_ai:
-		flow_bar_bg_ai.visible = show
-	if virtual_touch_pad:
-		virtual_touch_pad.visible = show and touch_controls_enabled
 
 
 func _play_sfx_string() -> void:
@@ -1532,10 +1614,8 @@ func _unhandled_input(event: InputEvent) -> void:
 		if event.keycode == KEY_ESCAPE:
 			if is_spectator:
 				_on_spectator_leave()
-			else:
-				_set_in_game_hud_visible(false)
-				main_menu.switch_state(MainMenuController.MenuState.TITLE)
-				main_menu.visible = true
+			# Đã hủy thoát trận bằng phím ESC để tránh người chơi ấn nhầm.
+			# Thoát trận chỉ qua nút [‹ SẢNH] trên góc trái màn hình.
 
 
 func set_ai_difficulty(diff: int) -> void:
@@ -3406,18 +3486,22 @@ func _setup_hud_stamina_bars() -> void:
 	stamina_bar_bg_player.offset_top = 82.0
 	stamina_bar_bg_player.offset_right = 565.0
 	stamina_bar_bg_player.offset_bottom = 86.5
+	stamina_bar_bg_player.z_index = 100
+	stamina_bar_bg_player.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	hud.add_child(stamina_bar_bg_player)
 	
 	stamina_bar_cap_player = ColorRect.new()
 	stamina_bar_cap_player.color = Color(0.25, 0.30, 0.38, 0.45)
 	stamina_bar_cap_player.position = Vector2.ZERO
 	stamina_bar_cap_player.size = Vector2(140.0, 4.5)
+	stamina_bar_cap_player.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	stamina_bar_bg_player.add_child(stamina_bar_cap_player)
 	
 	stamina_bar_fill_player = ColorRect.new()
 	stamina_bar_fill_player.color = Color(0.2, 0.9, 0.45, 0.95)
 	stamina_bar_fill_player.position = Vector2.ZERO
 	stamina_bar_fill_player.size = Vector2(140.0, 4.5)
+	stamina_bar_fill_player.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	stamina_bar_bg_player.add_child(stamina_bar_fill_player)
 	
 	# 2. Player Accuracy Bar (top=88, bottom=91.5)
@@ -3427,12 +3511,15 @@ func _setup_hud_stamina_bars() -> void:
 	accuracy_bar_bg_player.offset_top = 88.0
 	accuracy_bar_bg_player.offset_right = 565.0
 	accuracy_bar_bg_player.offset_bottom = 91.5
+	accuracy_bar_bg_player.z_index = 100
+	accuracy_bar_bg_player.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	hud.add_child(accuracy_bar_bg_player)
 	
 	accuracy_bar_fill_player = ColorRect.new()
 	accuracy_bar_fill_player.color = Color(0.20, 0.88, 1.0, 0.95)
 	accuracy_bar_fill_player.position = Vector2.ZERO
 	accuracy_bar_fill_player.size = Vector2(140.0, 4.5)
+	accuracy_bar_fill_player.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	accuracy_bar_bg_player.add_child(accuracy_bar_fill_player)
 	
 	# Vạch cảnh báo 50% nguy hiểm đánh hỏng
@@ -3440,6 +3527,7 @@ func _setup_hud_stamina_bars() -> void:
 	tick_p.color = Color(1.0, 1.0, 1.0, 0.4)
 	tick_p.position = Vector2(70.0, -1.0)
 	tick_p.size = Vector2(1.0, 5.5)
+	tick_p.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	accuracy_bar_bg_player.add_child(tick_p)
 	
 	# 3. Player Flow Bar / Nộ Khí Tuyệt Kỹ (top=93.0, bottom=96.5)
@@ -3449,12 +3537,15 @@ func _setup_hud_stamina_bars() -> void:
 	flow_bar_bg_player.offset_top = 93.0
 	flow_bar_bg_player.offset_right = 565.0
 	flow_bar_bg_player.offset_bottom = 96.5
+	flow_bar_bg_player.z_index = 100
+	flow_bar_bg_player.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	hud.add_child(flow_bar_bg_player)
 	
 	flow_bar_fill_player = ColorRect.new()
 	flow_bar_fill_player.color = Color(0.78, 0.28, 0.95, 0.95)
 	flow_bar_fill_player.position = Vector2.ZERO
 	flow_bar_fill_player.size = Vector2(140.0, 3.5)
+	flow_bar_fill_player.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	flow_bar_bg_player.add_child(flow_bar_fill_player)
 	
 	# --- RIVAL AI (Dưới BWFScoreboard cánh phải: left=715, right=855, top=82) ---
@@ -3465,18 +3556,22 @@ func _setup_hud_stamina_bars() -> void:
 	stamina_bar_bg_ai.offset_top = 82.0
 	stamina_bar_bg_ai.offset_right = 855.0
 	stamina_bar_bg_ai.offset_bottom = 86.5
+	stamina_bar_bg_ai.z_index = 100
+	stamina_bar_bg_ai.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	hud.add_child(stamina_bar_bg_ai)
 	
 	stamina_bar_cap_ai = ColorRect.new()
 	stamina_bar_cap_ai.color = Color(0.25, 0.30, 0.38, 0.45)
 	stamina_bar_cap_ai.position = Vector2.ZERO
 	stamina_bar_cap_ai.size = Vector2(140.0, 4.5)
+	stamina_bar_cap_ai.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	stamina_bar_bg_ai.add_child(stamina_bar_cap_ai)
 	
 	stamina_bar_fill_ai = ColorRect.new()
 	stamina_bar_fill_ai.color = Color(0.2, 0.85, 1.0, 0.95)
 	stamina_bar_fill_ai.position = Vector2.ZERO
 	stamina_bar_fill_ai.size = Vector2(140.0, 4.5)
+	stamina_bar_fill_ai.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	stamina_bar_bg_ai.add_child(stamina_bar_fill_ai)
 	
 	# 2. AI Accuracy Bar (top=88, bottom=91.5)
@@ -3486,18 +3581,22 @@ func _setup_hud_stamina_bars() -> void:
 	accuracy_bar_bg_ai.offset_top = 88.0
 	accuracy_bar_bg_ai.offset_right = 855.0
 	accuracy_bar_bg_ai.offset_bottom = 91.5
+	accuracy_bar_bg_ai.z_index = 100
+	accuracy_bar_bg_ai.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	hud.add_child(accuracy_bar_bg_ai)
 	
 	accuracy_bar_fill_ai = ColorRect.new()
 	accuracy_bar_fill_ai.color = Color(0.95, 0.75, 0.25, 0.95)
 	accuracy_bar_fill_ai.position = Vector2.ZERO
 	accuracy_bar_fill_ai.size = Vector2(140.0, 4.5)
+	accuracy_bar_fill_ai.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	accuracy_bar_bg_ai.add_child(accuracy_bar_fill_ai)
 	
 	var tick_ai = ColorRect.new()
 	tick_ai.color = Color(1.0, 1.0, 1.0, 0.4)
 	tick_ai.position = Vector2(70.0, -1.0)
 	tick_ai.size = Vector2(1.0, 5.5)
+	tick_ai.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	accuracy_bar_bg_ai.add_child(tick_ai)
 	
 	# 3. AI Flow Bar / Nộ Khí Tuyệt Kỹ (top=93.0, bottom=96.5)
@@ -3507,12 +3606,15 @@ func _setup_hud_stamina_bars() -> void:
 	flow_bar_bg_ai.offset_top = 93.0
 	flow_bar_bg_ai.offset_right = 855.0
 	flow_bar_bg_ai.offset_bottom = 96.5
+	flow_bar_bg_ai.z_index = 100
+	flow_bar_bg_ai.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	hud.add_child(flow_bar_bg_ai)
 	
 	flow_bar_fill_ai = ColorRect.new()
 	flow_bar_fill_ai.color = Color(0.78, 0.28, 0.95, 0.95)
 	flow_bar_fill_ai.position = Vector2.ZERO
 	flow_bar_fill_ai.size = Vector2(140.0, 3.5)
+	flow_bar_fill_ai.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	flow_bar_bg_ai.add_child(flow_bar_fill_ai)
 
 

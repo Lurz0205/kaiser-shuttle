@@ -26,16 +26,8 @@ const TEX_PVP = preload("res://assets/icons/icon_duel_pvp.png")
 const TEX_TROPHY = preload("res://assets/icons/icon_trophy_gold.png")
 const TEX_GEAR = preload("res://assets/icons/icon_gear_silver.png")
 
-# 4 Cozy Faceless Avatars
-const AVATAR_LIST = [
-	preload("res://assets/icons/avatars/avatar_0.png"),
-	preload("res://assets/icons/avatars/avatar_1.png"),
-	preload("res://assets/icons/avatars/avatar_2.png"),
-	preload("res://assets/icons/avatars/avatar_3.png")
-]
-var current_avatar_idx: int = 0
-var top_avatar_btn: TextureButton = null
-var avatar_picker_modal: PanelContainer = null
+# Top Profile Avatar (Clean Default Studio Avatar)
+var top_avatar_rect: TextureRect = null
 
 # Studio Pre-rendered Character Skill Icons
 const TEX_SKILL_THUNDER = preload("res://assets/icons/skills/skill_thunder_spike.png")
@@ -202,7 +194,6 @@ const CHAR_DATA = {
 }
 
 func _ready() -> void:
-	_load_selected_avatar()
 	custom_minimum_size = Vector2(1280, 720)
 	size = Vector2(1280, 720)
 	position = Vector2.ZERO
@@ -443,18 +434,15 @@ func _build_top_bar() -> void:
 	prof_box.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	prof_box.mouse_filter = Control.MOUSE_FILTER_PASS
 	
-	# Clickable Avatar Button with Cozy Faceless Art
-	top_avatar_btn = TextureButton.new()
-	top_avatar_btn.texture_normal = AVATAR_LIST[current_avatar_idx]
-	top_avatar_btn.custom_minimum_size = Vector2(42, 42)
-	top_avatar_btn.size = Vector2(42, 42)
-	top_avatar_btn.ignore_texture_size = true
-	top_avatar_btn.stretch_mode = TextureButton.STRETCH_KEEP_ASPECT_CENTERED
-	top_avatar_btn.mouse_filter = Control.MOUSE_FILTER_STOP
-	top_avatar_btn.focus_mode = Control.FOCUS_NONE
-	top_avatar_btn.tooltip_text = "Nhấp để đổi Avatar"
-	top_avatar_btn.pressed.connect(_toggle_avatar_picker)
-	prof_box.add_child(top_avatar_btn)
+	# Clean Default Avatar (Simple, sleek, unclickable)
+	top_avatar_rect = TextureRect.new()
+	top_avatar_rect.texture = TEX_AVATAR
+	top_avatar_rect.custom_minimum_size = Vector2(38, 38)
+	top_avatar_rect.size = Vector2(38, 38)
+	top_avatar_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	top_avatar_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	top_avatar_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	prof_box.add_child(top_avatar_rect)
 	
 	var name_col = VBoxContainer.new()
 	name_col.alignment = BoxContainer.ALIGNMENT_CENTER
@@ -2345,122 +2333,6 @@ func _save_player_name(name_str: String) -> void:
 	var f = FileAccess.open("user://player_name.txt", FileAccess.WRITE)
 	if f:
 		f.store_string(clean)
-
-# ==========================================================
-# AVATAR PICKER SYSTEM (COZY FACELESS ART)
-# ==========================================================
-func _build_avatar_picker_modal() -> void:
-	if avatar_picker_modal:
-		return
-	avatar_picker_modal = _create_spike_translucent_panel(Vector2(420, 220), 14, Color(1.0, 0.82, 0.25, 0.8))
-	avatar_picker_modal.position = Vector2(20, 75)
-	avatar_picker_modal.z_index = 200
-	avatar_picker_modal.visible = false
-	avatar_picker_modal.mouse_filter = Control.MOUSE_FILTER_PASS
-	top_bar.add_child(avatar_picker_modal)
-	
-	var m = MarginContainer.new()
-	m.add_theme_constant_override("margin_left", 18)
-	m.add_theme_constant_override("margin_top", 14)
-	m.add_theme_constant_override("margin_right", 18)
-	m.add_theme_constant_override("margin_bottom", 14)
-	m.mouse_filter = Control.MOUSE_FILTER_PASS
-	avatar_picker_modal.add_child(m)
-	
-	var v = VBoxContainer.new()
-	v.add_theme_constant_override("separation", 10)
-	v.mouse_filter = Control.MOUSE_FILTER_PASS
-	m.add_child(v)
-	
-	var top_r = HBoxContainer.new()
-	var t_lbl = Label.new()
-	t_lbl.text = "CHỌN AVATAR ĐẠI DIỆN"
-	t_lbl.add_theme_font_size_override("font_size", 14)
-	t_lbl.modulate = Color(1.0, 0.85, 0.3)
-	t_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	top_r.add_child(t_lbl)
-	
-	var btn_close = _create_clean_button("✕", Color(0.8, 0.85, 0.9), Vector2(32, 26), 12)
-	btn_close.pressed.connect(func(): avatar_picker_modal.visible = false)
-	top_r.add_child(btn_close)
-	v.add_child(top_r)
-	
-	var sub_lbl = Label.new()
-	sub_lbl.text = "Bộ sưu tập Avatar Anime Thể Thao Cozy (Faceless Art)"
-	sub_lbl.add_theme_font_size_override("font_size", 10)
-	sub_lbl.modulate = Color(0.70, 0.78, 0.88, 0.85)
-	v.add_child(sub_lbl)
-	
-	var grid = HBoxContainer.new()
-	grid.alignment = BoxContainer.ALIGNMENT_CENTER
-	grid.add_theme_constant_override("separation", 16)
-	grid.mouse_filter = Control.MOUSE_FILTER_PASS
-	grid.name = "AvatarGrid"
-	v.add_child(grid)
-	
-	for i in range(AVATAR_LIST.size()):
-		var idx = i
-		var frame = PanelContainer.new()
-		frame.name = "AvatarFrame_%d" % idx
-		var sb_frame = StyleBoxFlat.new()
-		sb_frame.bg_color = Color(0.10, 0.14, 0.20, 0.6)
-		sb_frame.corner_radius_top_left = 8
-		sb_frame.corner_radius_top_right = 8
-		sb_frame.corner_radius_bottom_right = 8
-		sb_frame.corner_radius_bottom_left = 8
-		sb_frame.border_width_left = 2
-		sb_frame.border_width_top = 2
-		sb_frame.border_width_right = 2
-		sb_frame.border_width_bottom = 2
-		sb_frame.border_color = Color(1.0, 0.85, 0.3) if idx == current_avatar_idx else Color(0.3, 0.4, 0.55, 0.6)
-		frame.add_theme_stylebox_override("panel", sb_frame)
-		
-		var btn = TextureButton.new()
-		btn.texture_normal = AVATAR_LIST[idx]
-		btn.custom_minimum_size = Vector2(72, 72)
-		btn.size = Vector2(72, 72)
-		btn.ignore_texture_size = true
-		btn.stretch_mode = TextureButton.STRETCH_KEEP_ASPECT_CENTERED
-		btn.mouse_filter = Control.MOUSE_FILTER_STOP
-		btn.pressed.connect(func(): _on_avatar_selected(idx))
-		frame.add_child(btn)
-		grid.add_child(frame)
-
-func _toggle_avatar_picker() -> void:
-	if not avatar_picker_modal:
-		_build_avatar_picker_modal()
-	avatar_picker_modal.visible = not avatar_picker_modal.visible
-	_refresh_avatar_picker_selection()
-
-func _refresh_avatar_picker_selection() -> void:
-	if not avatar_picker_modal:
-		return
-	var grid = avatar_picker_modal.find_child("AvatarGrid", true, false)
-	if not grid:
-		return
-	for i in range(AVATAR_LIST.size()):
-		var frame = grid.find_child("AvatarFrame_%d" % i, true, false) as PanelContainer
-		if frame:
-			var sb = frame.get_theme_stylebox("panel") as StyleBoxFlat
-			if sb:
-				sb.border_color = Color(1.0, 0.85, 0.3) if i == current_avatar_idx else Color(0.3, 0.4, 0.55, 0.6)
-
-func _on_avatar_selected(idx: int) -> void:
-	current_avatar_idx = idx
-	if top_avatar_btn:
-		top_avatar_btn.texture_normal = AVATAR_LIST[current_avatar_idx]
-	_save_selected_avatar(current_avatar_idx)
-	_refresh_avatar_picker_selection()
-	if avatar_picker_modal:
-		avatar_picker_modal.visible = false
-
-func _save_selected_avatar(_idx: int) -> void:
-	# Chi luu ten nguoi choi theo yeu cau. Khong luu avatar
-	pass
-
-func _load_selected_avatar() -> void:
-	# Chi luu ten nguoi choi theo yeu cau. Khong luu hoac doc avatar tu o dia
-	current_avatar_idx = 0
 
 func _select_pvp_char(cid: String) -> void:
 	pvp_selected_char = cid
