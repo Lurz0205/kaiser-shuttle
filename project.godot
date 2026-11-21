@@ -17,6 +17,7 @@ compatibility/default_parent_skeleton_in_mesh_instance_3d=true
 config/name="Anime Badminton: Boom Smash"
 run/main_scene="res://scenes/Main.tscn"
 config/features=PackedStringArray("4.7", "Forward Plus")
+run/max_fps.web=60
 
 [audio]
 
@@ -39,8 +40,10 @@ pointing/emulate_mouse_from_touch=true
 [physics]
 
 common/max_physics_steps_per_frame=2
-common/max_physics_steps_per_frame.web=4
+common/max_physics_steps_per_frame.web=8
+common/physics_ticks_per_second.web=60
 common/physics_interpolation=true
+common/physics_interpolation.web=false
 
 [rendering]
 

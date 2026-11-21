@@ -575,6 +575,8 @@ func _on_lightning_trail_draw() -> void:
 	if trail_points.size() < 2:
 		return
 	
+	var is_web = OS.has_feature("web")
+	var use_aa = not is_web
 	var n_pts = trail_points.size()
 	var time_sec = Time.get_ticks_msec() / 1000.0
 	
@@ -598,34 +600,38 @@ func _on_lightning_trail_draw() -> void:
 		
 		if helix1_pts.size() >= 2:
 			# Dải lốc xoáy ngọc lục bảo 1 (Emerald Outer Ribbon)
-			lightning_trail.draw_polyline(helix1_pts, Color(0.25, 1.8, 0.55, 0.85), 3.8, true)
-			# Lõi gió bão trắng ngọc sáng rực (Jade-White Core)
-			lightning_trail.draw_polyline(helix1_pts, Color(0.85, 2.4, 1.2, 0.95), 1.6, true)
+			lightning_trail.draw_polyline(helix1_pts, Color(0.25, 1.8, 0.55, 0.85), 3.8, use_aa)
+			if not is_web:
+				# Lõi gió bão trắng ngọc sáng rực (Jade-White Core)
+				lightning_trail.draw_polyline(helix1_pts, Color(0.85, 2.4, 1.2, 0.95), 1.6, true)
 			
 		if helix2_pts.size() >= 2:
 			# Dải áp suất khí xoáy ngược chiều 2 (Cyan-Mint Spiral Ribbon)
-			lightning_trail.draw_polyline(helix2_pts, Color(0.30, 1.6, 0.95, 0.75), 3.0, true)
-			lightning_trail.draw_polyline(helix2_pts, Color(0.90, 2.4, 1.8, 0.95), 1.4, true)
+			lightning_trail.draw_polyline(helix2_pts, Color(0.30, 1.6, 0.95, 0.75), 3.0, use_aa)
+			if not is_web:
+				lightning_trail.draw_polyline(helix2_pts, Color(0.90, 2.4, 1.8, 0.95), 1.4, true)
 			
 		# Lốc xoáy mini bao bọc quả cầu đang lao dốc (Cork Vortex Aura)
 		if is_active:
-			lightning_trail.draw_arc(global_position, 16.0, time_sec * 14.0, time_sec * 14.0 + PI * 1.35, 16, Color(0.35, 2.0, 0.75, 0.90), 2.4, true)
-			lightning_trail.draw_arc(global_position, 9.0, -time_sec * 18.0, -time_sec * 18.0 + PI * 1.2, 16, Color(0.85, 2.4, 1.4, 0.95), 1.8, true)
+			lightning_trail.draw_arc(global_position, 16.0, time_sec * 14.0, time_sec * 14.0 + PI * 1.35, 12 if is_web else 16, Color(0.35, 2.0, 0.75, 0.90), 2.4, use_aa)
+			if not is_web:
+				lightning_trail.draw_arc(global_position, 9.0, -time_sec * 18.0, -time_sec * 18.0 + PI * 1.2, 16, Color(0.85, 2.4, 1.4, 0.95), 1.8, true)
 			
 			# Vệt khí cắt gió (Wind Slash Crescents)
-			for w in range(3):
+			for w in range(2 if is_web else 3):
 				var ang = time_sec * 12.0 + (TAU / 3.0) * w
 				var w_pos = global_position + Vector2(cos(ang), sin(ang)) * 14.0
 				var w_end = w_pos + Vector2(-sin(ang), cos(ang)) * 10.0
-				lightning_trail.draw_line(w_pos, w_end, Color(0.6, 2.2, 0.9, 0.85), 1.8, true)
+				lightning_trail.draw_line(w_pos, w_end, Color(0.6, 2.2, 0.9, 0.85), 1.8, use_aa)
 		return
 
 	# ==========================================================
 	# 2. NISHIKAWA - TIA CHỚP VÀNG (GOLDEN LIGHTNING BOLTS)
 	# ==========================================================
-	for i in range(n_pts - 1):
+	var step = 2 if is_web else 1
+	for i in range(0, n_pts - 1, step):
 		var p1 = trail_points[i]
-		var p2 = trail_points[i + 1]
+		var p2 = trail_points[min(i + step, n_pts - 1)]
 		var diff = p2 - p1
 		var seg_len = diff.length()
 		if seg_len < 1.5:
@@ -640,28 +646,30 @@ func _on_lightning_trail_draw() -> void:
 		
 		var bolt_pts = PackedVector2Array([p1, m1, m2, p2])
 		
-		# Outer electric golden aura (Sấm sét màu vàng ánh kim HDR)
-		var glow_col = Color(3.8, 2.6, 0.25, frac * 0.85)
-		lightning_trail.draw_polyline(bolt_pts, glow_col, 5.0 * frac, true)
+		if not is_web:
+			# Outer electric golden aura (Desktop)
+			var glow_col = Color(3.8, 2.6, 0.25, frac * 0.85)
+			lightning_trail.draw_polyline(bolt_pts, glow_col, 5.0 * frac, true)
 		
-		# Inner blinding core (Lõi vàng trắng siêu sáng)
+		# Inner blinding core
 		var core_col = Color(4.8, 4.4, 2.0, frac * 0.98)
-		lightning_trail.draw_polyline(bolt_pts, core_col, 2.0 * frac, true)
+		lightning_trail.draw_polyline(bolt_pts, core_col, 2.5 * frac, use_aa)
 		
-		# Branching spark off trail (Tia sét vàng phân nhánh)
-		if i % 3 == 0 and frac > 0.30 and randf() < 0.65:
+		# Branching spark off trail
+		if not is_web and i % 3 == 0 and frac > 0.30 and randf() < 0.65:
 			var branch_dir = perp * (1.0 if randf() < 0.5 else -1.0)
 			var branch_end = m1 + branch_dir * randf_range(12.0, 26.0) * frac + diff.normalized() * randf_range(-6.0, 6.0)
 			lightning_trail.draw_line(m1, branch_end, Color(3.8, 2.8, 0.4, frac * 0.85), 1.6, true)
 	
-	# Electric spark aura crackling around the shuttlecock cork head in flight (Tia điện vàng quanh đầu cầu)
+	# Electric spark aura crackling around the shuttlecock cork head in flight
 	if is_active:
-		for k in range(4):
+		var n_sp = 2 if is_web else 4
+		for k in range(n_sp):
 			var sp_ang = randf_range(0, TAU)
 			var sp_r = randf_range(6.0, 18.0)
 			var p_sp1 = global_position + Vector2(cos(sp_ang), sin(sp_ang)) * sp_r
 			var p_sp2 = p_sp1 + Vector2(randf_range(-8.0, 8.0), randf_range(-8.0, 8.0))
-			lightning_trail.draw_line(p_sp1, p_sp2, Color(4.8, 4.4, 2.0, 0.95), 1.8, true)
+			lightning_trail.draw_line(p_sp1, p_sp2, Color(4.8, 4.4, 2.0, 0.95), 1.8, use_aa)
 
 
 # ==========================================================

@@ -2338,106 +2338,109 @@ func _draw() -> void:
 			draw_line(Vector2(bar_x + cap_w, sta_y - 1.0), Vector2(bar_x + cap_w, sta_y + bar_h + 1.0), Color(1.0, 0.85, 0.2, 0.95), 1.2, true)
 			
 		# --- GAUGE 2: ĐỘ CHÍNH XÁC (ACCURACY) ---
-		var acc_y = 14.5
-		draw_rect(Rect2(bar_x - 1.0, acc_y - 1.0, bar_w + 2.0, bar_h + 2.0), Color(0.06, 0.08, 0.12, 0.85), true)
-		draw_rect(Rect2(bar_x, acc_y, bar_w, bar_h), Color(0.14, 0.16, 0.22, 0.75), true)
-		
-		var cur_acc_w = bar_w * clamp(stats.accuracy / 100.0, 0.0, 1.0)
-		var acc_col: Color
-		if stats.accuracy < 25.0:
-			var pulse = 0.65 + 0.35 * sin(time_val * 16.0)
-			acc_col = Color(1.0, 0.25, 0.35, pulse) # ĐỎ TÍA NGUY HIỂM CAO
-		elif stats.accuracy < 50.0:
-			acc_col = Color(1.0, 0.72, 0.20, 0.95) # VÀNG CAM CẢNH BÁO ĐÁNH HỎNG
-		else:
-			acc_col = Color(0.20, 0.88, 1.0, 0.90) # CYAN XANH LAM CHUẨN XÁC
+		if not OS.has_feature("web"):
+			var acc_y = 14.5
+			draw_rect(Rect2(bar_x - 1.0, acc_y - 1.0, bar_w + 2.0, bar_h + 2.0), Color(0.06, 0.08, 0.12, 0.85), true)
+			draw_rect(Rect2(bar_x, acc_y, bar_w, bar_h), Color(0.14, 0.16, 0.22, 0.75), true)
 			
-		if cur_acc_w > 0.0:
-			draw_rect(Rect2(bar_x, acc_y, cur_acc_w, bar_h), acc_col, true)
+			var cur_acc_w = bar_w * clamp(stats.accuracy / 100.0, 0.0, 1.0)
+			var acc_col: Color
+			if stats.accuracy < 25.0:
+				var pulse = 0.65 + 0.35 * sin(time_val * 16.0)
+				acc_col = Color(1.0, 0.25, 0.35, pulse) # ĐỎ TÍA NGUY HIỂM CAO
+			elif stats.accuracy < 50.0:
+				acc_col = Color(1.0, 0.72, 0.20, 0.95) # VÀNG CAM CẢNH BÁO ĐÁNH HỎNG
+			else:
+				acc_col = Color(0.20, 0.88, 1.0, 0.90) # CYAN XANH LAM CHUẨN XÁC
+				
+			if cur_acc_w > 0.0:
+				draw_rect(Rect2(bar_x, acc_y, cur_acc_w, bar_h), acc_col, true)
+				
+			# Vạch chia ngưỡng 50% nguy hiểm (Danger Threshold Mark)
+			draw_line(Vector2(bar_x + bar_w * 0.5, acc_y - 1.0), Vector2(bar_x + bar_w * 0.5, acc_y + bar_h + 1.0), Color(0.85, 0.85, 0.9, 0.5), 1.0, true)
 			
-		# Vạch chia ngưỡng 50% nguy hiểm (Danger Threshold Mark)
-		draw_line(Vector2(bar_x + bar_w * 0.5, acc_y - 1.0), Vector2(bar_x + bar_w * 0.5, acc_y + bar_h + 1.0), Color(0.85, 0.85, 0.9, 0.5), 1.0, true)
-		
-		# --- GAUGE 3: THANH FLOW / NỘ TUYỆT KỸ (MOMENTUM GAUGE) ---
-		var flow_y = 20.0
-		draw_rect(Rect2(bar_x - 1.0, flow_y - 1.0, bar_w + 2.0, bar_h + 2.0), Color(0.06, 0.08, 0.12, 0.85), true)
-		draw_rect(Rect2(bar_x, flow_y, bar_w, bar_h), Color(0.12, 0.14, 0.20, 0.75), true)
-		
-		var cur_flow_w = bar_w * clamp(stats.flow / 100.0, 0.0, 1.0)
-		var flow_col: Color
-		if stats.can_use_special():
-			var pulse = 0.75 + 0.25 * sin(time_val * 16.0)
-			flow_col = Color(1.0, 0.90, 0.25, pulse) # VÀNG KIM TỰ KÍCH HOẠT KHI TUNG ĐÒN
-		else:
-			flow_col = Color(0.75, 0.30, 0.90, 0.85) # TÍM NỘ KHÍ TÍCH LŨY
+			# --- GAUGE 3: THANH FLOW / NỘ TUYỆT KỸ (MOMENTUM GAUGE) ---
+			var flow_y = 20.0
+			draw_rect(Rect2(bar_x - 1.0, flow_y - 1.0, bar_w + 2.0, bar_h + 2.0), Color(0.06, 0.08, 0.12, 0.85), true)
+			draw_rect(Rect2(bar_x, flow_y, bar_w, bar_h), Color(0.12, 0.14, 0.20, 0.75), true)
 			
-		if cur_flow_w > 0.0:
-			draw_rect(Rect2(bar_x, flow_y, cur_flow_w, bar_h), flow_col, true)
+			var cur_flow_w = bar_w * clamp(stats.flow / 100.0, 0.0, 1.0)
+			var flow_col: Color
+			if stats.can_use_special():
+				var pulse = 0.75 + 0.25 * sin(time_val * 16.0)
+				flow_col = Color(1.0, 0.90, 0.25, pulse) # VÀNG KIM TỰ KÍCH HOẠT KHI TUNG ĐÒN
+			else:
+				flow_col = Color(0.75, 0.30, 0.90, 0.85) # TÍM NỘ KHÍ TÍCH LŨY
+				
+			if cur_flow_w > 0.0:
+				draw_rect(Rect2(bar_x, flow_y, cur_flow_w, bar_h), flow_col, true)
+				
+			# Báo hiệu Sẵn sàng Tuyệt kỹ Nộ khí:
+			if stats.can_use_special():
+				draw_arc(Vector2(0, -60), 40.0, 0, TAU, 24, Color(1.0, 0.85, 0.2, 0.55), 1.8, true)
+	
+	# 2. HÌNH HỘP VUÔNG VẮN HITBOX & VÙNG PERFECT RÕ RÀNG (CHỈ VẼ CHO NGƯỜI CHƠI)
+	if not is_ai and not is_remote_puppet:
+		var use_aa = not OS.has_feature("web")
+		var ob_in = in_range and hit_status["zone"] == "overhead"
+		var ob_rect = get_overhead_box_local()
+		var ob_col = Color(1.0, 0.9, 0.2, 0.65) if ob_in else Color(0.2, 0.9, 0.4, 0.22)
+		var ob_fill = Color(1.0, 0.9, 0.2, 0.08) if ob_in else Color(0.2, 0.9, 0.4, 0.02)
+		draw_rect(ob_rect, ob_fill)
+		draw_rect(ob_rect, ob_col, false, 1.2 if not ob_in else 1.8)
+		
+		# VÙNG ĐIỂM NGỌT PERFECT (HOÀN HẢO TRÊN CAO)
+		var sw_rect = get_overhead_perfect_box_local()
+		var sw_is_hot = ob_in and is_perfect
+		var sw_col = Color(3.8, 2.8, 0.4, 1.0) if sw_is_hot else Color(1.0, 0.85, 0.2, 0.55)
+		var sw_fill = Color(1.0, 0.85, 0.2, 0.35) if sw_is_hot else Color(1.0, 0.85, 0.2, 0.06)
+		draw_rect(sw_rect, sw_fill)
+		draw_rect(sw_rect, sw_col, false, 2.5 if sw_is_hot else 1.5)
+		
+		var b_len = min(12.0, sw_rect.size.x * 0.25)
+		var sw_x = sw_rect.position.x
+		var sw_y = sw_rect.position.y
+		var sw_w = sw_rect.size.x
+		var sw_h = sw_rect.size.y
+		draw_line(Vector2(sw_x, sw_y), Vector2(sw_x + b_len, sw_y), sw_col, 2.5, use_aa)
+		draw_line(Vector2(sw_x, sw_y), Vector2(sw_x, sw_y + b_len), sw_col, 2.5, use_aa)
+		draw_line(Vector2(sw_x + sw_w, sw_y), Vector2(sw_x + sw_w - b_len, sw_y), sw_col, 2.5, use_aa)
+		draw_line(Vector2(sw_x + sw_w, sw_y), Vector2(sw_x + sw_w, sw_y + b_len), sw_col, 2.5, use_aa)
+		draw_line(Vector2(sw_x, sw_y + sw_h), Vector2(sw_x + b_len, sw_y + sw_h), sw_col, 2.5, use_aa)
+		draw_line(Vector2(sw_x, sw_y + sw_h), Vector2(sw_x, sw_y + sw_h - b_len), sw_col, 2.5, use_aa)
+		draw_line(Vector2(sw_x + sw_w, sw_y + sw_h), Vector2(sw_x + sw_w - b_len, sw_y + sw_h), sw_col, 2.5, use_aa)
+		draw_line(Vector2(sw_x + sw_w, sw_y + sw_h), Vector2(sw_x + sw_w, sw_y + sw_h - b_len), sw_col, 2.5, use_aa)
+		
+		if not is_in_air:
+			var ub_in = in_range and hit_status["zone"] == "underhand"
+			var ub_rect = get_underhand_box_local()
+			var ub_col = Color(0.2, 1.0, 1.0, 0.65) if ub_in else Color(0.2, 0.85, 1.0, 0.20)
+			var ub_fill = Color(0.2, 1.0, 1.0, 0.08) if ub_in else Color(0.2, 0.85, 1.0, 0.02)
+			draw_rect(ub_rect, ub_fill)
+			draw_rect(ub_rect, ub_col, false, 1.2 if not ub_in else 1.8)
 			
-		# Báo hiệu Sẵn sàng Tuyệt kỹ Nộ khí:
-		if stats.can_use_special():
-			draw_arc(Vector2(0, -60), 40.0, 0, TAU, 24, Color(1.0, 0.85, 0.2, 0.55), 1.8, true)
-	
-	# 2. HÌNH HỘP VUÔNG VẮN HITBOX & VÙNG PERFECT RÕ RÀNG (CO GIÃN THEO ACCURACY)
-	var ob_in = in_range and hit_status["zone"] == "overhead"
-	var ob_rect = get_overhead_box_local()
-	var ob_col = Color(1.0, 0.9, 0.2, 0.65) if ob_in else Color(0.2, 0.9, 0.4, 0.22)
-	var ob_fill = Color(1.0, 0.9, 0.2, 0.08) if ob_in else Color(0.2, 0.9, 0.4, 0.02)
-	draw_rect(ob_rect, ob_fill)
-	draw_rect(ob_rect, ob_col, false, 1.2 if not ob_in else 1.8)
-	
-	# VÙNG ĐIỂM NGỌT PERFECT (HOÀN HẢO TRÊN CAO)
-	var sw_rect = get_overhead_perfect_box_local()
-	var sw_is_hot = ob_in and is_perfect
-	var sw_col = Color(3.8, 2.8, 0.4, 1.0) if sw_is_hot else Color(1.0, 0.85, 0.2, 0.55)
-	var sw_fill = Color(1.0, 0.85, 0.2, 0.35) if sw_is_hot else Color(1.0, 0.85, 0.2, 0.06)
-	draw_rect(sw_rect, sw_fill)
-	draw_rect(sw_rect, sw_col, false, 2.5 if sw_is_hot else 1.5)
-	
-	var b_len = min(12.0, sw_rect.size.x * 0.25)
-	var sw_x = sw_rect.position.x
-	var sw_y = sw_rect.position.y
-	var sw_w = sw_rect.size.x
-	var sw_h = sw_rect.size.y
-	draw_line(Vector2(sw_x, sw_y), Vector2(sw_x + b_len, sw_y), sw_col, 2.5, true)
-	draw_line(Vector2(sw_x, sw_y), Vector2(sw_x, sw_y + b_len), sw_col, 2.5, true)
-	draw_line(Vector2(sw_x + sw_w, sw_y), Vector2(sw_x + sw_w - b_len, sw_y), sw_col, 2.5, true)
-	draw_line(Vector2(sw_x + sw_w, sw_y), Vector2(sw_x + sw_w, sw_y + b_len), sw_col, 2.5, true)
-	draw_line(Vector2(sw_x, sw_y + sw_h), Vector2(sw_x + b_len, sw_y + sw_h), sw_col, 2.5, true)
-	draw_line(Vector2(sw_x, sw_y + sw_h), Vector2(sw_x, sw_y + sw_h - b_len), sw_col, 2.5, true)
-	draw_line(Vector2(sw_x + sw_w, sw_y + sw_h), Vector2(sw_x + sw_w - b_len, sw_y + sw_h), sw_col, 2.5, true)
-	draw_line(Vector2(sw_x + sw_w, sw_y + sw_h), Vector2(sw_x + sw_w, sw_y + sw_h - b_len), sw_col, 2.5, true)
-	
-	if not is_in_air:
-		var ub_in = in_range and hit_status["zone"] == "underhand"
-		var ub_rect = get_underhand_box_local()
-		var ub_col = Color(0.2, 1.0, 1.0, 0.65) if ub_in else Color(0.2, 0.85, 1.0, 0.20)
-		var ub_fill = Color(0.2, 1.0, 1.0, 0.08) if ub_in else Color(0.2, 0.85, 1.0, 0.02)
-		draw_rect(ub_rect, ub_fill)
-		draw_rect(ub_rect, ub_col, false, 1.2 if not ub_in else 1.8)
+			var ub_sw_rect = get_underhand_perfect_box_local()
+			var ub_is_hot = ub_in and is_perfect
+			var ub_sw_col = Color(0.3, 3.0, 2.5, 1.0) if ub_is_hot else Color(0.2, 0.9, 1.0, 0.50)
+			var ub_sw_fill = Color(0.2, 0.9, 1.0, 0.35) if ub_is_hot else Color(0.2, 0.9, 1.0, 0.06)
+			draw_rect(ub_sw_rect, ub_sw_fill)
+			draw_rect(ub_sw_rect, ub_sw_col, false, 2.5 if ub_is_hot else 1.5)
 		
-		var ub_sw_rect = get_underhand_perfect_box_local()
-		var ub_is_hot = ub_in and is_perfect
-		var ub_sw_col = Color(0.3, 3.0, 2.5, 1.0) if ub_is_hot else Color(0.2, 0.9, 1.0, 0.50)
-		var ub_sw_fill = Color(0.2, 0.9, 1.0, 0.35) if ub_is_hot else Color(0.2, 0.9, 1.0, 0.06)
-		draw_rect(ub_sw_rect, ub_sw_fill)
-		draw_rect(ub_sw_rect, ub_sw_col, false, 2.5 if ub_is_hot else 1.5)
-	
-	# HITBOX CỨU CẦU KHI BAY NGƯỜI (DIVE RESCUE HITBOX):
-	if is_diving:
-		var db_in = in_range and hit_status["zone"] == "dive"
-		var db_rect = get_dive_rescue_box_local()
-		var db_col = Color(0.2, 1.0, 1.0, 0.90) if db_in else Color(0.2, 0.85, 1.0, 0.45)
-		var db_fill = Color(0.2, 1.0, 1.0, 0.20) if db_in else Color(0.2, 0.85, 1.0, 0.06)
-		draw_rect(db_rect, db_fill)
-		draw_rect(db_rect, db_col, false, 2.2 if db_in else 1.5)
-		
-		var db_sw_rect = get_dive_rescue_perfect_box_local()
-		var db_is_hot = db_in and is_perfect
-		var db_sw_col = Color(3.8, 2.8, 0.4, 1.0) if db_is_hot else Color(1.0, 0.85, 0.2, 0.70)
-		var db_sw_fill = Color(1.0, 0.85, 0.2, 0.40) if db_is_hot else Color(1.0, 0.85, 0.2, 0.12)
-		draw_rect(db_sw_rect, db_sw_fill)
-		draw_rect(db_sw_rect, db_sw_col, false, 2.8 if db_is_hot else 1.8)
+		# HITBOX CỨU CẦU KHI BAY NGƯỜI (DIVE RESCUE HITBOX):
+		if is_diving:
+			var db_in = in_range and hit_status["zone"] == "dive"
+			var db_rect = get_dive_rescue_box_local()
+			var db_col = Color(0.2, 1.0, 1.0, 0.90) if db_in else Color(0.2, 0.85, 1.0, 0.45)
+			var db_fill = Color(0.2, 1.0, 1.0, 0.20) if db_in else Color(0.2, 0.85, 1.0, 0.06)
+			draw_rect(db_rect, db_fill)
+			draw_rect(db_rect, db_col, false, 2.2 if db_in else 1.5)
+			
+			var db_sw_rect = get_dive_rescue_perfect_box_local()
+			var db_is_hot = db_in and is_perfect
+			var db_sw_col = Color(3.8, 2.8, 0.4, 1.0) if db_is_hot else Color(1.0, 0.85, 0.2, 0.70)
+			var db_sw_fill = Color(1.0, 0.85, 0.2, 0.40) if db_is_hot else Color(1.0, 0.85, 0.2, 0.12)
+			draw_rect(db_sw_rect, db_sw_fill)
+			draw_rect(db_sw_rect, db_sw_col, false, 2.8 if db_is_hot else 1.8)
 	
 	# ==========================================================
 	# 3. NHÂN VẬT KHỐI HÌNH HỌC VÀ KHỚP XOAY (ARTICULATED MANNEQUIN)
@@ -2592,7 +2595,7 @@ func draw_tapered_limb(p1: Vector2, p2: Vector2, r1: float, r2: float, col: Colo
 
 func draw_ellipse_shape(center: Vector2, rx: float, ry: float, col: Color) -> void:
 	var pts = PackedVector2Array()
-	var segs = 20
+	var segs = 8 if OS.has_feature("web") else 20
 	for i in range(segs):
 		var ang = (TAU / segs) * i
 		pts.append(center + Vector2(cos(ang) * rx, sin(ang) * ry))

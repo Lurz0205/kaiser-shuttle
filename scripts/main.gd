@@ -232,6 +232,9 @@ func _ready() -> void:
 	shuttlecock.landed.connect(_on_shuttlecock_landed)
 	shuttlecock.hit_net.connect(_on_shuttlecock_hit_net)
 	
+	if OS.has_feature("web"):
+		low_graphics_mode = true
+	
 	if flash_rect:
 		flash_rect.visible = false
 	
@@ -3124,12 +3127,15 @@ func _draw() -> void:
 func _on_effects_overlay_draw() -> void:
 	if not effects_overlay:
 		return
+	
+	var is_web = OS.has_feature("web")
+	var use_aa = not is_web
 		
 	# 7. Ground Shockwave
 	if shockwave_alpha > 0.01:
 		var sw_col = Color(1.0, 0.95, 0.5, shockwave_alpha)
-		effects_overlay.draw_arc(Vector2(shockwave_pos.x, FLOOR_Y), shockwave_radius, 0, TAU, 16 if low_graphics_mode else 36, sw_col, 3.5, true)
-		if not low_graphics_mode:
+		effects_overlay.draw_arc(Vector2(shockwave_pos.x, FLOOR_Y), shockwave_radius, 0, TAU, 12 if is_web else (16 if low_graphics_mode else 36), sw_col, 3.5, use_aa)
+		if not low_graphics_mode and not is_web:
 			effects_overlay.draw_arc(Vector2(shockwave_pos.x, FLOOR_Y), shockwave_radius * 0.7, 0, TAU, 28, Color(1.0, 1.0, 1.0, shockwave_alpha * 0.7), 2.5, true)
 		
 	# 8. Golden Anime Perfect Impact Burst (Rực rỡ, lấp lánh và biến mất sau 0.4s)
@@ -3141,8 +3147,8 @@ func _on_effects_overlay_draw() -> void:
 		var col_burst = Color(perfect_burst_col.r, perfect_burst_col.g, perfect_burst_col.b, burst_alpha * 0.95)
 		
 		# Vòng hào quang sáng rực
-		effects_overlay.draw_arc(perfect_burst_pos, r_outer, 0, TAU, 16 if low_graphics_mode else 36, col_burst, 3.0, true)
-		if not low_graphics_mode:
+		effects_overlay.draw_arc(perfect_burst_pos, r_outer, 0, TAU, 12 if is_web else (16 if low_graphics_mode else 36), col_burst, 3.0, use_aa)
+		if not low_graphics_mode and not is_web:
 			effects_overlay.draw_arc(perfect_burst_pos, r_inner, 0, TAU, 28, Color(1.0, 1.0, 1.0, burst_alpha), 2.0, true)
 			# 8 tia chớp năng lượng phát tán theo các góc
 			for i in range(8):
@@ -3163,10 +3169,10 @@ func _on_effects_overlay_draw() -> void:
 		# Vệt bụi quét sàn dạt sang 2 bên chân
 		var skid_len = 14.0 + prog * 48.0
 		var dust_col = Color(0.95, 0.95, 1.0, alpha * 0.75)
-		effects_overlay.draw_line(p_pos + Vector2(-8, -2), p_pos + Vector2(-skid_len, -2), dust_col, 2.0 * (1.0 - prog * 0.5), true)
-		effects_overlay.draw_line(p_pos + Vector2(8, -2), p_pos + Vector2(skid_len, -2), dust_col, 2.0 * (1.0 - prog * 0.5), true)
+		effects_overlay.draw_line(p_pos + Vector2(-8, -2), p_pos + Vector2(-skid_len, -2), dust_col, 2.0 * (1.0 - prog * 0.5), use_aa)
+		effects_overlay.draw_line(p_pos + Vector2(8, -2), p_pos + Vector2(skid_len, -2), dust_col, 2.0 * (1.0 - prog * 0.5), use_aa)
 		
-		if not low_graphics_mode:
+		if not low_graphics_mode and not is_web:
 			# Vòng nén sàn elip nở rộng sang 2 bên
 			var rx = 16.0 + prog * 58.0
 			var ry = 4.0 + prog * 9.0
