@@ -2103,11 +2103,11 @@ func _on_shot_hit(shot_type: String, is_smash: bool, quality: float, is_perfect:
 
 
 func _trigger_perfect_impact_effect(hit_pos: Vector2, hitter: String = "player") -> void:
-	# 1. Đảo màu toàn bộ game sang trắng đen (Chế độ đồ họa thấp: bỏ qua shader để chống giật)
+	# 1. Đảo màu toàn bộ game sang trắng đen manga siêu kịch tính cho cú Boom Smash (Hỗ trợ cả PC & Web)
 	flash_alpha = 0.0
 	if flash_rect:
 		flash_rect.visible = false
-	if not low_graphics_mode and not OS.has_feature("web") and grayscale_rect and grayscale_rect.material:
+	if grayscale_rect and grayscale_rect.material:
 		grayscale_rect.visible = true
 		grayscale_rect.material.set_shader_parameter("grayscale_amount", 1.0)
 	else:

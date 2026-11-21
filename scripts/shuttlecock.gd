@@ -65,6 +65,12 @@ var velocity: Vector2 = Vector2.ZERO
 var predicted_landing_2d: Vector2 = Vector2.ZERO
 var predicted_flight_time: float = 0.0
 
+# Pre-rendered Texture Ribbon Trails (0% CPU load, full GPU hardware interpolation)
+const TEX_TRAIL_LIGHTNING: Texture2D = preload("res://assets/images/trails/trail_lightning_gold.png")
+const TEX_TRAIL_EMERALD: Texture2D = preload("res://assets/images/trails/trail_emerald_vortex.png")
+const TEX_TRAIL_SPEED: Texture2D = preload("res://assets/images/trails/trail_speed_white.png")
+const TEX_TRAIL_MIRAGE: Texture2D = preload("res://assets/images/trails/trail_mirage_cyan.png")
+
 # Visual Trail & Ground Shadow
 var trail_points: Array[Vector2] = []
 const MAX_TRAIL: int = 26
@@ -105,8 +111,13 @@ func _ready() -> void:
 		curve.add_point(Vector2(0.0, 1.0))
 		curve.add_point(Vector2(1.0, 0.05))
 		trail.width_curve = curve
-		trail.width = 9.0
-		trail.antialiased = true
+		trail.width = 11.0
+		trail.texture_mode = Line2D.LINE_TEXTURE_STRETCH
+		trail.joint_mode = Line2D.LINE_JOINT_ROUND
+		trail.begin_cap_mode = Line2D.LINE_CAP_ROUND
+		trail.end_cap_mode = Line2D.LINE_CAP_ROUND
+		trail.antialiased = not OS.has_feature("web")
+		trail.texture = TEX_TRAIL_SPEED
 		trail.default_color = Color(1.0, 1.0, 1.0, 0.85)
 	
 	if lightning_trail:
@@ -528,30 +539,32 @@ func _update_trail_styling() -> void:
 	if not trail:
 		return
 	trail.clear_points()
-	if is_weak_return:
-		trail.default_color = Color(1.0, 1.0, 1.0, 0.95) # Pure White Chance Ball
-		trail.width = 11.0
+	trail.texture_mode = Line2D.LINE_TEXTURE_STRETCH
+	
+	if is_boom_smash or tension_level == 2:
+		trail.texture = TEX_TRAIL_LIGHTNING
+		trail.default_color = Color(1.2, 1.1, 0.9, 1.0)
+		trail.width = 24.0
 	elif is_tsubame_gaeshi:
-		trail.default_color = Color(0.18, 0.95, 0.38, 0.95) # Vibrant Leaf/Foliage Green
-		trail.width = 14.0
+		trail.texture = TEX_TRAIL_EMERALD
+		trail.default_color = Color(1.0, 1.2, 1.0, 1.0)
+		trail.width = 22.0
 	elif is_mirage_counter:
-		trail.default_color = Color(0.4, 2.0, 3.8, 1.0) # Cyan Mirage Phantom HDR
-		trail.width = 16.0
-	elif tension_level == 2:
-		trail.default_color = Color(3.8, 2.4, 0.3, 1.0) # Lethal Gold Lightning
-		trail.width = 16.0
-	elif tension_level == 1:
-		trail.default_color = Color(0.2, 0.85, 1.0, 0.95) # Electric Cyan Trail
-		trail.width = 11.0
-	elif is_boom_smash:
-		trail.default_color = Color(3.8, 2.6, 0.4, 1.0) # Golden Lightning HDR
-		trail.width = 18.0
+		trail.texture = TEX_TRAIL_MIRAGE
+		trail.default_color = Color(1.0, 1.2, 1.3, 1.0)
+		trail.width = 20.0
+	elif is_weak_return:
+		trail.texture = TEX_TRAIL_SPEED
+		trail.default_color = Color(1.0, 1.0, 1.0, 0.95)
+		trail.width = 13.0
 	elif is_smash:
-		trail.default_color = Color(3.2, 1.6, 0.2, 0.95) # Orange Spike HDR
-		trail.width = 14.0
+		trail.texture = TEX_TRAIL_LIGHTNING
+		trail.default_color = Color(1.2, 0.9, 0.6, 0.95)
+		trail.width = 18.0
 	else:
-		trail.default_color = Color(1.0, 1.0, 1.0, 0.85) # Crisp White Feather Wind
-		trail.width = 8.5
+		trail.texture = TEX_TRAIL_SPEED
+		trail.default_color = Color(1.0, 1.0, 1.0, 0.85)
+		trail.width = 11.0
 
 
 func _update_trail() -> void:
@@ -565,7 +578,9 @@ func _update_trail() -> void:
 	for pt in trail_points:
 		trail.add_point(pt)
 	
-	if lightning_trail:
+	# Trên Web: Dải Ribbon Texture đã bao hàm đầy đủ hiệu ứng sét/gió lộng lẫy, không cần redraw vector CPU
+	# Trên Desktop: Giữ cả hai để tối đa hóa độ sắc nét đa lớp
+	if lightning_trail and not OS.has_feature("web"):
 		lightning_trail.queue_redraw()
 
 
