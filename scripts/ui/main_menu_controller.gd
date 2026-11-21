@@ -9,8 +9,12 @@ extends Control
 
 const CustomIcon = preload("res://scripts/ui/custom_icon.gd")
 
-# Full HD Locker Room Lobby Background
+# Full HD Screen Backgrounds (Title vs Lobby)
+const TEX_TITLE_BG = preload("res://assets/images/menu_banner.png")
 const TEX_LOBBY_BG = preload("res://assets/images/lobby_locker_room.png")
+
+var global_bg: TextureRect = null
+var global_tint: ColorRect = null
 
 # Studio Pre-rendered High-Quality Icons (0% Vector CPU lag, 100% Anti-Aliased)
 const TEX_SHUTTLECOCK = preload("res://assets/icons/icon_shuttlecock_gold.png")
@@ -193,10 +197,11 @@ const CHAR_DATA = {
 
 func _ready() -> void:
 	_load_selected_avatar()
-	custom_minimum_size = Vector2(1280, 720)
-	size = Vector2(1280, 720)
-	position = Vector2.ZERO
 	set_anchors_preset(Control.PRESET_FULL_RECT)
+	anchor_right = 1.0
+	anchor_bottom = 1.0
+	grow_horizontal = Control.GROW_DIRECTION_BOTH
+	grow_vertical = Control.GROW_DIRECTION_BOTH
 	
 	if OS.has_feature("web"):
 		low_graphics_mode = true
@@ -207,6 +212,22 @@ func _ready() -> void:
 	
 	_build_ui()
 	switch_state(MenuState.TITLE)
+	
+	var vp = get_viewport()
+	if vp:
+		vp.size_changed.connect(_on_viewport_size_changed)
+		_on_viewport_size_changed()
+
+func _on_viewport_size_changed() -> void:
+	if not is_inside_tree() or get_viewport() == null:
+		return
+	var vp_size = get_viewport_rect().size
+	if global_bg:
+		global_bg.set_deferred("size", vp_size)
+	if global_tint:
+		global_tint.set_deferred("size", vp_size)
+	if top_bar:
+		top_bar.set_deferred("size", Vector2(vp_size.x, top_bar.size.y))
 
 func _process(delta: float) -> void:
 	# Web Mobile text sync
@@ -233,6 +254,13 @@ func _process(delta: float) -> void:
 
 func switch_state(new_state: MenuState) -> void:
 	current_state = new_state
+	
+	# Switch background between Title Arena and Lobby Locker Room
+	if global_bg:
+		if new_state == MenuState.TITLE:
+			global_bg.texture = TEX_TITLE_BG
+		else:
+			global_bg.texture = TEX_LOBBY_BG
 	
 	# Visibility map
 	if title_panel: title_panel.visible = (new_state == MenuState.TITLE)
@@ -315,21 +343,29 @@ func _create_spike_translucent_panel(box_size: Vector2, corner_r: int = 12, bord
 
 func _build_ui() -> void:
 	# ----------------------------------------------------
-	# GLOBAL BACKGROUND (Sân đấu & Phòng thay đồ thể thao cao cấp)
+	# GLOBAL BACKGROUND (Full HD Responsive / No Black Borders)
 	# ----------------------------------------------------
-	var global_bg = TextureRect.new()
-	global_bg.texture = TEX_LOBBY_BG
-	global_bg.custom_minimum_size = Vector2(1280, 720)
-	global_bg.size = Vector2(1280, 720)
+	global_bg = TextureRect.new()
+	global_bg.name = "GlobalBG"
+	global_bg.texture = TEX_TITLE_BG
+	global_bg.set_anchors_preset(Control.PRESET_FULL_RECT)
+	global_bg.anchor_right = 1.0
+	global_bg.anchor_bottom = 1.0
+	global_bg.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	global_bg.grow_vertical = Control.GROW_DIRECTION_BOTH
 	global_bg.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	global_bg.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
 	global_bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(global_bg)
 	
 	# Light Vignette để làm nổi bật bối cảnh sân đấu phía sau (The Spike Translucent Style)
-	var global_tint = ColorRect.new()
-	global_tint.custom_minimum_size = Vector2(1280, 720)
-	global_tint.size = Vector2(1280, 720)
+	global_tint = ColorRect.new()
+	global_tint.name = "GlobalTint"
+	global_tint.set_anchors_preset(Control.PRESET_FULL_RECT)
+	global_tint.anchor_right = 1.0
+	global_tint.anchor_bottom = 1.0
+	global_tint.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	global_tint.grow_vertical = Control.GROW_DIRECTION_BOTH
 	global_tint.color = Color(0.02, 0.05, 0.10, 0.25)
 	global_tint.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(global_tint)
@@ -389,6 +425,9 @@ func _build_top_bar() -> void:
 	top_bar.custom_minimum_size = Vector2(1280, 68)
 	top_bar.size = Vector2(1280, 68)
 	top_bar.position = Vector2.ZERO
+	top_bar.set_anchors_preset(Control.PRESET_TOP_WIDE)
+	top_bar.anchor_right = 1.0
+	top_bar.grow_horizontal = Control.GROW_DIRECTION_BOTH
 	top_bar.z_index = 100
 	top_bar.mouse_filter = Control.MOUSE_FILTER_PASS
 	top_bar.visible = false
@@ -396,6 +435,10 @@ func _build_top_bar() -> void:
 	
 	# Liquid Glass Top Bar Background
 	var bar_bg = ColorRect.new()
+	bar_bg.name = "BarBG"
+	bar_bg.set_anchors_preset(Control.PRESET_FULL_RECT)
+	bar_bg.anchor_right = 1.0
+	bar_bg.grow_horizontal = Control.GROW_DIRECTION_BOTH
 	bar_bg.custom_minimum_size = Vector2(1280, 68)
 	bar_bg.size = Vector2(1280, 68)
 	bar_bg.color = Color(0.08, 0.11, 0.16, 0.90)
@@ -403,6 +446,10 @@ func _build_top_bar() -> void:
 	top_bar.add_child(bar_bg)
 	
 	var h_line = ColorRect.new()
+	h_line.name = "BarHLine"
+	h_line.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
+	h_line.anchor_right = 1.0
+	h_line.grow_horizontal = Control.GROW_DIRECTION_BOTH
 	h_line.custom_minimum_size = Vector2(1280, 1.5)
 	h_line.size = Vector2(1280, 1.5)
 	h_line.position = Vector2(0, 66.5)
@@ -411,6 +458,10 @@ func _build_top_bar() -> void:
 	top_bar.add_child(h_line)
 	
 	var m = MarginContainer.new()
+	m.name = "TopMargin"
+	m.set_anchors_preset(Control.PRESET_FULL_RECT)
+	m.anchor_right = 1.0
+	m.grow_horizontal = Control.GROW_DIRECTION_BOTH
 	m.custom_minimum_size = Vector2(1280, 68)
 	m.size = Vector2(1280, 68)
 	m.add_theme_constant_override("margin_left", 20)
@@ -616,15 +667,22 @@ func _create_nav_tab(title: String, tab_id: String, on_click: Callable) -> Butto
 # ==========================================================
 func _build_title_panel() -> void:
 	title_panel = Control.new()
+	title_panel.set_anchors_preset(Control.PRESET_FULL_RECT)
+	title_panel.anchor_right = 1.0
+	title_panel.anchor_bottom = 1.0
+	title_panel.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	title_panel.grow_vertical = Control.GROW_DIRECTION_BOTH
 	title_panel.custom_minimum_size = Vector2(1280, 720)
-	title_panel.size = Vector2(1280, 720)
 	title_panel.position = Vector2.ZERO
 	title_panel.mouse_filter = Control.MOUSE_FILTER_PASS
 	add_child(title_panel)
 	
 	var center = VBoxContainer.new()
-	center.custom_minimum_size = Vector2(1280, 720)
-	center.size = Vector2(1280, 720)
+	center.set_anchors_preset(Control.PRESET_FULL_RECT)
+	center.anchor_right = 1.0
+	center.anchor_bottom = 1.0
+	center.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	center.grow_vertical = Control.GROW_DIRECTION_BOTH
 	center.alignment = BoxContainer.ALIGNMENT_CENTER
 	center.add_theme_constant_override("separation", 16)
 	center.mouse_filter = Control.MOUSE_FILTER_PASS

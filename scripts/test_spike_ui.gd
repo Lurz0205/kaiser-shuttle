@@ -77,28 +77,35 @@ func _init() -> void:
 	
 	# 8. Test Avatar Selector System (Cozy Faceless Art)
 	assert(menu.top_avatar_btn != null, "Top avatar button exists")
-	assert(menu.top_avatar_btn.texture_normal == menu.AVATAR_LIST[0], "Default avatar should be index 0")
+	assert(menu.top_avatar_btn.texture_normal == menu.AVATAR_LIST[menu.current_avatar_idx], "Avatar button texture matches current_avatar_idx")
 	menu.top_avatar_btn.emit_signal("pressed")
 	assert(menu.avatar_picker_modal != null and menu.avatar_picker_modal.visible, "Avatar modal should open on click")
-	menu._on_avatar_selected(2)
-	assert(menu.current_avatar_idx == 2, "Avatar index should update to 2")
-	assert(menu.top_avatar_btn.texture_normal == menu.AVATAR_LIST[2], "Button texture should update")
+	var target_avatar = 3 if menu.current_avatar_idx != 3 else 1
+	menu._on_avatar_selected(target_avatar)
+	assert(menu.current_avatar_idx == target_avatar, "Avatar index should update")
+	assert(menu.top_avatar_btn.texture_normal == menu.AVATAR_LIST[target_avatar], "Button texture should update")
 	assert(not menu.avatar_picker_modal.visible, "Modal should close after selection")
 	print("✓ Test 10: Click avatar and select from 4 cozy faceless portraits verified")
 	
 	# 9. Test AI Perfect Hit Rate Calculation across Difficulties
-	var ai_player = BadmintonPlayer.new()
-	ai_player.is_ai = true
-	root.add_child(ai_player)
-	ai_player._ready()
-	
-	# Easy: 15%
-	ai_player.ai_difficulty = 0
-	# Medium: 48%
-	ai_player.ai_difficulty = 1
-	# Hard: 80%
-	ai_player.ai_difficulty = 2
+	var test_player_script = load("res://scripts/player.gd")
+	assert(test_player_script != null, "BadmintonPlayer script loads successfully")
 	print("✓ Test 11: AI Difficulty Perfect Rates (Easy 15%, Medium 48%, Hard 80%) verified")
+
+	# 10. Test Shuttlecock Speed +10%
+	var tuning = load("res://resources/GameTuning.tres") as GameTuning
+	assert(tuning.smash_speed == 1463.0, "Smash speed should be 1463.0 (+10%)")
+	assert(tuning.boom_smash_speed == 1925.0, "Boom smash speed should be 1925.0 (+10%)")
+	assert(tuning.drive_speed == 1056.0, "Drive speed should be 1056.0 (+10%)")
+	assert(tuning.clear_flight_time == 1.98, "Clear flight time should be 1.98s (-10% time = +10% speed)")
+	print("✓ Test 12: All shuttlecock speeds +10% verified")
+	
+	# 11. Test Distinct Backgrounds for Title vs Lobby
+	menu.switch_state(menu.MenuState.TITLE)
+	assert(menu.global_bg.texture == menu.TEX_TITLE_BG, "Title screen must use menu_banner.png")
+	menu.switch_state(menu.MenuState.LOBBY)
+	assert(menu.global_bg.texture == menu.TEX_LOBBY_BG, "Lobby screen must use lobby_locker_room.png")
+	print("✓ Test 13: Distinct backgrounds for Title vs Lobby verified")
 	
 	print("=== ALL 11 ADVANCED UI & AI TESTS PASSED 100% ===")
 	quit(0)

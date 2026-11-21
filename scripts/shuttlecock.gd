@@ -231,11 +231,11 @@ func launch_to_target_2d(from_pt: Vector2, target_pt: Vector2, shot_type: String
 	if is_smash:
 		var v_base = t_res.boom_smash_speed if is_boom_smash else t_res.smash_speed
 		if is_kill_smash:
-			# ĐẬP DỨT ĐIỂM CẦU NON (Giảm còn 70% tốc độ: 0.23s - 0.32s để đối thủ có cửa phản xạ cứu):
-			flight_duration = clamp(dist_x / (v_base * 1.15), 0.23, 0.32)
+			# ĐẬP DỨT ĐIỂM CẦU NON (Tăng tốc độ thêm 10%: 0.21s - 0.29s):
+			flight_duration = clamp(dist_x / (v_base * 1.15), 0.21, 0.29)
 		else:
-			# ĐẬP CẦU TỐC ĐỘ CAO (Giảm còn 70% tốc độ: 0.43s - 0.65s để người chơi kịp nghe âm thanh và định hướng):
-			flight_duration = clamp(dist_x / (v_base * 0.72), 0.43, 0.65)
+			# ĐẬP CẦU TỐC ĐỘ CAO (Tăng tốc độ thêm 10%: 0.39s - 0.59s):
+			flight_duration = clamp(dist_x / (v_base * 0.72), 0.39, 0.59)
 		h_apex = h_start
 		is_ground_smash = false
 				
@@ -245,11 +245,11 @@ func launch_to_target_2d(from_pt: Vector2, target_pt: Vector2, shot_type: String
 		
 		is_net_drop = (dist_net < 220.0 and dist_x < 280.0)
 		if is_net_drop:
-			# VÊ CẦU SÁT LƯỚI: Bay mềm mại, thanh thoát (Tốc độ giảm còn 80%: 1.00s - 1.22s)
-			flight_duration = clamp(dist_x / 160.0, 1.00, 1.22)
+			# VÊ CẦU SÁT LƯỚI (Tăng tốc độ thêm 10%: 0.91s - 1.11s):
+			flight_duration = clamp(dist_x / 176.0, 0.91, 1.11)
 		else:
-			# BỎ NHỎ Ở ĐOẠN GIỮA SÂN VÀ SÂN SAU: Thanh thoát (Tốc độ giảm còn 80%: 1.06s - 1.31s)
-			flight_duration = clamp(dist_x / 448.0, 1.06, 1.31)
+			# BỎ NHỎ Ở ĐOẠN GIỮA SÂN VÀ SÂN SAU (Tăng tốc độ thêm 10%: 0.96s - 1.19s):
+			flight_duration = clamp(dist_x / 493.0, 0.96, 1.19)
 		
 		# Quỹ đạo thuần 1 vòng cung lõm (Concave down, h''(u) <= 0 tuyệt đối):
 		# Không gãy khúc, không cong vẹo hàm bậc 3: Xuất phát ngang/bổng 5 độ rồi rơi cong đều qua lưới
@@ -274,8 +274,8 @@ func launch_to_target_2d(from_pt: Vector2, target_pt: Vector2, shot_type: String
 		drop_alpha = clamp(log(ratio) / log(drop_u_net), 1.25, 4.5)
 		
 	elif shot_type == "tsubame_gaeshi":
-		# TSUBAME GAESHI (Én lượn trở về - Cắt xoáy lướt sà sát mép lưới, tốc độ giảm còn 80%: 0.75s - 0.88s):
-		flight_duration = clamp(dist_x / 496.0, 0.75, 0.88)
+		# TSUBAME GAESHI (Én lượn trở về - Tăng tốc độ thêm 10%: 0.68s - 0.80s):
+		flight_duration = clamp(dist_x / 545.0, 0.68, 0.80)
 		var dist_net = clamp(abs(t_res.net_x - from_pt.x), 15.0, dist_x - 20.0)
 		drop_u_net = clamp(dist_net / max(dist_x, 1.0), 0.15, 0.85)
 		drop_h_net = t_res.net_height + 12.0 # Lướt sà sát mép lưới 12px
@@ -287,17 +287,19 @@ func launch_to_target_2d(from_pt: Vector2, target_pt: Vector2, shot_type: String
 		fuji_h_control = max(drop_h_net + 8.0, (drop_h_net - base_term) / max(denom, 0.05))
 		
 	elif shot_type == "mirage_counter":
-		# MIRAGE COUNTER (The Wall): Bung cầu cao nhanh về cuối sân (Tốc độ giảm còn 80%: 1.20s - 1.31s)
+		# MIRAGE COUNTER (The Wall): Bung cầu cao nhanh về cuối sân (Tăng tốc độ thêm 10%: 1.09s - 1.19s):
 		h_apex = 320.0
-		flight_duration = clamp(dist_x / 496.0, 1.20, 1.31)
+		flight_duration = clamp(dist_x / 545.0, 1.09, 1.19)
 		
 	elif shot_type == "underhand_lift":
-		# BUNG CẦU THẤP TAY: Cao vút anime 340px, sâu cuối sân (2.25s)
+		# BUNG CẦU THẤP TAY: Cao vút anime 340px, sâu cuối sân (2.05s)
 		h_apex = t_res.lift_apex_h
 		flight_duration = t_res.lift_flight_time
 		
 	elif shot_type == "weak_return":
-		# CẦU NON BỔNG LƠ LỬNG (CHANCE BALL / POP-UP FLOAT, 2.02s):
+		# CẦU NON BỔNG LƠ LỬNG (CHANCE BALL / POP-UP FLOAT, 1.84s):
+		h_apex = 390.0
+		flight_duration = 1.84
 		h_apex = 390.0
 		flight_duration = 2.02
 		
