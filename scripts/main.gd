@@ -1008,10 +1008,18 @@ func _on_network_packet_received(data: Dictionary) -> void:
 					floating_text_mgr.spawn("MIRAGE RECOIL: -%d STM!" % int(s_loss), player.global_position + Vector2(0, -50), Color(0.3, 0.8, 1.0), 16)
 
 		"opp_shot":
+			# Force rally state and unlock movement immediately on receiving any opponent shot:
+			current_state = MatchState.RALLY
+			is_serve_in_progress = false
+			is_point_transition_active = false
+			is_umpire_speaking = false
+			if player:
+				player.is_serving_phase = false
+			if ai_rival:
+				ai_rival.is_serving_phase = false
 			if pvp_landing_pending:
 				print("[PvP] Đối thủ đã cứu cầu thành công trong cửa sổ trễ ping! Tiếp tục pha cầu.")
 				pvp_landing_pending = false
-				current_state = MatchState.RALLY
 			var from_pt = Vector2(float(data.get("from_x", 890.0)), float(data.get("from_y", 450.0)))
 			var target_pt = Vector2(float(data.get("target_x", 390.0)), float(data.get("target_y", 550.0)))
 			var s_type = str(data.get("shot_type", "clear"))
@@ -1077,17 +1085,23 @@ func _on_network_packet_received(data: Dictionary) -> void:
 			_on_shot_hit(s_type, is_incoming_smash_type, q, is_perf, is_jump, from_pt, "ai")
 
 		"opp_serve":
-			if current_state == MatchState.SERVE and current_server == "ai" and not is_serve_in_progress and not is_point_transition_active and serve_cooldown <= 0.0:
-				var s_type = str(data.get("shot_type", "clear"))
-				_execute_serve("ai", s_type)
-				if is_pvp_active and net_manager and shuttlecock:
-					var ping_ms = net_manager.current_ping
-					var transit_sec = clamp(float(ping_ms) / 2000.0, 0.005, 0.050)
-					var sim = 0.0
-					while sim < transit_sec:
-						var dt = min(1.0 / 60.0, transit_sec - sim)
-						shuttlecock._physics_process(dt)
-						sim += dt
+			var s_type = str(data.get("shot_type", "clear"))
+			# Khi đối thủ đã phát cầu qua mạng, bên nhận lập tức dỡ bỏ mọi khóa và thực thi phát cầu:
+			is_point_transition_active = false
+			is_umpire_speaking = false
+			serve_cooldown = 0.0
+			is_serve_in_progress = false
+			current_state = MatchState.SERVE
+			current_server = "ai"
+			_execute_serve("ai", s_type, true)
+			if is_pvp_active and net_manager and shuttlecock:
+				var ping_ms = net_manager.current_ping
+				var transit_sec = clamp(float(ping_ms) / 2000.0, 0.005, 0.050)
+				var sim = 0.0
+				while sim < transit_sec:
+					var dt = min(1.0 / 60.0, transit_sec - sim)
+					shuttlecock._physics_process(dt)
+					sim += dt
 
 		"score_update":
 			var winner = str(data.get("winner", "ai"))
@@ -1318,7 +1332,7 @@ func _on_network_packet_received(data: Dictionary) -> void:
 			var role = str(data.get("role", "p1"))
 			var s_type = str(data.get("shot_type", "clear"))
 			var server_str = "player" if role == "p1" else "ai"
-			_execute_serve(server_str, s_type)
+			_execute_serve(server_str, s_type, true)
 
 		"spec_score":
 			if not is_spectator: return
@@ -1842,12 +1856,15 @@ func _setup_serve(server: String) -> void:
 			)
 
 
-func _execute_serve(server: String, shot_type: String = "clear") -> void:
-	if current_state != MatchState.SERVE or is_serve_in_progress or is_point_transition_active or serve_cooldown > 0.0:
-		return
+func _execute_serve(server: String, shot_type: String = "clear", force_network_serve: bool = false) -> void:
+	if not force_network_serve:
+		if current_state != MatchState.SERVE or is_serve_in_progress or is_point_transition_active or serve_cooldown > 0.0 or is_umpire_speaking:
+			return
 	current_state = MatchState.RALLY
 	is_serve_in_progress = true
 	is_point_transition_active = false
+	is_umpire_speaking = false
+	serve_cooldown = 0.0
 	
 	if rally_tension:
 		rally_tension.reset()
@@ -1858,7 +1875,7 @@ func _execute_serve(server: String, shot_type: String = "clear") -> void:
 		ai_rival.current_tension_mult = 1.0
 		ai_rival.current_tension_level = 0
 	
-	# UNLOCK MOVEMENT FOR BOTH PLAYERS
+	# UNLOCK MOVEMENT FOR BOTH PLAYERS IMMEDIATELY
 	player.is_serving_phase = false
 	ai_rival.is_serving_phase = false
 	

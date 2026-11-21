@@ -861,62 +861,99 @@ func _build_pvp_panel(sb_setup: StyleBoxFlat) -> void:
 	add_child(pvp_panel)
 	
 	var pvp_box = PanelContainer.new()
-	pvp_box.custom_minimum_size = Vector2(1060, 600)
-	pvp_box.size = Vector2(1060, 600)
-	pvp_box.position = Vector2(110, 60)
+	pvp_box.custom_minimum_size = Vector2(1040, 580)
+	pvp_box.size = Vector2(1040, 580)
+	pvp_box.position = Vector2(120, 70)
 	pvp_box.add_theme_stylebox_override("panel", sb_setup)
 	pvp_panel.add_child(pvp_box)
 	
 	var m = MarginContainer.new()
-	m.add_theme_constant_override("margin_left", 24)
-	m.add_theme_constant_override("margin_top", 18)
-	m.add_theme_constant_override("margin_right", 24)
-	m.add_theme_constant_override("margin_bottom", 18)
+	m.add_theme_constant_override("margin_left", 32)
+	m.add_theme_constant_override("margin_top", 24)
+	m.add_theme_constant_override("margin_right", 32)
+	m.add_theme_constant_override("margin_bottom", 24)
 	pvp_box.add_child(m)
 	
 	var vbox = VBoxContainer.new()
-	vbox.add_theme_constant_override("separation", 12)
+	vbox.add_theme_constant_override("separation", 14)
 	m.add_child(vbox)
 	
-	# Header
+	# 1. MODERN HEADER ROW: Title (Left) + Status & Ping Badge (Right)
 	var header_row = HBoxContainer.new()
-	header_row.alignment = BoxContainer.ALIGNMENT_CENTER
+	header_row.alignment = BoxContainer.ALIGNMENT_BEGIN
+	
 	var lbl_title = Label.new()
-	lbl_title.text = "TRANH TÀI ONLINE (PVP 1V1 P2P WEBRTC)"
-	lbl_title.add_theme_font_size_override("font_size", 20)
-	lbl_title.modulate = Color(0.20, 0.90, 0.80)
+	lbl_title.text = "ONLINE MULTIPLAYER"
+	lbl_title.add_theme_font_size_override("font_size", 22)
+	lbl_title.modulate = Color(0.25, 0.90, 0.85)
 	header_row.add_child(lbl_title)
+	
+	var header_spacer = Control.new()
+	header_spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	header_row.add_child(header_spacer)
+	
+	pvp_status_lbl = Label.new()
+	pvp_status_lbl.text = "● SẴN SÀNG"
+	pvp_status_lbl.add_theme_font_size_override("font_size", 12)
+	pvp_status_lbl.modulate = Color(0.20, 0.85, 0.50)
+	header_row.add_child(pvp_status_lbl)
+	
+	var vsep_h = VSeparator.new()
+	header_row.add_child(vsep_h)
+	
+	pvp_ping_lbl = Label.new()
+	pvp_ping_lbl.text = "Ping: -- ms"
+	pvp_ping_lbl.add_theme_font_size_override("font_size", 12)
+	pvp_ping_lbl.modulate = Color(0.35, 0.80, 1.0)
+	header_row.add_child(pvp_ping_lbl)
+	
 	vbox.add_child(header_row)
 	
-	var lbl_sub = Label.new()
-	lbl_sub.text = "Kết nối trực tiếp trình duyệt - trình duyệt qua WebRTC UDP DataChannel. Không độ trễ máy chủ (15-40ms)!"
-	lbl_sub.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	lbl_sub.add_theme_font_size_override("font_size", 12)
-	lbl_sub.modulate = Color(0.70, 0.80, 0.90, 0.8)
-	vbox.add_child(lbl_sub)
+	# 2. MATCH CONFIG STRIP: Player Profile + Character + Points + Sets
+	var config_card = PanelContainer.new()
+	var sb_cfg = StyleBoxFlat.new()
+	sb_cfg.bg_color = Color(0.08, 0.12, 0.18, 0.90)
+	sb_cfg.border_width_left = 1
+	sb_cfg.border_width_top = 1
+	sb_cfg.border_width_right = 1
+	sb_cfg.border_width_bottom = 1
+	sb_cfg.border_color = Color(0.25, 0.85, 0.75, 0.35)
+	sb_cfg.corner_radius_top_left = 8
+	sb_cfg.corner_radius_top_right = 8
+	sb_cfg.corner_radius_bottom_right = 8
+	sb_cfg.corner_radius_bottom_left = 8
+	config_card.add_theme_stylebox_override("panel", sb_cfg)
 	
-	# Config row: Name + Character + Points + Sets
+	var cm = MarginContainer.new()
+	cm.add_theme_constant_override("margin_left", 16)
+	cm.add_theme_constant_override("margin_top", 10)
+	cm.add_theme_constant_override("margin_right", 16)
+	cm.add_theme_constant_override("margin_bottom", 10)
+	config_card.add_child(cm)
+	
 	var cfg_row = HBoxContainer.new()
 	cfg_row.alignment = BoxContainer.ALIGNMENT_CENTER
-	cfg_row.add_theme_constant_override("separation", 18)
-	vbox.add_child(cfg_row)
+	cfg_row.add_theme_constant_override("separation", 14)
+	cm.add_child(cfg_row)
 	
-	# Name input
+	# Player Name
 	var name_box = HBoxContainer.new()
 	name_box.add_theme_constant_override("separation", 6)
 	var lbl_n = Label.new()
-	lbl_n.text = "TÊN BẠN:"
+	lbl_n.text = "TÊN:"
 	lbl_n.add_theme_font_size_override("font_size", 12)
-	lbl_n.modulate = Color(0.85, 0.88, 0.92)
+	lbl_n.modulate = Color(0.75, 0.82, 0.90)
 	name_box.add_child(lbl_n)
 	
 	pvp_name_input = LineEdit.new()
 	pvp_name_input.text = _load_saved_player_name()
 	pvp_player_name = pvp_name_input.text
-	pvp_name_input.custom_minimum_size = Vector2(115, 32)
+	pvp_name_input.custom_minimum_size = Vector2(110, 30)
 	pvp_name_input.max_length = 12
-	pvp_name_input.placeholder_text = "TÊN PLAYER"
+	pvp_name_input.placeholder_text = "PLAYER"
 	pvp_name_input.alignment = HORIZONTAL_ALIGNMENT_CENTER
+	pvp_name_input.mouse_filter = Control.MOUSE_FILTER_STOP
+	pvp_name_input.focus_mode = Control.FOCUS_ALL
 	var sb_name = StyleBoxFlat.new()
 	sb_name.bg_color = Color(0.12, 0.16, 0.22, 0.95)
 	sb_name.border_width_left = 1
@@ -930,8 +967,6 @@ func _build_pvp_panel(sb_setup: StyleBoxFlat) -> void:
 	sb_name.corner_radius_bottom_left = 4
 	pvp_name_input.add_theme_stylebox_override("normal", sb_name)
 	pvp_name_input.add_theme_stylebox_override("focus", sb_name)
-	pvp_name_input.mouse_filter = Control.MOUSE_FILTER_STOP
-	pvp_name_input.focus_mode = Control.FOCUS_ALL
 	pvp_name_input.text_changed.connect(func(new_text: String):
 		var clean = new_text.strip_edges().to_upper()
 		pvp_player_name = clean if not clean.is_empty() else "PLAYER 1"
@@ -944,183 +979,179 @@ func _build_pvp_panel(sb_setup: StyleBoxFlat) -> void:
 				get_viewport().set_input_as_handled()
 	)
 	name_box.add_child(pvp_name_input)
-
-	var btn_edit_name = _create_clean_button("✏ ĐỔI TÊN", Color(0.3, 0.85, 0.7), Vector2(75, 32), 11)
+	
+	var btn_edit_name = _create_clean_button("✏", Color(0.3, 0.85, 0.7), Vector2(30, 30), 12)
 	btn_edit_name.pressed.connect(func():
 		_open_mobile_text_prompt(pvp_name_input, "Nhập tên người chơi (tối đa 12 ký tự):", 12)
 	)
 	name_box.add_child(btn_edit_name)
 	cfg_row.add_child(name_box)
 	
-	# Character picker
+	var vsep1 = VSeparator.new()
+	cfg_row.add_child(vsep1)
+	
+	# Character selector
 	var char_box = HBoxContainer.new()
 	char_box.add_theme_constant_override("separation", 6)
 	var lbl_c = Label.new()
 	lbl_c.text = "TƯỚNG:"
 	lbl_c.add_theme_font_size_override("font_size", 12)
-	lbl_c.modulate = Color(0.85, 0.88, 0.92)
+	lbl_c.modulate = Color(0.75, 0.82, 0.90)
 	char_box.add_child(lbl_c)
-	
 	for cid in ["nishikawa", "fuji", "wall"]:
-		var b = _create_clean_button(CHAR_DATA[cid]["name"], CHAR_DATA[cid]["color"], Vector2(100, 32), 11)
+		var b = _create_clean_button(CHAR_DATA[cid]["name"], CHAR_DATA[cid]["color"], Vector2(96, 30), 11)
 		b.pressed.connect(func(): _select_pvp_char(cid))
 		char_box.add_child(b)
 		pvp_char_btns[cid] = b
 	cfg_row.add_child(char_box)
 	
+	var vsep2 = VSeparator.new()
+	cfg_row.add_child(vsep2)
+	
 	# Points picker
 	var pts_box = HBoxContainer.new()
-	pts_box.add_theme_constant_override("separation", 6)
+	pts_box.add_theme_constant_override("separation", 4)
 	var lbl_p = Label.new()
 	lbl_p.text = "ĐIỂM:"
 	lbl_p.add_theme_font_size_override("font_size", 12)
+	lbl_p.modulate = Color(0.75, 0.82, 0.90)
 	pts_box.add_child(lbl_p)
-	for pts in [11, 15, 21]:
-		var b = _create_clean_button(str(pts) + " ĐIỂM", Color(0.95, 0.82, 0.25), Vector2(75, 32), 11)
+	for pts in [11, 21]:
+		var b = _create_clean_button(str(pts), Color(0.2, 0.85, 0.75), Vector2(42, 30), 11)
 		b.pressed.connect(func(): _select_pvp_pts(pts))
 		pts_box.add_child(b)
 		pvp_pts_btns[pts] = b
 	cfg_row.add_child(pts_box)
 	
+	var vsep3 = VSeparator.new()
+	cfg_row.add_child(vsep3)
+	
 	# Sets picker
 	var sets_box = HBoxContainer.new()
-	sets_box.add_theme_constant_override("separation", 6)
+	sets_box.add_theme_constant_override("separation", 4)
 	var lbl_s = Label.new()
-	lbl_s.text = "SỐ SET:"
+	lbl_s.text = "SET:"
 	lbl_s.add_theme_font_size_override("font_size", 12)
+	lbl_s.modulate = Color(0.75, 0.82, 0.90)
 	sets_box.add_child(lbl_s)
 	for s_cnt in [1, 3]:
-		var b = _create_clean_button("1 SET" if s_cnt == 1 else "BEST OF 3", Color(0.35, 0.75, 1.0), Vector2(85, 32), 11)
+		var b = _create_clean_button("1" if s_cnt == 1 else "3", Color(0.35, 0.75, 1.0), Vector2(40, 30), 11)
 		b.pressed.connect(func(): _select_pvp_sets(s_cnt))
 		sets_box.add_child(b)
 		pvp_sets_btns[s_cnt] = b
 	cfg_row.add_child(sets_box)
 	
-	# Skill description banner below config row
+	vbox.add_child(config_card)
+	
+	# One-line Skill Banner
 	pvp_char_desc_lbl = Label.new()
 	pvp_char_desc_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	pvp_char_desc_lbl.add_theme_font_size_override("font_size", 11)
-	pvp_char_desc_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	pvp_char_desc_lbl.modulate = Color(0.70, 0.80, 0.90)
 	vbox.add_child(pvp_char_desc_lbl)
 	
-	var sep = HSeparator.new()
-	vbox.add_child(sep)
-	
-	# Two Action Cards: Host (Left) and Join (Right)
+	# 3. TWO SYMMETRIC ACTION CARDS: Host (Left) vs Join (Right)
 	var cards_row = HBoxContainer.new()
 	cards_row.alignment = BoxContainer.ALIGNMENT_CENTER
-	cards_row.add_theme_constant_override("separation", 28)
+	cards_row.add_theme_constant_override("separation", 24)
+	cards_row.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	vbox.add_child(cards_row)
 	
-	# Host Card
+	# HOST CARD
 	var host_card = PanelContainer.new()
-	host_card.custom_minimum_size = Vector2(480, 260)
-	var sb_card = StyleBoxFlat.new()
-	sb_card.bg_color = Color(0.10, 0.14, 0.20, 0.90)
-	sb_card.border_width_left = 1
-	sb_card.border_width_top = 1
-	sb_card.border_width_right = 1
-	sb_card.border_width_bottom = 1
-	sb_card.border_color = Color(0.20, 0.80, 0.65, 0.5)
-	sb_card.corner_radius_top_left = 8
-	sb_card.corner_radius_top_right = 8
-	sb_card.corner_radius_bottom_right = 8
-	sb_card.corner_radius_bottom_left = 8
-	host_card.add_theme_stylebox_override("panel", sb_card)
+	host_card.custom_minimum_size = Vector2(470, 230)
+	host_card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	var sb_hcard = StyleBoxFlat.new()
+	sb_hcard.bg_color = Color(0.09, 0.13, 0.19, 0.95)
+	sb_hcard.border_width_left = 1
+	sb_hcard.border_width_top = 1
+	sb_hcard.border_width_right = 1
+	sb_hcard.border_width_bottom = 1
+	sb_hcard.border_color = Color(0.20, 0.85, 0.65, 0.45)
+	sb_hcard.corner_radius_top_left = 10
+	sb_hcard.corner_radius_top_right = 10
+	sb_hcard.corner_radius_bottom_right = 10
+	sb_hcard.corner_radius_bottom_left = 10
+	host_card.add_theme_stylebox_override("panel", sb_hcard)
 	cards_row.add_child(host_card)
 	
 	var hm = MarginContainer.new()
-	hm.add_theme_constant_override("margin_left", 16)
-	hm.add_theme_constant_override("margin_top", 14)
-	hm.add_theme_constant_override("margin_right", 16)
-	hm.add_theme_constant_override("margin_bottom", 14)
+	hm.add_theme_constant_override("margin_left", 24)
+	hm.add_theme_constant_override("margin_top", 20)
+	hm.add_theme_constant_override("margin_right", 24)
+	hm.add_theme_constant_override("margin_bottom", 20)
 	host_card.add_child(hm)
 	
 	var hv = VBoxContainer.new()
-	hv.add_theme_constant_override("separation", 10)
+	hv.add_theme_constant_override("separation", 14)
 	hm.add_child(hv)
 	
 	var h_title = Label.new()
-	h_title.text = "CÁCH 1: TẠO PHÒNG (BẠN LÀ CHỦ NHÀ - P1)"
-	h_title.add_theme_font_size_override("font_size", 14)
-	h_title.modulate = Color(0.25, 0.90, 0.70)
+	h_title.text = "TẠO PHÒNG MỚI"
+	h_title.add_theme_font_size_override("font_size", 16)
+	h_title.modulate = Color(0.25, 0.95, 0.75)
 	hv.add_child(h_title)
 	
-	var h_desc = Label.new()
-	h_desc.text = "Tạo phòng và gửi mã cho bạn bè để cùng vào sân đấu (Sân trái P1)."
-	h_desc.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	h_desc.add_theme_font_size_override("font_size", 11)
-	h_desc.modulate = Color(0.70, 0.75, 0.85)
-	hv.add_child(h_desc)
-	
-	var btn_gen_room = _create_clean_button("TẠO MÃ PHÒNG (HOST)", Color(0.25, 0.90, 0.70), Vector2(220, 38), 13)
+	var btn_gen_room = _create_clean_button("+ TẠO MÃ PHÒNG", Color(0.20, 0.85, 0.65), Vector2(240, 42), 14)
 	btn_gen_room.pressed.connect(_on_host_create_room)
 	hv.add_child(btn_gen_room)
 	
 	var code_row = HBoxContainer.new()
-	code_row.add_theme_constant_override("separation", 10)
+	code_row.add_theme_constant_override("separation", 12)
 	pvp_host_code_lbl = Label.new()
-	pvp_host_code_lbl.text = "MÃ PHÒNG: ----"
+	pvp_host_code_lbl.text = "MÃ: ----"
 	pvp_host_code_lbl.add_theme_font_size_override("font_size", 22)
-	pvp_host_code_lbl.modulate = Color(0.98, 0.85, 0.25)
+	pvp_host_code_lbl.modulate = Color(1.0, 0.88, 0.3)
 	code_row.add_child(pvp_host_code_lbl)
 	
-	var btn_copy = _create_clean_button("SAO CHÉP MÃ", Color(0.85, 0.85, 0.85), Vector2(110, 32), 11)
+	var btn_copy = _create_clean_button("📋 CHÉP MÃ", Color(0.85, 0.85, 0.85), Vector2(100, 34), 11)
 	btn_copy.pressed.connect(func():
 		if not pvp_current_code.is_empty():
 			if OS.has_feature("web"):
 				JavaScriptBridge.eval("window.kaiserCopy('" + pvp_current_code + "')")
 			DisplayServer.clipboard_set(pvp_current_code)
-			btn_copy.text = "ĐÃ CHÉP!"
+			btn_copy.text = "✓ ĐÃ CHÉP"
 	)
 	code_row.add_child(btn_copy)
 	hv.add_child(code_row)
 	
-	# Join Card
+	# JOIN CARD
 	var join_card = PanelContainer.new()
-	join_card.custom_minimum_size = Vector2(480, 260)
-	var sb_jcard = sb_card.duplicate()
-	sb_jcard.border_color = Color(0.30, 0.70, 1.0, 0.5)
+	join_card.custom_minimum_size = Vector2(470, 230)
+	join_card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	var sb_jcard = sb_hcard.duplicate()
+	sb_jcard.border_color = Color(0.35, 0.75, 1.0, 0.45)
 	join_card.add_theme_stylebox_override("panel", sb_jcard)
 	cards_row.add_child(join_card)
 	
 	var jm = MarginContainer.new()
-	jm.add_theme_constant_override("margin_left", 16)
-	jm.add_theme_constant_override("margin_top", 14)
-	jm.add_theme_constant_override("margin_right", 16)
-	jm.add_theme_constant_override("margin_bottom", 14)
+	jm.add_theme_constant_override("margin_left", 24)
+	jm.add_theme_constant_override("margin_top", 20)
+	jm.add_theme_constant_override("margin_right", 24)
+	jm.add_theme_constant_override("margin_bottom", 20)
 	join_card.add_child(jm)
 	
 	var jv = VBoxContainer.new()
-	jv.add_theme_constant_override("separation", 10)
+	jv.add_theme_constant_override("separation", 14)
 	jm.add_child(jv)
 	
 	var j_title = Label.new()
-	j_title.text = "CÁCH 2: THAM GIA PHÒNG (BẠN LÀ KHÁCH - P2)"
-	j_title.add_theme_font_size_override("font_size", 14)
+	j_title.text = "THAM GIA PHÒNG"
+	j_title.add_theme_font_size_override("font_size", 16)
 	j_title.modulate = Color(0.35, 0.75, 1.0)
 	jv.add_child(j_title)
 	
-	var j_desc = Label.new()
-	j_desc.text = "Nhập mã phòng 4 ký tự do bạn bè gửi để vào thi đấu (Sân phải P2)."
-	j_desc.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	j_desc.add_theme_font_size_override("font_size", 11)
-	j_desc.modulate = Color(0.70, 0.75, 0.85)
-	jv.add_child(j_desc)
-	
 	var input_row = HBoxContainer.new()
-	input_row.add_theme_constant_override("separation", 6)
+	input_row.add_theme_constant_override("separation", 8)
 	
 	pvp_room_input = LineEdit.new()
-	pvp_room_input.custom_minimum_size = Vector2(125, 38)
+	pvp_room_input.custom_minimum_size = Vector2(130, 40)
 	pvp_room_input.placeholder_text = "MÃ (VD: 8899)"
 	pvp_room_input.max_length = 6
 	pvp_room_input.alignment = HORIZONTAL_ALIGNMENT_CENTER
-	pvp_room_input.add_theme_font_size_override("font_size", 15)
+	pvp_room_input.add_theme_font_size_override("font_size", 16)
 	pvp_room_input.mouse_filter = Control.MOUSE_FILTER_STOP
 	pvp_room_input.focus_mode = Control.FOCUS_ALL
-	
-	# Xử lý phím tắt & chạm click mở modal chuẩn trên Web / Mobile:
 	pvp_room_input.gui_input.connect(func(ev):
 		if ev is InputEventKey and ev.pressed:
 			if (ev.keycode == KEY_V) and (ev.ctrl_pressed or ev.meta_pressed):
@@ -1133,128 +1164,54 @@ func _build_pvp_panel(sb_setup: StyleBoxFlat) -> void:
 	)
 	input_row.add_child(pvp_room_input)
 	
-	var btn_paste = _create_clean_button("📋 DÁN", Color(0.95, 0.75, 0.20), Vector2(70, 38), 12)
+	var btn_paste = _create_clean_button("📋 DÁN", Color(0.95, 0.75, 0.20), Vector2(70, 40), 12)
 	btn_paste.pressed.connect(_on_paste_room_code_pressed)
 	input_row.add_child(btn_paste)
 
-	var btn_type = _create_clean_button("✏ NHẬP", Color(0.30, 0.85, 0.65), Vector2(68, 38), 12)
+	var btn_type = _create_clean_button("✏", Color(0.30, 0.85, 0.65), Vector2(40, 40), 13)
 	btn_type.pressed.connect(func():
 		_open_mobile_text_prompt(pvp_room_input, "Nhập hoặc dán mã phòng PvP (4-6 ký tự):", 6)
 	)
 	input_row.add_child(btn_type)
-	
-	var btn_join = _create_clean_button("THI ĐẤU (P2)", Color(0.35, 0.75, 1.0), Vector2(98, 38), 11)
-	btn_join.pressed.connect(_on_guest_join_room)
-	input_row.add_child(btn_join)
-	
-	var btn_spec = _create_clean_button("👁 XEM", Color(0.85, 0.45, 0.95), Vector2(75, 38), 11)
-	btn_spec.pressed.connect(_on_spectate_room)
-	input_row.add_child(btn_spec)
 	jv.add_child(input_row)
 	
-	# Status Bar & Back Button
-	var status_bar = HBoxContainer.new()
-	status_bar.alignment = BoxContainer.ALIGNMENT_CENTER
-	status_bar.add_theme_constant_override("separation", 20)
-	vbox.add_child(status_bar)
+	var join_act_row = HBoxContainer.new()
+	join_act_row.add_theme_constant_override("separation", 10)
 	
-	pvp_status_lbl = Label.new()
-	pvp_status_lbl.text = "Trạng thái: Sẵn sàng kết nối WebSocket Server"
-	pvp_status_lbl.add_theme_font_size_override("font_size", 13)
-	pvp_status_lbl.modulate = Color(0.85, 0.90, 0.95)
-	status_bar.add_child(pvp_status_lbl)
+	var btn_join = _create_clean_button("VÀO THI ĐẤU", Color(0.35, 0.75, 1.0), Vector2(130, 38), 12)
+	btn_join.pressed.connect(_on_guest_join_room)
+	join_act_row.add_child(btn_join)
 	
-	pvp_ping_lbl = Label.new()
-	pvp_ping_lbl.text = "Ping: -- ms"
-	pvp_ping_lbl.add_theme_font_size_override("font_size", 13)
-	pvp_ping_lbl.modulate = Color(0.20, 0.85, 0.50)
-	status_bar.add_child(pvp_ping_lbl)
-
-	# Server URL Config Row
-	var server_cfg_row = HBoxContainer.new()
-	server_cfg_row.alignment = BoxContainer.ALIGNMENT_CENTER
-	server_cfg_row.add_theme_constant_override("separation", 10)
-	vbox.add_child(server_cfg_row)
-
-	var lbl_srv = Label.new()
-	lbl_srv.text = "SERVER:"
-	lbl_srv.add_theme_font_size_override("font_size", 11)
-	lbl_srv.modulate = Color(0.7, 0.75, 0.85)
-	server_cfg_row.add_child(lbl_srv)
-
-	var input_srv = LineEdit.new()
-	input_srv.text = net_manager.server_url if net_manager else "wss://kaiser-shuttle-server.onrender.com"
-	input_srv.custom_minimum_size = Vector2(340, 28)
-	input_srv.add_theme_font_size_override("font_size", 11)
-	input_srv.mouse_filter = Control.MOUSE_FILTER_STOP
-	input_srv.focus_mode = Control.FOCUS_ALL
-	input_srv.text_submitted.connect(func(new_url):
-		if net_manager:
-			net_manager.set_custom_server_url(new_url)
-	)
-	input_srv.focus_exited.connect(func():
-		if net_manager:
-			net_manager.set_custom_server_url(input_srv.text)
-	)
-	input_srv.gui_input.connect(func(ev):
-		if _is_mobile_environment():
-			if (ev is InputEventScreenTouch and ev.pressed) or (ev is InputEventMouseButton and ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT):
-				_open_mobile_text_prompt(input_srv, "Nhập địa chỉ WebSocket Server:", 150)
-				get_viewport().set_input_as_handled()
-	)
-	server_cfg_row.add_child(input_srv)
-
-	var btn_edit_srv = _create_clean_button("✏ SỬA", Color(0.3, 0.85, 0.7), Vector2(55, 26), 10)
-	btn_edit_srv.pressed.connect(func():
-		_open_mobile_text_prompt(input_srv, "Nhập địa chỉ WebSocket Server:", 150)
-	)
-	server_cfg_row.add_child(btn_edit_srv)
-
-	var btn_localhost = _create_clean_button("LOCALHOST", Color(0.8, 0.8, 0.8), Vector2(85, 26), 10)
-	btn_localhost.pressed.connect(func():
-		input_srv.text = "ws://127.0.0.1:8080"
-		if net_manager:
-			net_manager.set_custom_server_url("ws://127.0.0.1:8080")
-	)
-	server_cfg_row.add_child(btn_localhost)
-
-	var btn_render = _create_clean_button("RENDER CLOUD", Color(0.3, 0.8, 0.9), Vector2(100, 26), 10)
-	btn_render.pressed.connect(func():
-		input_srv.text = "wss://kaiser-shuttle-server.onrender.com"
-		if net_manager:
-			net_manager.set_custom_server_url("wss://kaiser-shuttle-server.onrender.com")
-	)
-	server_cfg_row.add_child(btn_render)
+	var btn_spec = _create_clean_button("👁 XEM TRẬN", Color(0.85, 0.45, 0.95), Vector2(110, 38), 12)
+	btn_spec.pressed.connect(_on_spectate_room)
+	join_act_row.add_child(btn_spec)
+	jv.add_child(join_act_row)
 	
-	# Action buttons & Countdown row
-	var action_center = VBoxContainer.new()
-	action_center.alignment = BoxContainer.ALIGNMENT_CENTER
-	action_center.add_theme_constant_override("separation", 6)
-	vbox.add_child(action_center)
+	# 4. BOTTOM BAR: Back button + Start Match + Countdown
+	var btm_row = HBoxContainer.new()
+	btm_row.alignment = BoxContainer.ALIGNMENT_CENTER
+	btm_row.add_theme_constant_override("separation", 16)
+	vbox.add_child(btm_row)
 	
-	pvp_countdown_lbl = Label.new()
-	pvp_countdown_lbl.text = ""
-	pvp_countdown_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	pvp_countdown_lbl.add_theme_font_size_override("font_size", 20)
-	pvp_countdown_lbl.modulate = Color(1.0, 0.9, 0.2)
-	pvp_countdown_lbl.visible = false
-	action_center.add_child(pvp_countdown_lbl)
-	
-	btn_pvp_start = _create_clean_button("▶ BẮT ĐẦU TRẬN ĐẤU (START MATCH)", Color(0.98, 0.85, 0.25), Vector2(340, 46), 15)
-	btn_pvp_start.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	btn_pvp_start.visible = false
-	btn_pvp_start.pressed.connect(_on_host_press_start_match)
-	action_center.add_child(btn_pvp_start)
-	
-	var btn_back = _create_clean_button("QUAY LẠI TRANG CHÍNH", Color(0.70, 0.70, 0.75), Vector2(220, 36), 12)
-	btn_back.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	var btn_back = _create_clean_button("← QUAY LẠI", Color(0.65, 0.70, 0.78), Vector2(120, 36), 12)
 	btn_back.pressed.connect(func():
 		if net_manager:
 			net_manager.disconnect_peer()
 		switch_state(MenuState.TITLE)
 	)
-	action_center.add_child(btn_back)
-
+	btm_row.add_child(btn_back)
+	
+	btn_pvp_start = _create_clean_button("▶ BẮT ĐẦU TRẬN ĐẤU", Color(1.0, 0.85, 0.25), Vector2(280, 42), 15)
+	btn_pvp_start.visible = false
+	btn_pvp_start.pressed.connect(_on_host_press_start_match)
+	btm_row.add_child(btn_pvp_start)
+	
+	pvp_countdown_lbl = Label.new()
+	pvp_countdown_lbl.text = ""
+	pvp_countdown_lbl.add_theme_font_size_override("font_size", 18)
+	pvp_countdown_lbl.modulate = Color(1.0, 0.9, 0.2)
+	pvp_countdown_lbl.visible = false
+	btm_row.add_child(pvp_countdown_lbl)
 func _update_pvp_controls() -> void:
 	for cid in pvp_char_btns:
 		var b = pvp_char_btns[cid]
