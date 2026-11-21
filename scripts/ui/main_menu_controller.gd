@@ -266,40 +266,25 @@ func _create_tex_icon(texture: Texture2D, target_size: Vector2) -> TextureRect:
 	tr.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	return tr
 
-func _create_liquid_glass_panel(box_size: Vector2, corner_rad: float = 0.08) -> PanelContainer:
+func _create_spike_translucent_panel(box_size: Vector2, corner_r: int = 12, border_col: Color = Color(0.35, 0.50, 0.70, 0.50)) -> PanelContainer:
 	var pc = PanelContainer.new()
 	pc.custom_minimum_size = box_size
 	pc.size = box_size
 	
 	var sb = StyleBoxFlat.new()
-	sb.bg_color = Color(0.08, 0.11, 0.17, 0.92)
+	# Nền bán trong suốt chuẩn The Spike: Nhìn xuyên thấu mờ ảo bối cảnh sân đấu phía sau
+	sb.bg_color = Color(0.07, 0.10, 0.15, 0.65)
 	sb.border_width_left = 1
 	sb.border_width_top = 1
 	sb.border_width_right = 1
 	sb.border_width_bottom = 1
-	sb.border_color = Color(0.40, 0.65, 0.95, 0.60)
-	sb.corner_radius_top_left = 14
-	sb.corner_radius_top_right = 14
-	sb.corner_radius_bottom_right = 14
-	sb.corner_radius_bottom_left = 14
-	# Soft natural shadow that never clips
-	sb.shadow_color = Color(0.0, 0.0, 0.0, 0.35)
-	sb.shadow_size = 6
-	sb.shadow_offset = Vector2(0, 3)
+	sb.border_color = border_col
+	sb.corner_radius_top_left = corner_r
+	sb.corner_radius_top_right = corner_r
+	sb.corner_radius_bottom_right = corner_r
+	sb.corner_radius_bottom_left = corner_r
+	sb.shadow_size = 0 # Hoàn toàn không bị xén bóng đổ
 	pc.add_theme_stylebox_override("panel", sb)
-	
-	# Material Liquid Glass Shader
-	var mat = ShaderMaterial.new()
-	mat.shader = SHADER_LIQUID_GLASS
-	mat.set_shader_parameter("corner_radius", corner_rad)
-	mat.set_shader_parameter("glass_tint_opacity", 0.86)
-	mat.set_shader_parameter("glass_tint_color", Color(0.07, 0.10, 0.15, 1.0))
-	mat.set_shader_parameter("refraction_strength", 0.02)
-	mat.set_shader_parameter("chromatic_aberration", 0.012)
-	mat.set_shader_parameter("rim_light_intensity", 0.85)
-	mat.set_shader_parameter("rim_light_color", Color(0.85, 0.95, 1.0, 1.0))
-	pc.material = mat
-	
 	return pc
 
 func _build_ui() -> void:
@@ -315,11 +300,11 @@ func _build_ui() -> void:
 	global_bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(global_bg)
 	
-	# Dark Frosted Vignette
+	# Light Vignette để làm nổi bật bối cảnh sân đấu phía sau (The Spike Translucent Style)
 	var global_tint = ColorRect.new()
 	global_tint.custom_minimum_size = Vector2(1280, 720)
 	global_tint.size = Vector2(1280, 720)
-	global_tint.color = Color(0.06, 0.08, 0.12, 0.65)
+	global_tint.color = Color(0.02, 0.05, 0.10, 0.25)
 	global_tint.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(global_tint)
 	
@@ -690,7 +675,7 @@ func _build_lobby_panel() -> void:
 	hero_icon_center.mouse_filter = Control.MOUSE_FILTER_PASS
 	hero_standee.add_child(hero_icon_center)
 	
-	var hero_card = _create_liquid_glass_panel(Vector2(260, 340), 0.08)
+	var hero_card = _create_spike_translucent_panel(Vector2(260, 340), 14, Color(1.0, 0.82, 0.25, 0.70))
 	hero_card.mouse_filter = Control.MOUSE_FILTER_PASS
 	hero_icon_center.add_child(hero_card)
 	
@@ -835,7 +820,7 @@ func _build_lobby_panel() -> void:
 	cta_box.add_child(btn_row)
 
 func _create_widget_card(title: String, body: String, col: Color) -> PanelContainer:
-	var p = _create_liquid_glass_panel(Vector2(280, 110), 0.08)
+	var p = _create_spike_translucent_panel(Vector2(280, 110), 10, Color(col.r, col.g, col.b, 0.45))
 	
 	var m = MarginContainer.new()
 	m.add_theme_constant_override("margin_left", 14)
@@ -983,7 +968,7 @@ func _build_match_select_panel() -> void:
 	))
 
 func _create_mode_card_tex(title: String, tag: String, tex: Texture2D, col: Color, desc: String, status_str: String, is_locked: bool, on_click: Callable) -> PanelContainer:
-	var p = _create_liquid_glass_panel(Vector2(250, 480), 0.08)
+	var p = _create_spike_translucent_panel(Vector2(250, 480), 14, Color(col.r, col.g, col.b, 0.50))
 	p.mouse_filter = Control.MOUSE_FILTER_PASS
 	
 	var m = MarginContainer.new()
@@ -1047,7 +1032,7 @@ func _build_match_setup_panel() -> void:
 	setup_panel.visible = false
 	add_child(setup_panel)
 	
-	var setup_box = _create_liquid_glass_panel(Vector2(1040, 560), 0.05)
+	var setup_box = _create_spike_translucent_panel(Vector2(1040, 560), 12, Color(0.35, 0.50, 0.75, 0.55))
 	setup_box.position = Vector2(120, 85)
 	setup_box.mouse_filter = Control.MOUSE_FILTER_PASS
 	setup_panel.add_child(setup_box)
@@ -1189,7 +1174,7 @@ func _build_pvp_panel() -> void:
 	pvp_panel.visible = false
 	add_child(pvp_panel)
 	
-	var pvp_box = _create_liquid_glass_panel(Vector2(1040, 560), 0.05)
+	var pvp_box = _create_spike_translucent_panel(Vector2(1040, 560), 12, Color(0.25, 0.85, 0.75, 0.50))
 	pvp_box.position = Vector2(120, 85)
 	pvp_box.mouse_filter = Control.MOUSE_FILTER_PASS
 	pvp_panel.add_child(pvp_box)
@@ -1357,7 +1342,7 @@ func _build_pvp_panel() -> void:
 	vbox.add_child(cards_row)
 	
 	# HOST CARD
-	var host_card = _create_liquid_glass_panel(Vector2(470, 230), 0.08)
+	var host_card = _create_spike_translucent_panel(Vector2(470, 230), 10, Color(0.20, 0.85, 0.65, 0.45))
 	host_card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	cards_row.add_child(host_card)
 	
@@ -1402,7 +1387,7 @@ func _build_pvp_panel() -> void:
 	hv.add_child(code_row)
 	
 	# JOIN CARD
-	var join_card = _create_liquid_glass_panel(Vector2(470, 230), 0.08)
+	var join_card = _create_spike_translucent_panel(Vector2(470, 230), 10, Color(0.35, 0.75, 1.0, 0.45))
 	join_card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	cards_row.add_child(join_card)
 	
@@ -1493,8 +1478,8 @@ func _build_roster_panel() -> void:
 	content_row.mouse_filter = Control.MOUSE_FILTER_PASS
 	roster_panel.add_child(content_row)
 	
-	# Left: Active Lineup Card with Liquid Glass
-	var active_box = _create_liquid_glass_panel(Vector2(380, 520), 0.06)
+	# Left: Active Lineup Card with The Spike Translucent Box
+	var active_box = _create_spike_translucent_panel(Vector2(380, 520), 12, Color(1.0, 0.82, 0.25, 0.65))
 	active_box.name = "ActiveBox"
 	active_box.mouse_filter = Control.MOUSE_FILTER_PASS
 	content_row.add_child(active_box)
@@ -1525,7 +1510,7 @@ func _build_roster_panel() -> void:
 	grid.add_child(_create_roster_card("sara", "SARA", "S+", "BĂNG GIÁ (WS)", Color(0.3, 0.8, 1.0), CustomIcon.IconType.FEATHER, true))
 
 func _create_roster_card(cid: String, cname: String, rarity: String, arch: String, col: Color, icon_type: CustomIcon.IconType, is_locked: bool) -> PanelContainer:
-	var p = _create_liquid_glass_panel(Vector2(250, 160), 0.08)
+	var p = _create_spike_translucent_panel(Vector2(250, 160), 10, Color(col.r, col.g, col.b, 0.50))
 	p.mouse_filter = Control.MOUSE_FILTER_PASS
 	
 	var m = MarginContainer.new()
@@ -1697,7 +1682,7 @@ func _build_quests_panel() -> void:
 	back_btn.pressed.connect(func(): switch_state(MenuState.LOBBY))
 	quests_panel.add_child(back_btn)
 	
-	var box = _create_liquid_glass_panel(Vector2(1040, 500), 0.06)
+	var box = _create_spike_translucent_panel(Vector2(1040, 500), 12, Color(0.35, 0.50, 0.75, 0.55))
 	box.position = Vector2(120, 130)
 	box.mouse_filter = Control.MOUSE_FILTER_PASS
 	quests_panel.add_child(box)
@@ -1782,7 +1767,7 @@ func _build_settings_panel() -> void:
 	back_btn.pressed.connect(func(): switch_state(MenuState.LOBBY))
 	settings_panel.add_child(back_btn)
 	
-	var set_box = _create_liquid_glass_panel(Vector2(1040, 520), 0.05)
+	var set_box = _create_spike_translucent_panel(Vector2(1040, 520), 12, Color(0.35, 0.50, 0.75, 0.55))
 	set_box.position = Vector2(120, 125)
 	set_box.mouse_filter = Control.MOUSE_FILTER_PASS
 	settings_panel.add_child(set_box)
@@ -2029,7 +2014,7 @@ func _create_stepped_volume_row(label_text: String, init_step: int, on_step_chan
 # ==========================================================
 func _create_character_card(cid: String) -> PanelContainer:
 	var data = CHAR_DATA[cid]
-	var p = _create_liquid_glass_panel(Vector2(310, 335), 0.08)
+	var p = _create_spike_translucent_panel(Vector2(310, 335), 10, Color(data["color"].r, data["color"].g, data["color"].b, 0.50))
 	p.mouse_filter = Control.MOUSE_FILTER_PASS
 	
 	var m = MarginContainer.new()
