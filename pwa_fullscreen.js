@@ -43,10 +43,9 @@
 
     // -------------------------------------------------------------
     // 2. Mobile Auto-Fullscreen & Auto-Landscape (Xoay Ngang & Toàn Màn Hình Tự Động)
-    // "Mới vào thì tự full màn hình và xoay ngang luôn, không đợi người dùng tự bấm full"
     // -------------------------------------------------------------
     var isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) ||
-                   (navigator.maxTouchPoints && navigator.maxTouchPoints > 2);
+                   (navigator.maxTouchPoints && navigator.maxTouchPoints > 1);
 
     function enterFullscreenAndLandscape() {
         var docEl = document.documentElement;
@@ -89,6 +88,82 @@
         }
     };
 
+    // -------------------------------------------------------------
+    // 2b. Orientation Guard: Thông báo và khóa xoay màn hình tự động
+    // -------------------------------------------------------------
+    function setupOrientationGuard() {
+        try {
+            var style = document.createElement('style');
+            style.innerHTML = [
+                '#kaiser_orientation_prompt {',
+                '  position: fixed;',
+                '  top: 0; left: 0; width: 100vw; height: 100vh;',
+                '  background: radial-gradient(circle at center, #111a2e 0%, #060911 100%);',
+                '  z-index: 2147483647;',
+                '  display: none;',
+                '  flex-direction: column;',
+                '  align-items: center;',
+                '  justify-content: center;',
+                '  text-align: center;',
+                '  color: #ffffff;',
+                '  padding: 24px;',
+                '  box-sizing: border-box;',
+                '  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;',
+                '}',
+                '@media screen and (orientation: portrait) {',
+                '  #kaiser_orientation_prompt { display: flex !important; }',
+                '}',
+                '@media screen and (orientation: landscape) {',
+                '  #kaiser_orientation_prompt { display: none !important; }',
+                '}',
+                '@keyframes kaiserRotatePhone {',
+                '  0% { transform: rotate(0deg); }',
+                '  30% { transform: rotate(0deg); }',
+                '  60% { transform: rotate(-90deg); }',
+                '  100% { transform: rotate(-90deg); }',
+                '}',
+                '.kaiser-phone-anim {',
+                '  font-size: 64px;',
+                '  display: inline-block;',
+                '  animation: kaiserRotatePhone 2s ease-in-out infinite alternate;',
+                '  margin-bottom: 16px;',
+                '}',
+                '.kaiser-guard-title {',
+                '  font-size: 22px; font-weight: 800; color: #fbbf24; margin-bottom: 10px;',
+                '  letter-spacing: 0.5px; text-transform: uppercase;',
+                '}',
+                '.kaiser-guard-desc {',
+                '  font-size: 14px; color: #cbd5e1; max-width: 320px; line-height: 1.5; margin-bottom: 24px;',
+                '}',
+                '.kaiser-guard-btn {',
+                '  background: linear-gradient(135deg, #f59e0b, #d97706);',
+                '  color: #fff; font-size: 15px; font-weight: 700; padding: 12px 28px;',
+                '  border: none; border-radius: 8px; box-shadow: 0 4px 15px rgba(245, 158, 11, 0.4);',
+                '  cursor: pointer;',
+                '}'
+            ].join('\n');
+            document.head.appendChild(style);
+
+            var overlay = document.createElement('div');
+            overlay.id = 'kaiser_orientation_prompt';
+            overlay.innerHTML = [
+                '<div class="kaiser-phone-anim">📱</div>',
+                '<div class="kaiser-guard-title">VUI LÒNG XOAY NGANG MÀN HÌNH</div>',
+                '<div class="kaiser-guard-desc">Kaiser Shuttle được tối ưu hóa cho màn hình nằm ngang. Hãy bật tự động xoay và nghiêng điện thoại để thi đấu!</div>',
+                '<button class="kaiser-guard-btn" onclick="kaiserToggleFullscreen()">⛶ BẬT TOÀN MÀN HÌNH & XOAY NGANG</button>'
+            ].join('\n');
+            document.body.appendChild(overlay);
+        } catch(e) {
+            console.warn('[Kaiser] Setup orientation guard:', e);
+        }
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', setupOrientationGuard);
+    } else {
+        setupOrientationGuard();
+    }
+
     if (isMobile) {
         // A. Thử gọi ngay khi trang vừa tải xong
         if (document.readyState === 'complete' || document.readyState === 'interactive') {
@@ -98,25 +173,21 @@
             window.addEventListener('load', enterFullscreenAndLandscape, { once: true });
         }
 
-        // B. Do nhiều trình duyệt (Mobile Chrome / Safari) yêu cầu ít nhất 1 cử chỉ chạm (User Gesture)
-        // để cấp quyền Fullscreen & Screen Orientation Lock:
-        // Đặt bộ bắt chạm trên toàn màn hình với capture: true để NGAY KHI NGƯỜI DÙNG CHẠM PHÁT ĐẦU TIÊN
-        // (chạm màn hình để chơi hay bấm nút) -> Lập tức bung Fullscreen và xoay ngang tức thì!
-        var autoFsDone = false;
+        // B. Chạm bất kỳ đâu trên màn hình sẽ kích hoạt toàn màn hình và xoay ngang
         function triggerImmediateAutoFullscreen() {
-            if (autoFsDone) return;
-            autoFsDone = true;
-            enterFullscreenAndLandscape();
+            var isFS = document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement;
+            if (!isFS) {
+                enterFullscreenAndLandscape();
+            }
 
-            // Đảm bảo canvas nhận tiêu điểm ngay để nhận phím/chạm
             var cv = document.querySelector('canvas') || document.getElementById('canvas');
             if (cv) {
                 try { cv.focus(); } catch(e) {}
             }
         }
 
-        ['pointerdown', 'touchstart', 'touchend', 'click', 'keydown'].forEach(function(evt) {
-            window.addEventListener(evt, triggerImmediateAutoFullscreen, { capture: true, passive: true });
+        ['pointerdown', 'touchstart', 'touchend', 'click'].forEach(function(evt) {
+            window.addEventListener(evt, triggerImmediateAutoFullscreen, { passive: true });
         });
     }
 

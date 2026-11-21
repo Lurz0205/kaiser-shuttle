@@ -445,6 +445,10 @@ func _ready() -> void:
 		
 	# Tự động nhận diện thiết bị: Mặc định TẮT trên Desktop/PC, chỉ BẬT trên Mobile/Touchscreen
 	var is_mobile = OS.has_feature("mobile") or OS.has_feature("web_android") or OS.has_feature("web_ios")
+	if OS.has_feature("web"):
+		var js_mobile = JavaScriptBridge.eval("Boolean(/Android|iPhone|iPad|iPod/i.test(navigator.userAgent) || (navigator.maxTouchPoints && navigator.maxTouchPoints > 1))")
+		if js_mobile == true:
+			is_mobile = true
 	touch_controls_enabled = is_mobile
 	
 	# Nút Toàn Màn Hình (Fullscreen) ở góc trên bên phải màn hình (Căn chỉnh tuyệt đối, không đè nút Cài đặt)
@@ -498,6 +502,7 @@ func _ready() -> void:
 	virtual_touch_pad.name = "VirtualTouchPad"
 	virtual_touch_pad.set_target_player(player)
 	virtual_touch_pad.shot_triggered.connect(_on_touch_shot_triggered)
+	virtual_touch_pad.jump_triggered.connect(_on_touch_jump_triggered)
 	$HUD.add_child(virtual_touch_pad)
 	virtual_touch_pad.visible = false
 	
@@ -1814,16 +1819,35 @@ func _process_serve_state() -> void:
 				_execute_serve("player", "drop")
 
 
+func _on_touch_jump_triggered() -> void:
+	if main_menu and main_menu.visible:
+		return
+	if is_umpire_speaking:
+		return
+	if player and is_instance_valid(player):
+		player.touch_jump_pressed = true
+
 func _on_touch_shot_triggered(shot_type: String) -> void:
 	if main_menu and main_menu.visible:
 		return
-	if is_umpire_speaking or is_serve_in_progress or is_point_transition_active or serve_cooldown > 0.0:
+	if is_umpire_speaking:
 		return
+		
+	# 1. Trong pha giao cầu:
 	if current_state == MatchState.SERVE and current_server == "player":
-		if shot_type == "clear" or shot_type == "drop":
-			_execute_serve("player", shot_type)
-			if is_pvp_active and net_manager:
-				net_manager.send_packet({"t": "serve", "shot_type": shot_type})
+		if not is_serve_in_progress and not is_point_transition_active and serve_cooldown <= 0.0:
+			if shot_type == "clear" or shot_type == "drop":
+				_execute_serve("player", shot_type)
+				if is_pvp_active and net_manager:
+					net_manager.send_packet({"t": "serve", "shot_type": shot_type})
+		return
+		
+	# 2. Trong pha rally (đang đánh cầu bình thường):
+	if player and is_instance_valid(player):
+		if shot_type == "slide":
+			player.start_slide(1.0 if player.court_side == "player" else -1.0)
+		else:
+			player.touch_shot_pressed = shot_type
 
 
 func _setup_serve(server: String) -> void:

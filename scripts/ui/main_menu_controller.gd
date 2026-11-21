@@ -218,6 +218,8 @@ func _ready() -> void:
 		vp.size_changed.connect(_on_viewport_size_changed)
 		_on_viewport_size_changed()
 
+var portrait_warning_panel: Control = null
+
 func _on_viewport_size_changed() -> void:
 	if not is_inside_tree() or get_viewport() == null:
 		return
@@ -228,6 +230,78 @@ func _on_viewport_size_changed() -> void:
 		global_tint.set_deferred("size", vp_size)
 	if top_bar:
 		top_bar.set_deferred("size", Vector2(vp_size.x, top_bar.size.y))
+	_check_orientation_guard(vp_size)
+
+func _check_orientation_guard(vp_size: Vector2) -> void:
+	# Nếu màn hình là chiều dọc (chiều rộng nhỏ hơn chiều cao hoặc tỉ lệ < 1.15)
+	var is_portrait = vp_size.x > 0 and vp_size.y > 0 and (vp_size.x < vp_size.y * 1.15)
+	if is_portrait:
+		if portrait_warning_panel == null:
+			_build_portrait_warning_overlay()
+		if portrait_warning_panel:
+			portrait_warning_panel.visible = true
+	else:
+		if portrait_warning_panel:
+			portrait_warning_panel.visible = false
+
+func _build_portrait_warning_overlay() -> void:
+	portrait_warning_panel = Panel.new()
+	portrait_warning_panel.name = "PortraitWarningOverlay"
+	portrait_warning_panel.set_anchors_preset(Control.PRESET_FULL_RECT)
+	portrait_warning_panel.anchor_right = 1.0
+	portrait_warning_panel.anchor_bottom = 1.0
+	portrait_warning_panel.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	portrait_warning_panel.grow_vertical = Control.GROW_DIRECTION_BOTH
+	portrait_warning_panel.z_index = 300
+	
+	var sb = StyleBoxFlat.new()
+	sb.bg_color = Color(0.04, 0.07, 0.12, 0.98)
+	portrait_warning_panel.add_theme_stylebox_override("panel", sb)
+	
+	var center = CenterContainer.new()
+	center.set_anchors_preset(Control.PRESET_FULL_RECT)
+	center.anchor_right = 1.0
+	center.anchor_bottom = 1.0
+	portrait_warning_panel.add_child(center)
+	
+	var vbox = VBoxContainer.new()
+	vbox.alignment = BoxContainer.ALIGNMENT_CENTER
+	vbox.add_theme_constant_override("separation", 14)
+	center.add_child(vbox)
+	
+	var icon_lbl = Label.new()
+	icon_lbl.text = "📱 🔄"
+	icon_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	icon_lbl.add_theme_font_size_override("font_size", 52)
+	vbox.add_child(icon_lbl)
+	
+	var title_lbl = Label.new()
+	title_lbl.text = "VUI LÒNG XOAY NGANG MÀN HÌNH"
+	title_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	title_lbl.add_theme_font_size_override("font_size", 20)
+	title_lbl.modulate = Color(1.0, 0.85, 0.3)
+	vbox.add_child(title_lbl)
+	
+	var desc_lbl = Label.new()
+	desc_lbl.text = "Kaiser Shuttle là game thể thao yêu cầu góc nhìn sân đấu nằm ngang.\nHãy bật tính năng tự xoay và nghiêng ngang điện thoại!"
+	desc_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	desc_lbl.add_theme_font_size_override("font_size", 13)
+	desc_lbl.modulate = Color(0.85, 0.9, 0.95, 0.85)
+	vbox.add_child(desc_lbl)
+	
+	var btn_fs = Button.new()
+	btn_fs.text = "⛶ TOÀN MÀN HÌNH & XOAY NGANG"
+	btn_fs.custom_minimum_size = Vector2(240, 42)
+	btn_fs.focus_mode = Control.FOCUS_NONE
+	btn_fs.pressed.connect(func():
+		if OS.has_feature("web"):
+			JavaScriptBridge.eval("window.kaiserToggleFullscreen && window.kaiserToggleFullscreen();")
+		else:
+			DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_FULLSCREEN)
+	)
+	vbox.add_child(btn_fs)
+	
+	add_child(portrait_warning_panel)
 
 func _process(delta: float) -> void:
 	# Web Mobile text sync

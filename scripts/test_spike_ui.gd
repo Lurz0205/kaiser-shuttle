@@ -107,5 +107,62 @@ func _init() -> void:
 	assert(menu.global_bg.texture == menu.TEX_LOBBY_BG, "Lobby screen must use lobby_locker_room.png")
 	print("✓ Test 13: Distinct backgrounds for Title vs Lobby verified")
 	
-	print("=== ALL 11 ADVANCED UI & AI TESTS PASSED 100% ===")
+	# 12. Test Orientation Guard Overlay
+	menu._check_orientation_guard(Vector2(400, 800))
+	assert(menu.portrait_warning_panel != null and menu.portrait_warning_panel.visible, "Orientation guard should be visible in portrait")
+	menu._check_orientation_guard(Vector2(1280, 720))
+	assert(not menu.portrait_warning_panel.visible, "Orientation guard should be hidden in landscape")
+	print("✓ Test 14: Mobile Portrait Orientation Guard verified")
+	
+	# 13. Test Responsive Touchpad & Large Action Buttons
+	var test_touch_pad = VirtualTouchPad.new()
+	root.add_child(test_touch_pad)
+	test_touch_pad._ready()
+	test_touch_pad._update_layout()
+	
+	# Verify track size & position on screen
+	assert(test_touch_pad.track_rect.size.x >= 280.0, "Track width should be at least 280px")
+	assert(test_touch_pad.track_rect.position.x >= 0, "Track should be inside screen on left")
+	assert(test_touch_pad.knob_radius >= 38.0, "Knob radius should be at least 38px")
+	
+	# Verify button positions anchored to bottom-right
+	assert(test_touch_pad.btn_l_radius >= 62.0, "Button L radius should be large (62px+)")
+	assert(test_touch_pad.btn_j_radius >= 48.0, "Button J radius should be large (48px+)")
+	assert(test_touch_pad.btn_k_radius >= 48.0, "Button K radius should be large (48px+)")
+	assert(test_touch_pad.btn_slide_radius >= 48.0, "Button Slide radius should be large (48px+)")
+	
+	assert(test_touch_pad.btn_l_center.x > test_touch_pad.btn_j_center.x, "Button L is to the right of J")
+	assert(test_touch_pad.btn_j_center.x > test_touch_pad.btn_slide_center.x, "Button J is to the right of Slide")
+	assert(test_touch_pad.btn_slide_center.x > test_touch_pad.track_rect.end.x, "Action buttons do not collide with left movement track")
+	
+	# Test touch action signals
+	var received_shot = [""]
+	test_touch_pad.shot_triggered.connect(func(st): received_shot[0] = st)
+	var received_jump = [false]
+	test_touch_pad.jump_triggered.connect(func(): received_jump[0] = true)
+	
+	# Simulate touching Drop (J)
+	test_touch_pad._handle_touch(1, true, test_touch_pad.btn_j_center)
+	assert(received_shot[0] == "drop", "Drop button touch must emit drop shot")
+	test_touch_pad._handle_touch(1, false, test_touch_pad.btn_j_center)
+	
+	# Simulate touching Clear (K)
+	test_touch_pad._handle_touch(2, true, test_touch_pad.btn_k_center)
+	assert(received_shot[0] == "clear", "Clear button touch must emit clear shot")
+	test_touch_pad._handle_touch(2, false, test_touch_pad.btn_k_center)
+	
+	# Simulate touching Slide
+	test_touch_pad._handle_touch(3, true, test_touch_pad.btn_slide_center)
+	assert(received_shot[0] == "slide", "Slide button touch must emit slide shot")
+	test_touch_pad._handle_touch(3, false, test_touch_pad.btn_slide_center)
+	
+	# Simulate touching Jump (L)
+	test_touch_pad._handle_touch(4, true, test_touch_pad.btn_l_center)
+	assert(received_jump[0], "Jump button touch must emit jump")
+	test_touch_pad._handle_touch(4, false, test_touch_pad.btn_l_center)
+	
+	test_touch_pad.queue_free()
+	print("✓ Test 15: Responsive Touchpad layout and 100% action triggering verified")
+	
+	print("=== ALL 15 ADVANCED UI, MOBILE CONTROLS & ORIENTATION TESTS PASSED 100% ===")
 	quit(0)
