@@ -4,10 +4,22 @@ extends Control
 # ==========================================================
 # MAIN MENU & LOBBY CONTROLLER (THE SPIKE CROSS STYLE)
 # Tinh tế, sang trọng, mang đậm phong cách sảnh thể thao console/mobile
-# 100% Custom Vector Icons, Glassmorphism mượt mà 60-120 FPS
+# 100% Pre-rendered Studio PNG Icons, Liquid Glass Shaders, 60-120 FPS
 # ==========================================================
 
 const CustomIcon = preload("res://scripts/ui/custom_icon.gd")
+
+# Studio Pre-rendered High-Quality Icons (0% Vector CPU lag, 100% Anti-Aliased)
+const TEX_SHUTTLECOCK = preload("res://assets/icons/icon_shuttlecock_gold.png")
+const TEX_PADLOCK = preload("res://assets/icons/icon_padlock_gold.png")
+const TEX_COIN = preload("res://assets/icons/icon_coin_gold.png")
+const TEX_AVATAR = preload("res://assets/icons/icon_avatar_pro.png")
+const TEX_PVP = preload("res://assets/icons/icon_duel_pvp.png")
+const TEX_TROPHY = preload("res://assets/icons/icon_trophy_gold.png")
+const TEX_GEAR = preload("res://assets/icons/icon_gear_silver.png")
+
+# Liquid Glass WebGL-inspired Shader
+const SHADER_LIQUID_GLASS = preload("res://shaders/liquid_glass.gdshader")
 
 signal start_match_requested(player_char: String, rival_char: String, difficulty: int, target_points: int, match_sets: int)
 signal start_pvp_match_requested(room_code: String, is_host: bool, player_char: String, target_points: int, match_sets: int, first_server: String, opponent_char: String, player_name: String, opponent_name: String)
@@ -49,7 +61,7 @@ var pvp_selected_sets: int = 1
 var pvp_first_server: String = "p1"
 var pvp_is_host: bool = false
 var pvp_is_connected: bool = false
-var pvp_player_name: String = "PLAYER 1"
+var pvp_player_name: String = "BaoHodaka"
 var pvp_opponent_name: String = "PLAYER 2"
 var pvp_name_input: LineEdit
 var btn_pvp_start: Button
@@ -81,7 +93,7 @@ var settings_panel: Control
 
 # Top Bar Widgets
 var top_bar: Control
-var lbl_top_player_name: Label
+var top_name_input: LineEdit
 var nav_tabs: Dictionary = {}
 
 # Hero Standee Node
@@ -102,9 +114,6 @@ var btn_pts_15: Button
 var btn_pts_21: Button
 var btn_sets_1: Button
 var btn_sets_3: Button
-
-# Settings stepped bars
-var stepped_vol_bars: Dictionary = {}
 
 const CHAR_DATA = {
 	"nishikawa": {
@@ -222,9 +231,11 @@ func switch_state(new_state: MenuState) -> void:
 	if quests_panel: quests_panel.visible = (new_state == MenuState.QUESTS)
 	if settings_panel: settings_panel.visible = (new_state == MenuState.SETTINGS)
 	
-	# Top bar visibility (Visible on all states except TITLE)
+	# Top bar visibility (Always on top on all states except TITLE)
 	if top_bar:
 		top_bar.visible = (new_state != MenuState.TITLE)
+		if top_bar.visible:
+			top_bar.move_to_front()
 		_update_nav_tab_indicators()
 		
 	# Refresh Hero Standee when entering lobby
@@ -245,6 +256,52 @@ func _update_nav_tab_indicators() -> void:
 		
 		btn.modulate = Color(1.0, 0.85, 0.3) if is_active else Color(0.75, 0.82, 0.90)
 
+func _create_tex_icon(texture: Texture2D, target_size: Vector2) -> TextureRect:
+	var tr = TextureRect.new()
+	tr.texture = texture
+	tr.custom_minimum_size = target_size
+	tr.size = target_size
+	tr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	tr.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	tr.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	return tr
+
+func _create_liquid_glass_panel(box_size: Vector2, corner_rad: float = 0.08) -> PanelContainer:
+	var pc = PanelContainer.new()
+	pc.custom_minimum_size = box_size
+	pc.size = box_size
+	
+	var sb = StyleBoxFlat.new()
+	sb.bg_color = Color(0.08, 0.11, 0.17, 0.92)
+	sb.border_width_left = 1
+	sb.border_width_top = 1
+	sb.border_width_right = 1
+	sb.border_width_bottom = 1
+	sb.border_color = Color(0.40, 0.65, 0.95, 0.60)
+	sb.corner_radius_top_left = 14
+	sb.corner_radius_top_right = 14
+	sb.corner_radius_bottom_right = 14
+	sb.corner_radius_bottom_left = 14
+	# Soft natural shadow that never clips
+	sb.shadow_color = Color(0.0, 0.0, 0.0, 0.35)
+	sb.shadow_size = 6
+	sb.shadow_offset = Vector2(0, 3)
+	pc.add_theme_stylebox_override("panel", sb)
+	
+	# Material Liquid Glass Shader
+	var mat = ShaderMaterial.new()
+	mat.shader = SHADER_LIQUID_GLASS
+	mat.set_shader_parameter("corner_radius", corner_rad)
+	mat.set_shader_parameter("glass_tint_opacity", 0.86)
+	mat.set_shader_parameter("glass_tint_color", Color(0.07, 0.10, 0.15, 1.0))
+	mat.set_shader_parameter("refraction_strength", 0.02)
+	mat.set_shader_parameter("chromatic_aberration", 0.012)
+	mat.set_shader_parameter("rim_light_intensity", 0.85)
+	mat.set_shader_parameter("rim_light_color", Color(0.85, 0.95, 1.0, 1.0))
+	pc.material = mat
+	
+	return pc
+
 func _build_ui() -> void:
 	# ----------------------------------------------------
 	# GLOBAL BACKGROUND (Sân đấu & Phòng thay đồ thể thao cao cấp)
@@ -255,6 +312,7 @@ func _build_ui() -> void:
 	global_bg.size = Vector2(1280, 720)
 	global_bg.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	global_bg.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+	global_bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(global_bg)
 	
 	# Dark Frosted Vignette
@@ -262,76 +320,83 @@ func _build_ui() -> void:
 	global_tint.custom_minimum_size = Vector2(1280, 720)
 	global_tint.size = Vector2(1280, 720)
 	global_tint.color = Color(0.06, 0.08, 0.12, 0.65)
+	global_tint.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(global_tint)
 	
 	# ----------------------------------------------------
-	# 1. TOP BAR (PROFILE + CURRENCIES + NAVIGATION)
-	# ----------------------------------------------------
-	_build_top_bar()
-	
-	# ----------------------------------------------------
-	# 2. TITLE SCREEN (Press Any Key to Start)
+	# 1. TITLE SCREEN (Press Any Key to Start)
 	# ----------------------------------------------------
 	_build_title_panel()
 	
 	# ----------------------------------------------------
-	# 3. MAIN LOBBY SCREEN (Hero Standee + Widgets + CTA)
+	# 2. MAIN LOBBY SCREEN (Hero Standee + Widgets + CTA)
 	# ----------------------------------------------------
 	_build_lobby_panel()
 	
 	# ----------------------------------------------------
-	# 4. MATCH SELECTION PANEL (The Spike Horizontal Cards)
+	# 3. MATCH SELECTION PANEL (The Spike Horizontal Cards)
 	# ----------------------------------------------------
 	_build_match_select_panel()
 	
 	# ----------------------------------------------------
-	# 5. MATCH SETUP PANEL (AI Rival configuration)
+	# 4. MATCH SETUP PANEL (AI Rival configuration)
 	# ----------------------------------------------------
 	_build_match_setup_panel()
 	
 	# ----------------------------------------------------
-	# 6. PVP LOBBY PANEL
+	# 5. PVP LOBBY PANEL
 	# ----------------------------------------------------
 	_build_pvp_panel()
 	
 	# ----------------------------------------------------
-	# 7. ROSTER PANEL (Quản lý cầu thủ)
+	# 6. ROSTER PANEL (Quản lý cầu thủ)
 	# ----------------------------------------------------
 	_build_roster_panel()
 	
 	# ----------------------------------------------------
-	# 8. SHOP & QUESTS PANELS (Locked Features)
+	# 7. SHOP & QUESTS PANELS (Locked Features)
 	# ----------------------------------------------------
 	_build_shop_panel()
 	_build_quests_panel()
 	
 	# ----------------------------------------------------
-	# 9. SETTINGS PANEL (The Spike Stepped Bars)
+	# 8. SETTINGS PANEL (The Spike Stepped Bars)
 	# ----------------------------------------------------
 	_build_settings_panel()
 
+	# ----------------------------------------------------
+	# 9. TOP BAR (ALWAYS AT TOP OF Z-ORDER)
+	# ----------------------------------------------------
+	_build_top_bar()
+	top_bar.move_to_front()
+
 # ==========================================================
-# 1. TOP BAR COMPONENT
+# 1. TOP BAR COMPONENT (Z-INDEX 100, CLICK-THROUGH PROOF)
 # ==========================================================
 func _build_top_bar() -> void:
 	top_bar = Control.new()
 	top_bar.custom_minimum_size = Vector2(1280, 68)
 	top_bar.size = Vector2(1280, 68)
 	top_bar.position = Vector2.ZERO
+	top_bar.z_index = 100
+	top_bar.mouse_filter = Control.MOUSE_FILTER_PASS
 	top_bar.visible = false
 	add_child(top_bar)
 	
+	# Liquid Glass Top Bar Background
 	var bar_bg = ColorRect.new()
 	bar_bg.custom_minimum_size = Vector2(1280, 68)
 	bar_bg.size = Vector2(1280, 68)
-	bar_bg.color = Color(0.08, 0.10, 0.14, 0.85)
+	bar_bg.color = Color(0.08, 0.11, 0.16, 0.90)
+	bar_bg.mouse_filter = Control.MOUSE_FILTER_PASS
 	top_bar.add_child(bar_bg)
 	
 	var h_line = ColorRect.new()
 	h_line.custom_minimum_size = Vector2(1280, 1.5)
 	h_line.size = Vector2(1280, 1.5)
 	h_line.position = Vector2(0, 66.5)
-	h_line.color = Color(0.24, 0.32, 0.44, 0.5)
+	h_line.color = Color(0.30, 0.45, 0.70, 0.60)
+	h_line.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	top_bar.add_child(h_line)
 	
 	var m = MarginContainer.new()
@@ -339,66 +404,117 @@ func _build_top_bar() -> void:
 	m.size = Vector2(1280, 68)
 	m.add_theme_constant_override("margin_left", 20)
 	m.add_theme_constant_override("margin_right", 20)
+	m.mouse_filter = Control.MOUSE_FILTER_PASS
 	top_bar.add_child(m)
 	
 	var row = HBoxContainer.new()
 	row.alignment = BoxContainer.ALIGNMENT_BEGIN
 	row.add_theme_constant_override("separation", 16)
+	row.mouse_filter = Control.MOUSE_FILTER_PASS
 	m.add_child(row)
 	
-	# Left: Player Profile Pill
+	# Left: Player Profile Pill with Real Studio Avatar & Direct Text Input
 	var prof_box = HBoxContainer.new()
 	prof_box.add_theme_constant_override("separation", 10)
+	prof_box.mouse_filter = Control.MOUSE_FILTER_PASS
 	
-	var av_icon = CustomIcon.new(CustomIcon.IconType.USER, Vector2(36, 36), Color(1.0, 0.82, 0.25))
+	var av_icon = _create_tex_icon(TEX_AVATAR, Vector2(40, 40))
 	prof_box.add_child(av_icon)
 	
 	var name_col = VBoxContainer.new()
 	name_col.alignment = BoxContainer.ALIGNMENT_CENTER
-	name_col.add_theme_constant_override("separation", 1)
+	name_col.add_theme_constant_override("separation", 2)
+	name_col.mouse_filter = Control.MOUSE_FILTER_PASS
 	
-	var name_row = HBoxContainer.new()
-	name_row.add_theme_constant_override("separation", 6)
+	# Direct Real Name Input Field (Nhập tên thật dễ dàng, không bị đơ)
+	top_name_input = LineEdit.new()
+	top_name_input.text = pvp_player_name
+	top_name_input.custom_minimum_size = Vector2(140, 26)
+	top_name_input.max_length = 16
+	top_name_input.placeholder_text = "Nhập tên..."
+	top_name_input.mouse_filter = Control.MOUSE_FILTER_STOP
+	top_name_input.focus_mode = Control.FOCUS_ALL
 	
-	lbl_top_player_name = Label.new()
-	lbl_top_player_name.text = pvp_player_name
-	lbl_top_player_name.add_theme_font_size_override("font_size", 14)
-	lbl_top_player_name.modulate = Color.WHITE
-	name_row.add_child(lbl_top_player_name)
-	
-	var edit_btn = Button.new()
-	edit_btn.text = "✏"
-	edit_btn.focus_mode = Control.FOCUS_NONE
-	edit_btn.custom_minimum_size = Vector2(22, 22)
-	edit_btn.pressed.connect(func():
-		_open_mobile_text_prompt(pvp_name_input, "Nhập tên người chơi mới:", 12)
-		lbl_top_player_name.text = pvp_player_name
+	var sb_inp = StyleBoxFlat.new()
+	sb_inp.bg_color = Color(0.12, 0.16, 0.24, 0.85)
+	sb_inp.border_width_left = 1
+	sb_inp.border_width_top = 1
+	sb_inp.border_width_right = 1
+	sb_inp.border_width_bottom = 1
+	sb_inp.border_color = Color(1.0, 0.85, 0.35, 0.5)
+	sb_inp.corner_radius_top_left = 4
+	sb_inp.corner_radius_top_right = 4
+	sb_inp.corner_radius_bottom_right = 4
+	sb_inp.corner_radius_bottom_left = 4
+	top_name_input.add_theme_stylebox_override("normal", sb_inp)
+	top_name_input.add_theme_stylebox_override("focus", sb_inp)
+	top_name_input.add_theme_font_size_override("font_size", 13)
+	top_name_input.text_changed.connect(func(new_text: String):
+		var clean = new_text.strip_edges()
+		pvp_player_name = clean if not clean.is_empty() else "BaoHodaka"
+		_save_player_name(pvp_player_name)
+		if pvp_name_input and pvp_name_input != top_name_input:
+			pvp_name_input.text = pvp_player_name
 	)
-	name_row.add_child(edit_btn)
-	name_col.add_child(name_row)
+	name_col.add_child(top_name_input)
 	
 	var rank_lbl = Label.new()
 	rank_lbl.text = "Hạng A • Vận Động Viên Chuyên Nghiệp"
 	rank_lbl.add_theme_font_size_override("font_size", 10)
-	rank_lbl.modulate = Color(0.70, 0.78, 0.88, 0.8)
+	rank_lbl.modulate = Color(0.70, 0.80, 0.90, 0.85)
 	name_col.add_child(rank_lbl)
 	
 	prof_box.add_child(name_col)
 	row.add_child(prof_box)
 	
-	# Currencies
+	# Currencies: Gold Coin & Locked Next Feature ("chưa có cứ ổ khóa thôi")
 	row.add_child(VSeparator.new())
-	row.add_child(_create_currency_pill(CustomIcon.IconType.COIN, "20,869K", Color(1.0, 0.82, 0.25)))
-	row.add_child(_create_currency_pill(CustomIcon.IconType.TICKET, "11,177K", Color(0.35, 0.85, 1.0)))
-	row.add_child(_create_currency_pill(CustomIcon.IconType.SHUTTLECOCK, "4,744", Color(0.30, 0.95, 0.65)))
+	
+	# 1. Real Gold Coin Pill
+	row.add_child(_create_currency_pill_tex(TEX_COIN, "20,869K", Color(1.0, 0.82, 0.25)))
+	
+	# 2. Next Locked Feature Pill (Ổ khóa hoàng kim 3D)
+	var lock_pill = PanelContainer.new()
+	var sb_lp = StyleBoxFlat.new()
+	sb_lp.bg_color = Color(0.10, 0.13, 0.18, 0.85)
+	sb_lp.corner_radius_top_left = 14
+	sb_lp.corner_radius_top_right = 14
+	sb_lp.corner_radius_bottom_right = 14
+	sb_lp.corner_radius_bottom_left = 14
+	sb_lp.border_width_left = 1
+	sb_lp.border_width_top = 1
+	sb_lp.border_width_right = 1
+	sb_lp.border_width_bottom = 1
+	sb_lp.border_color = Color(0.35, 0.40, 0.50, 0.5)
+	lock_pill.add_theme_stylebox_override("panel", sb_lp)
+	
+	var lpm = MarginContainer.new()
+	lpm.add_theme_constant_override("margin_left", 8)
+	lpm.add_theme_constant_override("margin_right", 12)
+	lpm.add_theme_constant_override("margin_top", 4)
+	lpm.add_theme_constant_override("margin_bottom", 4)
+	lock_pill.add_child(lpm)
+	
+	var lph = HBoxContainer.new()
+	lph.add_theme_constant_override("separation", 6)
+	lpm.add_child(lph)
+	lph.add_child(_create_tex_icon(TEX_PADLOCK, Vector2(20, 20)))
+	var lp_lbl = Label.new()
+	lp_lbl.text = "TÍNH NĂNG MỞ RỘNG: [ 🔒 CẤP 10 ]"
+	lp_lbl.add_theme_font_size_override("font_size", 11)
+	lp_lbl.modulate = Color(0.70, 0.76, 0.85)
+	lph.add_child(lp_lbl)
+	row.add_child(lock_pill)
 	
 	var sp = Control.new()
 	sp.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	sp.mouse_filter = Control.MOUSE_FILTER_PASS
 	row.add_child(sp)
 	
-	# Top Navigation Tabs
+	# Top Navigation Tabs (Click-Through Guaranteed)
 	var tabs_row = HBoxContainer.new()
 	tabs_row.add_theme_constant_override("separation", 8)
+	tabs_row.mouse_filter = Control.MOUSE_FILTER_PASS
 	
 	var btn_home = _create_nav_tab("Trang Chủ", "lobby", func(): switch_state(MenuState.LOBBY))
 	var btn_shop = _create_nav_tab("Cửa Hàng 🔒", "shop", func(): switch_state(MenuState.SHOP))
@@ -413,7 +529,7 @@ func _build_top_bar() -> void:
 	tabs_row.add_child(btn_settings)
 	row.add_child(tabs_row)
 
-func _create_currency_pill(icon_type: CustomIcon.IconType, amount_str: String, col: Color) -> PanelContainer:
+func _create_currency_pill_tex(tex: Texture2D, amount_str: String, col: Color) -> PanelContainer:
 	var p = PanelContainer.new()
 	var sb = StyleBoxFlat.new()
 	sb.bg_color = Color(0.12, 0.15, 0.20, 0.85)
@@ -425,7 +541,7 @@ func _create_currency_pill(icon_type: CustomIcon.IconType, amount_str: String, c
 	sb.border_width_top = 1
 	sb.border_width_right = 1
 	sb.border_width_bottom = 1
-	sb.border_color = Color(col.r, col.g, col.b, 0.4)
+	sb.border_color = Color(col.r, col.g, col.b, 0.45)
 	p.add_theme_stylebox_override("panel", sb)
 	
 	var m = MarginContainer.new()
@@ -439,7 +555,7 @@ func _create_currency_pill(icon_type: CustomIcon.IconType, amount_str: String, c
 	h.add_theme_constant_override("separation", 6)
 	m.add_child(h)
 	
-	var icon = CustomIcon.new(icon_type, Vector2(18, 18), col)
+	var icon = _create_tex_icon(tex, Vector2(22, 22))
 	h.add_child(icon)
 	
 	var lbl = Label.new()
@@ -460,7 +576,8 @@ func _create_nav_tab(title: String, tab_id: String, on_click: Callable) -> Butto
 	var b = Button.new()
 	b.text = title
 	b.focus_mode = Control.FOCUS_NONE
-	b.custom_minimum_size = Vector2(96, 38)
+	b.mouse_filter = Control.MOUSE_FILTER_STOP
+	b.custom_minimum_size = Vector2(104, 38)
 	b.add_theme_font_size_override("font_size", 12)
 	
 	var sb_normal = StyleBoxFlat.new()
@@ -472,7 +589,7 @@ func _create_nav_tab(title: String, tab_id: String, on_click: Callable) -> Butto
 	b.add_theme_stylebox_override("normal", sb_normal)
 	
 	var sb_hover = sb_normal.duplicate()
-	sb_hover.bg_color = Color(0.20, 0.28, 0.40, 0.4)
+	sb_hover.bg_color = Color(0.20, 0.28, 0.40, 0.5)
 	b.add_theme_stylebox_override("hover", sb_hover)
 	b.add_theme_stylebox_override("focus", sb_hover)
 	
@@ -481,13 +598,14 @@ func _create_nav_tab(title: String, tab_id: String, on_click: Callable) -> Butto
 	return b
 
 # ==========================================================
-# 2. TITLE PANEL
+# 2. TITLE PANEL (HIGH QUALITY 3D SHUTTLECOCK ICON)
 # ==========================================================
 func _build_title_panel() -> void:
 	title_panel = Control.new()
 	title_panel.custom_minimum_size = Vector2(1280, 720)
 	title_panel.size = Vector2(1280, 720)
 	title_panel.position = Vector2.ZERO
+	title_panel.mouse_filter = Control.MOUSE_FILTER_PASS
 	add_child(title_panel)
 	
 	var center = VBoxContainer.new()
@@ -495,12 +613,14 @@ func _build_title_panel() -> void:
 	center.size = Vector2(1280, 720)
 	center.alignment = BoxContainer.ALIGNMENT_CENTER
 	center.add_theme_constant_override("separation", 16)
+	center.mouse_filter = Control.MOUSE_FILTER_PASS
 	title_panel.add_child(center)
 	
-	var top_shuttle = CustomIcon.new(CustomIcon.IconType.SHUTTLECOCK, Vector2(56, 56), Color(1.0, 0.85, 0.25))
+	# High Quality Studio Shuttlecock Image
+	var shuttle_icon = _create_tex_icon(TEX_SHUTTLECOCK, Vector2(110, 110))
 	var shuttle_row = HBoxContainer.new()
 	shuttle_row.alignment = BoxContainer.ALIGNMENT_CENTER
-	shuttle_row.add_child(top_shuttle)
+	shuttle_row.add_child(shuttle_icon)
 	center.add_child(shuttle_row)
 	
 	var lbl_logo = Label.new()
@@ -518,7 +638,7 @@ func _build_title_panel() -> void:
 	center.add_child(lbl_sub)
 	
 	var sp = Control.new()
-	sp.custom_minimum_size = Vector2(0, 40)
+	sp.custom_minimum_size = Vector2(0, 36)
 	center.add_child(sp)
 	
 	var btn_start_any = _create_clean_button("CHẠM HOẶC NHẤN PHÍM BẤT KỲ ĐỂ VÀO SẢNH", Color(1.0, 0.85, 0.25), Vector2(380, 52), 15)
@@ -542,6 +662,7 @@ func _build_lobby_panel() -> void:
 	lobby_panel.custom_minimum_size = Vector2(1280, 720)
 	lobby_panel.size = Vector2(1280, 720)
 	lobby_panel.position = Vector2.ZERO
+	lobby_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	lobby_panel.visible = false
 	add_child(lobby_panel)
 	
@@ -549,39 +670,28 @@ func _build_lobby_panel() -> void:
 	hero_standee = Control.new()
 	hero_standee.custom_minimum_size = Vector2(400, 480)
 	hero_standee.size = Vector2(400, 480)
-	hero_standee.position = Vector2(440, 110)
+	hero_standee.position = Vector2(440, 105)
+	hero_standee.mouse_filter = Control.MOUSE_FILTER_PASS
 	lobby_panel.add_child(hero_standee)
 	
 	# Spotlight circle on floor
 	var spot = ColorRect.new()
-	spot.custom_minimum_size = Vector2(300, 24)
-	spot.size = Vector2(300, 24)
-	spot.position = Vector2(50, 430)
+	spot.custom_minimum_size = Vector2(300, 20)
+	spot.size = Vector2(300, 20)
+	spot.position = Vector2(50, 435)
 	spot.color = Color(1.0, 0.85, 0.3, 0.12)
+	spot.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	hero_standee.add_child(spot)
 	
-	# Character Visual Icon/Emblem Showcase
+	# Character Visual Showcase with Liquid Glass Box
 	var hero_icon_center = CenterContainer.new()
 	hero_icon_center.custom_minimum_size = Vector2(400, 360)
 	hero_icon_center.size = Vector2(400, 360)
+	hero_icon_center.mouse_filter = Control.MOUSE_FILTER_PASS
 	hero_standee.add_child(hero_icon_center)
 	
-	var hero_card = PanelContainer.new()
-	hero_card.custom_minimum_size = Vector2(260, 340)
-	var sb_hc = StyleBoxFlat.new()
-	sb_hc.bg_color = Color(0.08, 0.11, 0.16, 0.85)
-	sb_hc.border_width_left = 2
-	sb_hc.border_width_top = 2
-	sb_hc.border_width_right = 2
-	sb_hc.border_width_bottom = 2
-	sb_hc.border_color = Color(1.0, 0.82, 0.25, 0.6)
-	sb_hc.corner_radius_top_left = 14
-	sb_hc.corner_radius_top_right = 14
-	sb_hc.corner_radius_bottom_right = 14
-	sb_hc.corner_radius_bottom_left = 14
-	sb_hc.shadow_color = Color(0, 0, 0, 0.4)
-	sb_hc.shadow_size = 12
-	hero_card.add_theme_stylebox_override("panel", sb_hc)
+	var hero_card = _create_liquid_glass_panel(Vector2(260, 340), 0.08)
+	hero_card.mouse_filter = Control.MOUSE_FILTER_PASS
 	hero_icon_center.add_child(hero_card)
 	
 	var hm = MarginContainer.new()
@@ -589,11 +699,13 @@ func _build_lobby_panel() -> void:
 	hm.add_theme_constant_override("margin_top", 16)
 	hm.add_theme_constant_override("margin_right", 16)
 	hm.add_theme_constant_override("margin_bottom", 16)
+	hm.mouse_filter = Control.MOUSE_FILTER_PASS
 	hero_card.add_child(hm)
 	
 	var hv = VBoxContainer.new()
 	hv.alignment = BoxContainer.ALIGNMENT_CENTER
 	hv.add_theme_constant_override("separation", 10)
+	hv.mouse_filter = Control.MOUSE_FILTER_PASS
 	hm.add_child(hv)
 	
 	var badge_row = HBoxContainer.new()
@@ -649,14 +761,13 @@ func _build_lobby_panel() -> void:
 	left_col.position = Vector2(30, 90)
 	left_col.custom_minimum_size = Vector2(280, 500)
 	left_col.add_theme_constant_override("separation", 14)
+	left_col.mouse_filter = Control.MOUSE_FILTER_PASS
 	lobby_panel.add_child(left_col)
 	
-	# Event Banner Card
 	var ev_card = _create_widget_card("SỰ KIỆN: LÔI THẦN NISHIKAWA", "Thời gian còn lại: 14 ngày\nNhận ngay skin & danh hiệu BWF!", Color(1.0, 0.82, 0.25))
 	left_col.add_child(ev_card)
 	
-	# Daily Check-in Card
-	var daily_card = _create_widget_card("ĐIỂM DANH HÀNG NGÀY", "Chuỗi điểm danh: 6 ngày\nNhận 500 Vàng + 50 Gem!", Color(0.30, 0.92, 0.65))
+	var daily_card = _create_widget_card("ĐIỂM DANH HÀNG NGÀY", "Chuỗi điểm danh: 6 ngày\nNhận 500 Vàng + Quà BWF!", Color(0.30, 0.92, 0.65))
 	left_col.add_child(daily_card)
 	
 	# Bottom Right Call to Action: [ 🏸 TRẬN ĐẤU ] (The Spike Giant Button)
@@ -664,6 +775,7 @@ func _build_lobby_panel() -> void:
 	cta_box.position = Vector2(920, 510)
 	cta_box.custom_minimum_size = Vector2(330, 160)
 	cta_box.add_theme_constant_override("separation", 10)
+	cta_box.mouse_filter = Control.MOUSE_FILTER_PASS
 	lobby_panel.add_child(cta_box)
 	
 	var mode_summary = PanelContainer.new()
@@ -688,10 +800,11 @@ func _build_lobby_panel() -> void:
 	btn_gacha.pressed.connect(func(): switch_state(MenuState.SHOP))
 	btn_row.add_child(btn_gacha)
 	
-	# Primary Giant Play Button (Vàng cam rực lửa chuẩn The Spike)
+	# Primary Giant Play Button
 	var btn_play_cta = Button.new()
 	btn_play_cta.text = "🏸  TRẬN ĐẤU"
 	btn_play_cta.focus_mode = Control.FOCUS_NONE
+	btn_play_cta.mouse_filter = Control.MOUSE_FILTER_STOP
 	btn_play_cta.custom_minimum_size = Vector2(210, 68)
 	btn_play_cta.add_theme_font_size_override("font_size", 20)
 	
@@ -706,8 +819,9 @@ func _build_lobby_panel() -> void:
 	sb_cta.corner_radius_top_right = 12
 	sb_cta.corner_radius_bottom_right = 12
 	sb_cta.corner_radius_bottom_left = 12
-	sb_cta.shadow_color = Color(0.96, 0.50, 0.05, 0.45)
-	sb_cta.shadow_size = 14
+	sb_cta.shadow_color = Color(0.96, 0.50, 0.05, 0.35)
+	sb_cta.shadow_size = 8
+	sb_cta.shadow_offset = Vector2(0, 3)
 	btn_play_cta.add_theme_stylebox_override("normal", sb_cta)
 	
 	var sb_cta_h = sb_cta.duplicate()
@@ -721,20 +835,7 @@ func _build_lobby_panel() -> void:
 	cta_box.add_child(btn_row)
 
 func _create_widget_card(title: String, body: String, col: Color) -> PanelContainer:
-	var p = PanelContainer.new()
-	p.custom_minimum_size = Vector2(280, 110)
-	var sb = StyleBoxFlat.new()
-	sb.bg_color = Color(0.09, 0.12, 0.17, 0.85)
-	sb.border_width_left = 1
-	sb.border_width_top = 1
-	sb.border_width_right = 1
-	sb.border_width_bottom = 1
-	sb.border_color = Color(col.r, col.g, col.b, 0.45)
-	sb.corner_radius_top_left = 10
-	sb.corner_radius_top_right = 10
-	sb.corner_radius_bottom_right = 10
-	sb.corner_radius_bottom_left = 10
-	p.add_theme_stylebox_override("panel", sb)
+	var p = _create_liquid_glass_panel(Vector2(280, 110), 0.08)
 	
 	var m = MarginContainer.new()
 	m.add_theme_constant_override("margin_left", 14)
@@ -780,7 +881,7 @@ func _update_hero_standee() -> void:
 	if hero_breathing_tween and hero_breathing_tween.is_valid():
 		hero_breathing_tween.kill()
 	hero_breathing_tween = create_tween().set_loops()
-	hero_breathing_tween.tween_property(hero_standee, "scale", Vector2(1.0, 1.025), 2.2).set_trans(Tween.TRANS_SINE)
+	hero_breathing_tween.tween_property(hero_standee, "scale", Vector2(1.0, 1.022), 2.2).set_trans(Tween.TRANS_SINE)
 	hero_breathing_tween.tween_property(hero_standee, "scale", Vector2(1.0, 1.0), 2.2).set_trans(Tween.TRANS_SINE)
 
 # ==========================================================
@@ -791,10 +892,10 @@ func _build_match_select_panel() -> void:
 	match_select_panel.custom_minimum_size = Vector2(1280, 720)
 	match_select_panel.size = Vector2(1280, 720)
 	match_select_panel.position = Vector2.ZERO
+	match_select_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	match_select_panel.visible = false
 	add_child(match_select_panel)
 	
-	# Header with Back button
 	var back_btn = _create_clean_button("‹  QUAY LẠI TRANG CHỦ", Color(0.75, 0.82, 0.92), Vector2(180, 36), 12)
 	back_btn.position = Vector2(30, 80)
 	back_btn.pressed.connect(func(): switch_state(MenuState.LOBBY))
@@ -807,141 +908,115 @@ func _build_match_select_panel() -> void:
 	title_lbl.modulate = Color(1.0, 0.85, 0.3)
 	match_select_panel.add_child(title_lbl)
 	
-	# Horizontal Cards Container (Dãy thẻ ngang)
 	var scroll = ScrollContainer.new()
 	scroll.position = Vector2(30, 135)
 	scroll.custom_minimum_size = Vector2(1220, 520)
 	scroll.size = Vector2(1220, 520)
 	scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
+	scroll.mouse_filter = Control.MOUSE_FILTER_PASS
 	match_select_panel.add_child(scroll)
 	
 	var cards_row = HBoxContainer.new()
 	cards_row.add_theme_constant_override("separation", 20)
+	cards_row.mouse_filter = Control.MOUSE_FILTER_PASS
 	scroll.add_child(cards_row)
 	
-	# 1. PVP Card (Active)
-	var c_pvp = _create_mode_card(
+	# 1. PVP Card (Studio Dual Racquets Icon)
+	cards_row.add_child(_create_mode_card_tex(
 		"PVP TRỰC TUYẾN",
 		"ONLINE 1V1",
-		CustomIcon.IconType.RACQUETS_CROSS,
+		TEX_PVP,
 		Color(0.20, 0.90, 0.80),
 		"Đấu thời gian thực qua WebRTC/WebSocket.\nTạo phòng & Thách đấu bạn bè toàn cầu!",
 		"SẴN SÀNG",
 		false,
 		func(): switch_state(MenuState.PVP_LOBBY)
-	)
-	cards_row.add_child(c_pvp)
+	))
 	
-	# 2. AI Rival Card (Active)
-	var c_ai = _create_mode_card(
+	# 2. AI Rival Card (Studio Gold Trophy Icon)
+	cards_row.add_child(_create_mode_card_tex(
 		"TRANH CÚP AI",
 		"VS RIVAL",
-		CustomIcon.IconType.TROPHY,
+		TEX_TROPHY,
 		Color(1.0, 0.82, 0.25),
 		"Đấu đơn với AI thông minh BWF.\nTùy chỉnh độ khó Dễ - Trung Bình - Khó.",
 		"SẴN SÀNG",
 		false,
 		func(): switch_state(MenuState.MATCH_SETUP)
-	)
-	cards_row.add_child(c_ai)
+	))
 	
-	# 3. Training Card (Locked)
-	var c_train = _create_mode_card(
+	# 3. Training Card (Studio Gold Padlock Icon)
+	cards_row.add_child(_create_mode_card_tex(
 		"SÂN TẬP LUYỆN",
 		"TRAINING",
-		CustomIcon.IconType.TARGET_TRAINING,
+		TEX_PADLOCK,
 		Color(0.40, 0.70, 0.95),
 		"Luyện phát cầu, tập smash chuẩn nhịp,\ntập di chuyển bước lướt trên sân.",
-		"SẮP RA MẮT",
+		"🔒 SẮP RA MẮT",
 		true,
 		func(): pass
-	)
-	cards_row.add_child(c_train)
+	))
 	
-	# 4. Story Mode Card (Locked)
-	var c_story = _create_mode_card(
+	# 4. Story Mode Card (Studio Gold Padlock Icon)
+	cards_row.add_child(_create_mode_card_tex(
 		"CỐT TRUYỆN THIẾU NIÊN",
 		"STORY CAMPAIGN",
-		CustomIcon.IconType.BOOK_STORY,
+		TEX_PADLOCK,
 		Color(0.85, 0.50, 1.0),
 		"Hành trình thiếu niên cầu lông từ giải\nphong trào đến đỉnh cao thế giới BWF.",
-		"SẮP RA MẮT",
+		"🔒 SẮP RA MẮT",
 		true,
 		func(): pass
-	)
-	cards_row.add_child(c_story)
+	))
 	
-	# 5. Tournament Cup Card (Locked)
-	var c_tour = _create_mode_card(
+	# 5. Tournament Cup Card (Studio Gold Padlock Icon)
+	cards_row.add_child(_create_mode_card_tex(
 		"GIẢI ĐẤU TOURNAMENT",
 		"BWF WORLD CUP",
-		CustomIcon.IconType.TROPHY,
+		TEX_PADLOCK,
 		Color(1.0, 0.55, 0.30),
 		"Vòng bảng & nhánh knock-out 16 tay vợt\nhạt giống tranh cúp vô địch.",
-		"SẮP RA MẮT",
+		"🔒 SẮP RA MẮT",
 		true,
 		func(): pass
-	)
-	cards_row.add_child(c_tour)
+	))
 
-func _create_mode_card(title: String, tag: String, icon_type: CustomIcon.IconType, col: Color, desc: String, status_str: String, is_locked: bool, on_click: Callable) -> PanelContainer:
-	var p = PanelContainer.new()
-	p.custom_minimum_size = Vector2(250, 480)
-	
-	var sb = StyleBoxFlat.new()
-	sb.bg_color = Color(0.09, 0.12, 0.17, 0.92)
-	sb.border_width_left = 1
-	sb.border_width_top = 1
-	sb.border_width_right = 1
-	sb.border_width_bottom = 1
-	sb.border_color = Color(col.r, col.g, col.b, 0.5) if not is_locked else Color(0.25, 0.30, 0.38, 0.4)
-	sb.corner_radius_top_left = 14
-	sb.corner_radius_top_right = 14
-	sb.corner_radius_bottom_right = 14
-	sb.corner_radius_bottom_left = 14
-	sb.shadow_color = Color(0, 0, 0, 0.45)
-	sb.shadow_size = 10
-	p.add_theme_stylebox_override("panel", sb)
+func _create_mode_card_tex(title: String, tag: String, tex: Texture2D, col: Color, desc: String, status_str: String, is_locked: bool, on_click: Callable) -> PanelContainer:
+	var p = _create_liquid_glass_panel(Vector2(250, 480), 0.08)
+	p.mouse_filter = Control.MOUSE_FILTER_PASS
 	
 	var m = MarginContainer.new()
 	m.add_theme_constant_override("margin_left", 16)
 	m.add_theme_constant_override("margin_top", 16)
 	m.add_theme_constant_override("margin_right", 16)
 	m.add_theme_constant_override("margin_bottom", 16)
+	m.mouse_filter = Control.MOUSE_FILTER_PASS
 	p.add_child(m)
 	
 	var v = VBoxContainer.new()
 	v.add_theme_constant_override("separation", 12)
+	v.mouse_filter = Control.MOUSE_FILTER_PASS
 	m.add_child(v)
 	
-	# Top Tag
 	var tag_lbl = Label.new()
 	tag_lbl.text = tag
 	tag_lbl.add_theme_font_size_override("font_size", 10)
 	tag_lbl.modulate = col if not is_locked else Color(0.6, 0.65, 0.72)
 	v.add_child(tag_lbl)
 	
-	# Card Title
 	var t_lbl = Label.new()
 	t_lbl.text = title
 	t_lbl.add_theme_font_size_override("font_size", 15)
 	t_lbl.modulate = Color.WHITE if not is_locked else Color(0.7, 0.75, 0.8)
 	v.add_child(t_lbl)
 	
-	# Icon Stage
 	var ic_stage = CenterContainer.new()
 	ic_stage.custom_minimum_size = Vector2(210, 180)
-	
-	var icon = CustomIcon.new(icon_type, Vector2(90, 90), col if not is_locked else Color(0.45, 0.50, 0.58))
+	var icon = _create_tex_icon(tex, Vector2(84, 84))
 	ic_stage.add_child(icon)
-	
-	if is_locked:
-		var lock_ic = CustomIcon.new(CustomIcon.IconType.LOCK, Vector2(36, 36), Color(1.0, 0.85, 0.35))
-		ic_stage.add_child(lock_ic)
 	v.add_child(ic_stage)
 	
-	# Description
 	var d_lbl = Label.new()
 	d_lbl.text = desc
 	d_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -953,7 +1028,6 @@ func _create_mode_card(title: String, tag: String, icon_type: CustomIcon.IconTyp
 	sp.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	v.add_child(sp)
 	
-	# Action button
 	var btn = _create_clean_button(status_str if not is_locked else "🔒 SẮP RA MẮT", col if not is_locked else Color(0.5, 0.55, 0.62), Vector2(210, 40), 12)
 	if not is_locked:
 		btn.pressed.connect(on_click)
@@ -962,35 +1036,20 @@ func _create_mode_card(title: String, tag: String, icon_type: CustomIcon.IconTyp
 	return p
 
 # ==========================================================
-# 5. MATCH SETUP PANEL (AI RIVAL)
+# 5. MATCH SETUP PANEL (NO CLIPPED SHADOWS)
 # ==========================================================
 func _build_match_setup_panel() -> void:
 	setup_panel = Control.new()
 	setup_panel.custom_minimum_size = Vector2(1280, 720)
 	setup_panel.size = Vector2(1280, 720)
 	setup_panel.position = Vector2.ZERO
+	setup_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	setup_panel.visible = false
 	add_child(setup_panel)
 	
-	var setup_box = PanelContainer.new()
-	setup_box.custom_minimum_size = Vector2(1040, 580)
-	setup_box.size = Vector2(1040, 580)
-	setup_box.position = Vector2(120, 80)
-	
-	var sb_setup = StyleBoxFlat.new()
-	sb_setup.bg_color = Color(0.08, 0.10, 0.15, 0.98)
-	sb_setup.border_width_left = 1
-	sb_setup.border_width_top = 1
-	sb_setup.border_width_right = 1
-	sb_setup.border_width_bottom = 1
-	sb_setup.border_color = Color(0.24, 0.34, 0.48, 0.75)
-	sb_setup.corner_radius_top_left = 12
-	sb_setup.corner_radius_top_right = 12
-	sb_setup.corner_radius_bottom_right = 12
-	sb_setup.corner_radius_bottom_left = 12
-	sb_setup.shadow_color = Color(0, 0, 0, 0.5)
-	sb_setup.shadow_size = 14
-	setup_box.add_theme_stylebox_override("panel", sb_setup)
+	var setup_box = _create_liquid_glass_panel(Vector2(1040, 560), 0.05)
+	setup_box.position = Vector2(120, 85)
+	setup_box.mouse_filter = Control.MOUSE_FILTER_PASS
 	setup_panel.add_child(setup_box)
 	
 	var setup_m = MarginContainer.new()
@@ -998,10 +1057,12 @@ func _build_match_setup_panel() -> void:
 	setup_m.add_theme_constant_override("margin_top", 16)
 	setup_m.add_theme_constant_override("margin_right", 20)
 	setup_m.add_theme_constant_override("margin_bottom", 16)
+	setup_m.mouse_filter = Control.MOUSE_FILTER_PASS
 	setup_box.add_child(setup_m)
 	
 	var setup_vbox = VBoxContainer.new()
 	setup_vbox.add_theme_constant_override("separation", 10)
+	setup_vbox.mouse_filter = Control.MOUSE_FILTER_PASS
 	setup_m.add_child(setup_vbox)
 	
 	var setup_title = Label.new()
@@ -1015,6 +1076,7 @@ func _build_match_setup_panel() -> void:
 	var cards_row = HBoxContainer.new()
 	cards_row.alignment = BoxContainer.ALIGNMENT_CENTER
 	cards_row.add_theme_constant_override("separation", 14)
+	cards_row.mouse_filter = Control.MOUSE_FILTER_PASS
 	setup_vbox.add_child(cards_row)
 	
 	for cid in ["nishikawa", "fuji", "wall"]:
@@ -1026,6 +1088,7 @@ func _build_match_setup_panel() -> void:
 	var diff_box = HBoxContainer.new()
 	diff_box.alignment = BoxContainer.ALIGNMENT_CENTER
 	diff_box.add_theme_constant_override("separation", 10)
+	diff_box.mouse_filter = Control.MOUSE_FILTER_PASS
 	setup_vbox.add_child(diff_box)
 	
 	var lbl_diff = Label.new()
@@ -1050,6 +1113,7 @@ func _build_match_setup_panel() -> void:
 	var pts_box = HBoxContainer.new()
 	pts_box.alignment = BoxContainer.ALIGNMENT_CENTER
 	pts_box.add_theme_constant_override("separation", 10)
+	pts_box.mouse_filter = Control.MOUSE_FILTER_PASS
 	setup_vbox.add_child(pts_box)
 	
 	var lbl_pts = Label.new()
@@ -1074,6 +1138,7 @@ func _build_match_setup_panel() -> void:
 	var sets_box = HBoxContainer.new()
 	sets_box.alignment = BoxContainer.ALIGNMENT_CENTER
 	sets_box.add_theme_constant_override("separation", 10)
+	sets_box.mouse_filter = Control.MOUSE_FILTER_PASS
 	setup_vbox.add_child(sets_box)
 	
 	var lbl_sets = Label.new()
@@ -1101,6 +1166,7 @@ func _build_match_setup_panel() -> void:
 	var action_row = HBoxContainer.new()
 	action_row.alignment = BoxContainer.ALIGNMENT_CENTER
 	action_row.add_theme_constant_override("separation", 16)
+	action_row.mouse_filter = Control.MOUSE_FILTER_PASS
 	setup_vbox.add_child(action_row)
 	
 	var btn_start_match = _create_clean_button("VÀO SÂN TRANH TÀI (START)", Color(1.0, 0.82, 0.25), Vector2(280, 44), 15)
@@ -1112,35 +1178,20 @@ func _build_match_setup_panel() -> void:
 	action_row.add_child(btn_back_title)
 
 # ==========================================================
-# 6. PVP LOBBY PANEL (PRESERVE FULL LOGIC)
+# 6. PVP LOBBY PANEL
 # ==========================================================
 func _build_pvp_panel() -> void:
 	pvp_panel = Control.new()
 	pvp_panel.custom_minimum_size = Vector2(1280, 720)
 	pvp_panel.size = Vector2(1280, 720)
 	pvp_panel.position = Vector2.ZERO
+	pvp_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	pvp_panel.visible = false
 	add_child(pvp_panel)
 	
-	var pvp_box = PanelContainer.new()
-	pvp_box.custom_minimum_size = Vector2(1040, 580)
-	pvp_box.size = Vector2(1040, 580)
-	pvp_box.position = Vector2(120, 80)
-	
-	var sb_pvp = StyleBoxFlat.new()
-	sb_pvp.bg_color = Color(0.08, 0.10, 0.15, 0.98)
-	sb_pvp.border_width_left = 1
-	sb_pvp.border_width_top = 1
-	sb_pvp.border_width_right = 1
-	sb_pvp.border_width_bottom = 1
-	sb_pvp.border_color = Color(0.25, 0.85, 0.75, 0.5)
-	sb_pvp.corner_radius_top_left = 12
-	sb_pvp.corner_radius_top_right = 12
-	sb_pvp.corner_radius_bottom_right = 12
-	sb_pvp.corner_radius_bottom_left = 12
-	sb_pvp.shadow_color = Color(0, 0, 0, 0.5)
-	sb_pvp.shadow_size = 14
-	pvp_box.add_theme_stylebox_override("panel", sb_pvp)
+	var pvp_box = _create_liquid_glass_panel(Vector2(1040, 560), 0.05)
+	pvp_box.position = Vector2(120, 85)
+	pvp_box.mouse_filter = Control.MOUSE_FILTER_PASS
 	pvp_panel.add_child(pvp_box)
 	
 	var m = MarginContainer.new()
@@ -1148,10 +1199,12 @@ func _build_pvp_panel() -> void:
 	m.add_theme_constant_override("margin_top", 24)
 	m.add_theme_constant_override("margin_right", 32)
 	m.add_theme_constant_override("margin_bottom", 24)
+	m.mouse_filter = Control.MOUSE_FILTER_PASS
 	pvp_box.add_child(m)
 	
 	var vbox = VBoxContainer.new()
 	vbox.add_theme_constant_override("separation", 14)
+	vbox.mouse_filter = Control.MOUSE_FILTER_PASS
 	m.add_child(vbox)
 	
 	# Header Row
@@ -1222,7 +1275,7 @@ func _build_pvp_panel() -> void:
 	pvp_name_input = LineEdit.new()
 	pvp_name_input.text = pvp_player_name
 	pvp_name_input.custom_minimum_size = Vector2(110, 30)
-	pvp_name_input.max_length = 12
+	pvp_name_input.max_length = 16
 	pvp_name_input.alignment = HORIZONTAL_ALIGNMENT_CENTER
 	var sb_name = StyleBoxFlat.new()
 	sb_name.bg_color = Color(0.12, 0.16, 0.22, 0.95)
@@ -1232,10 +1285,11 @@ func _build_pvp_panel() -> void:
 	sb_name.corner_radius_bottom_left = 4
 	pvp_name_input.add_theme_stylebox_override("normal", sb_name)
 	pvp_name_input.text_changed.connect(func(new_text: String):
-		var clean = new_text.strip_edges().to_upper()
-		pvp_player_name = clean if not clean.is_empty() else "PLAYER 1"
+		var clean = new_text.strip_edges()
+		pvp_player_name = clean if not clean.is_empty() else "BaoHodaka"
 		_save_player_name(pvp_player_name)
-		if lbl_top_player_name: lbl_top_player_name.text = pvp_player_name
+		if top_name_input and top_name_input != pvp_name_input:
+			top_name_input.text = pvp_player_name
 	)
 	name_box.add_child(pvp_name_input)
 	cfg_row.add_child(name_box)
@@ -1303,21 +1357,8 @@ func _build_pvp_panel() -> void:
 	vbox.add_child(cards_row)
 	
 	# HOST CARD
-	var host_card = PanelContainer.new()
-	host_card.custom_minimum_size = Vector2(470, 230)
+	var host_card = _create_liquid_glass_panel(Vector2(470, 230), 0.08)
 	host_card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	var sb_hcard = StyleBoxFlat.new()
-	sb_hcard.bg_color = Color(0.09, 0.13, 0.19, 0.95)
-	sb_hcard.border_width_left = 1
-	sb_hcard.border_width_top = 1
-	sb_hcard.border_width_right = 1
-	sb_hcard.border_width_bottom = 1
-	sb_hcard.border_color = Color(0.20, 0.85, 0.65, 0.45)
-	sb_hcard.corner_radius_top_left = 10
-	sb_hcard.corner_radius_top_right = 10
-	sb_hcard.corner_radius_bottom_right = 10
-	sb_hcard.corner_radius_bottom_left = 10
-	host_card.add_theme_stylebox_override("panel", sb_hcard)
 	cards_row.add_child(host_card)
 	
 	var hm = MarginContainer.new()
@@ -1361,12 +1402,8 @@ func _build_pvp_panel() -> void:
 	hv.add_child(code_row)
 	
 	# JOIN CARD
-	var join_card = PanelContainer.new()
-	join_card.custom_minimum_size = Vector2(470, 230)
+	var join_card = _create_liquid_glass_panel(Vector2(470, 230), 0.08)
 	join_card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	var sb_jcard = sb_hcard.duplicate()
-	sb_jcard.border_color = Color(0.35, 0.75, 1.0, 0.45)
-	join_card.add_theme_stylebox_override("panel", sb_jcard)
 	cards_row.add_child(join_card)
 	
 	var jm = MarginContainer.new()
@@ -1425,13 +1462,14 @@ func _build_pvp_panel() -> void:
 	vbox.add_child(pvp_countdown_lbl)
 
 # ==========================================================
-# 7. ROSTER PANEL (QUẢN LÝ CẦU THỦ / LOCKER ROOM GRID)
+# 7. ROSTER PANEL (QUẢN LÝ CẦU THỦ)
 # ==========================================================
 func _build_roster_panel() -> void:
 	roster_panel = Control.new()
 	roster_panel.custom_minimum_size = Vector2(1280, 720)
 	roster_panel.size = Vector2(1280, 720)
 	roster_panel.position = Vector2.ZERO
+	roster_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	roster_panel.visible = false
 	add_child(roster_panel)
 	
@@ -1450,38 +1488,29 @@ func _build_roster_panel() -> void:
 	# Main Content Area: Left Showcase + Right Grid
 	var content_row = HBoxContainer.new()
 	content_row.position = Vector2(30, 130)
-	content_row.custom_minimum_size = Vector2(1220, 550)
+	content_row.custom_minimum_size = Vector2(1220, 540)
 	content_row.add_theme_constant_override("separation", 24)
+	content_row.mouse_filter = Control.MOUSE_FILTER_PASS
 	roster_panel.add_child(content_row)
 	
-	# Left: Active Lineup Card
-	var active_box = PanelContainer.new()
-	active_box.custom_minimum_size = Vector2(380, 540)
-	var sb_ab = StyleBoxFlat.new()
-	sb_ab.bg_color = Color(0.09, 0.12, 0.18, 0.95)
-	sb_ab.border_width_left = 2
-	sb_ab.border_width_top = 2
-	sb_ab.border_width_right = 2
-	sb_ab.border_width_bottom = 2
-	sb_ab.border_color = Color(1.0, 0.82, 0.25, 0.8)
-	sb_ab.corner_radius_top_left = 12
-	sb_ab.corner_radius_top_right = 12
-	sb_ab.corner_radius_bottom_right = 12
-	sb_ab.corner_radius_bottom_left = 12
-	active_box.add_theme_stylebox_override("panel", sb_ab)
+	# Left: Active Lineup Card with Liquid Glass
+	var active_box = _create_liquid_glass_panel(Vector2(380, 520), 0.06)
 	active_box.name = "ActiveBox"
+	active_box.mouse_filter = Control.MOUSE_FILTER_PASS
 	content_row.add_child(active_box)
 	
 	# Right: Grid Roster
 	var grid_scroll = ScrollContainer.new()
-	grid_scroll.custom_minimum_size = Vector2(810, 540)
+	grid_scroll.custom_minimum_size = Vector2(810, 520)
 	grid_scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	grid_scroll.mouse_filter = Control.MOUSE_FILTER_PASS
 	content_row.add_child(grid_scroll)
 	
 	var grid = GridContainer.new()
 	grid.columns = 3
 	grid.add_theme_constant_override("h_separation", 16)
 	grid.add_theme_constant_override("v_separation", 16)
+	grid.mouse_filter = Control.MOUSE_FILTER_PASS
 	grid_scroll.add_child(grid)
 	
 	# Populate characters
@@ -1490,37 +1519,26 @@ func _build_roster_panel() -> void:
 		var c_card = _create_roster_card(cid, data["name"], data["rarity"], data["archetype"], data["color"], data["icon_type"], false)
 		grid.add_child(c_card)
 		
-	# Add some locked players (Spike style roster)
+	# Locked players with studio gold padlock
 	grid.add_child(_create_roster_card("gitae", "HAN GITAE", "S+", "BÃO LỬA (MB)", Color(1.0, 0.4, 0.2), CustomIcon.IconType.FIRE_BLADE, true))
 	grid.add_child(_create_roster_card("raul", "RAUL", "S+", "BÓNG ĐÊM (WS)", Color(0.8, 0.3, 0.9), CustomIcon.IconType.LIGHTNING, true))
 	grid.add_child(_create_roster_card("sara", "SARA", "S+", "BĂNG GIÁ (WS)", Color(0.3, 0.8, 1.0), CustomIcon.IconType.FEATHER, true))
 
 func _create_roster_card(cid: String, cname: String, rarity: String, arch: String, col: Color, icon_type: CustomIcon.IconType, is_locked: bool) -> PanelContainer:
-	var p = PanelContainer.new()
-	p.custom_minimum_size = Vector2(250, 160)
-	
-	var sb = StyleBoxFlat.new()
-	sb.bg_color = Color(0.10, 0.13, 0.19, 0.90)
-	sb.border_width_left = 1
-	sb.border_width_top = 1
-	sb.border_width_right = 1
-	sb.border_width_bottom = 1
-	sb.border_color = Color(col.r, col.g, col.b, 0.5) if not is_locked else Color(0.3, 0.35, 0.42, 0.4)
-	sb.corner_radius_top_left = 10
-	sb.corner_radius_top_right = 10
-	sb.corner_radius_bottom_right = 10
-	sb.corner_radius_bottom_left = 10
-	p.add_theme_stylebox_override("panel", sb)
+	var p = _create_liquid_glass_panel(Vector2(250, 160), 0.08)
+	p.mouse_filter = Control.MOUSE_FILTER_PASS
 	
 	var m = MarginContainer.new()
 	m.add_theme_constant_override("margin_left", 14)
 	m.add_theme_constant_override("margin_top", 12)
 	m.add_theme_constant_override("margin_right", 14)
 	m.add_theme_constant_override("margin_bottom", 12)
+	m.mouse_filter = Control.MOUSE_FILTER_PASS
 	p.add_child(m)
 	
 	var v = VBoxContainer.new()
 	v.add_theme_constant_override("separation", 6)
+	v.mouse_filter = Control.MOUSE_FILTER_PASS
 	m.add_child(v)
 	
 	var top_r = HBoxContainer.new()
@@ -1565,7 +1583,6 @@ func _update_roster_view() -> void:
 	var active_box = roster_panel.find_child("ActiveBox", true, false) as PanelContainer
 	if not active_box: return
 	
-	# Clear previous children in active box
 	for c in active_box.get_children():
 		c.queue_free()
 		
@@ -1576,10 +1593,12 @@ func _update_roster_view() -> void:
 	m.add_theme_constant_override("margin_top", 20)
 	m.add_theme_constant_override("margin_right", 20)
 	m.add_theme_constant_override("margin_bottom", 20)
+	m.mouse_filter = Control.MOUSE_FILTER_PASS
 	active_box.add_child(m)
 	
 	var v = VBoxContainer.new()
 	v.add_theme_constant_override("separation", 12)
+	v.mouse_filter = Control.MOUSE_FILTER_PASS
 	m.add_child(v)
 	
 	var tag = Label.new()
@@ -1639,6 +1658,7 @@ func _build_shop_panel() -> void:
 	shop_panel.custom_minimum_size = Vector2(1280, 720)
 	shop_panel.size = Vector2(1280, 720)
 	shop_panel.position = Vector2.ZERO
+	shop_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	shop_panel.visible = false
 	add_child(shop_panel)
 	
@@ -1651,21 +1671,24 @@ func _build_shop_panel() -> void:
 	scroll.position = Vector2(30, 140)
 	scroll.custom_minimum_size = Vector2(1220, 520)
 	scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	scroll.mouse_filter = Control.MOUSE_FILTER_PASS
 	shop_panel.add_child(scroll)
 	
 	var row = HBoxContainer.new()
 	row.add_theme_constant_override("separation", 20)
+	row.mouse_filter = Control.MOUSE_FILTER_PASS
 	scroll.add_child(row)
 	
-	row.add_child(_create_mode_card("CHIÊU MỘ CẦU THỦ", "GACHA", CustomIcon.IconType.USER, Color(1.0, 0.82, 0.25), "Kiểm tra năng lực cầu thủ\nvà chiêu mộ tân binh BWF.", "🔒 KHÓA", true, func(): pass))
-	row.add_child(_create_mode_card("CỬA HÀNG BÓNG", "SHOP", CustomIcon.IconType.SHUTTLECOCK, Color(0.3, 0.9, 0.6), "Mua cầu lông thi đấu\nvà vé tham dự giải vô địch.", "🔒 KHÓA", true, func(): pass))
-	row.add_child(_create_mode_card("CỬA HÀNG TRANG PHỤC", "SKINS", CustomIcon.IconType.FEATHER, Color(0.35, 0.75, 1.0), "Trang phục thi đấu BWF\nvà vợt huyền thoại giới hạn.", "🔒 KHÓA", true, func(): pass))
+	row.add_child(_create_mode_card_tex("CHIÊU MỘ CẦU THỦ", "GACHA", TEX_PADLOCK, Color(1.0, 0.82, 0.25), "Kiểm tra năng lực cầu thủ\nvà chiêu mộ tân binh BWF.", "🔒 KHÓA", true, func(): pass))
+	row.add_child(_create_mode_card_tex("CỬA HÀNG BÓNG", "SHOP", TEX_PADLOCK, Color(0.3, 0.9, 0.6), "Mua cầu lông thi đấu\nvà vé tham dự giải vô địch.", "🔒 KHÓA", true, func(): pass))
+	row.add_child(_create_mode_card_tex("CỬA HÀNG TRANG PHỤC", "SKINS", TEX_PADLOCK, Color(0.35, 0.75, 1.0), "Trang phục thi đấu BWF\nvà vợt huyền thoại giới hạn.", "🔒 KHÓA", true, func(): pass))
 
 func _build_quests_panel() -> void:
 	quests_panel = Control.new()
 	quests_panel.custom_minimum_size = Vector2(1280, 720)
 	quests_panel.size = Vector2(1280, 720)
 	quests_panel.position = Vector2.ZERO
+	quests_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	quests_panel.visible = false
 	add_child(quests_panel)
 	
@@ -1674,16 +1697,9 @@ func _build_quests_panel() -> void:
 	back_btn.pressed.connect(func(): switch_state(MenuState.LOBBY))
 	quests_panel.add_child(back_btn)
 	
-	var box = PanelContainer.new()
-	box.position = Vector2(120, 140)
-	box.custom_minimum_size = Vector2(1040, 500)
-	var sb = StyleBoxFlat.new()
-	sb.bg_color = Color(0.09, 0.12, 0.18, 0.95)
-	sb.corner_radius_top_left = 12
-	sb.corner_radius_top_right = 12
-	sb.corner_radius_bottom_right = 12
-	sb.corner_radius_bottom_left = 12
-	box.add_theme_stylebox_override("panel", sb)
+	var box = _create_liquid_glass_panel(Vector2(1040, 500), 0.06)
+	box.position = Vector2(120, 130)
+	box.mouse_filter = Control.MOUSE_FILTER_PASS
 	quests_panel.add_child(box)
 	
 	var m = MarginContainer.new()
@@ -1691,10 +1707,12 @@ func _build_quests_panel() -> void:
 	m.add_theme_constant_override("margin_top", 30)
 	m.add_theme_constant_override("margin_right", 30)
 	m.add_theme_constant_override("margin_bottom", 30)
+	m.mouse_filter = Control.MOUSE_FILTER_PASS
 	box.add_child(m)
 	
 	var v = VBoxContainer.new()
 	v.add_theme_constant_override("separation", 18)
+	v.mouse_filter = Control.MOUSE_FILTER_PASS
 	m.add_child(v)
 	
 	var top_r = HBoxContainer.new()
@@ -1705,7 +1723,6 @@ func _build_quests_panel() -> void:
 	top_r.add_child(q_lbl)
 	v.add_child(top_r)
 	
-	# Quest Cards List
 	v.add_child(_create_quest_item("Điểm danh hàng ngày", "+250P", "0/1"))
 	v.add_child(_create_quest_item("Chiến thắng 2 ván đấu ở [PVP Trực Tuyến]", "+250P", "0/2"))
 	v.add_child(_create_quest_item("Ghi 3 điểm trực tiếp từ cú SMASH hoàn hảo", "+250P", "0/3"))
@@ -1756,6 +1773,7 @@ func _build_settings_panel() -> void:
 	settings_panel.custom_minimum_size = Vector2(1280, 720)
 	settings_panel.size = Vector2(1280, 720)
 	settings_panel.position = Vector2.ZERO
+	settings_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	settings_panel.visible = false
 	add_child(settings_panel)
 	
@@ -1764,21 +1782,9 @@ func _build_settings_panel() -> void:
 	back_btn.pressed.connect(func(): switch_state(MenuState.LOBBY))
 	settings_panel.add_child(back_btn)
 	
-	var set_box = PanelContainer.new()
-	set_box.custom_minimum_size = Vector2(1040, 540)
-	set_box.position = Vector2(120, 130)
-	var sb = StyleBoxFlat.new()
-	sb.bg_color = Color(0.08, 0.11, 0.16, 0.98)
-	sb.border_width_left = 1
-	sb.border_width_top = 1
-	sb.border_width_right = 1
-	sb.border_width_bottom = 1
-	sb.border_color = Color(0.24, 0.34, 0.48, 0.75)
-	sb.corner_radius_top_left = 12
-	sb.corner_radius_top_right = 12
-	sb.corner_radius_bottom_right = 12
-	sb.corner_radius_bottom_left = 12
-	set_box.add_theme_stylebox_override("panel", sb)
+	var set_box = _create_liquid_glass_panel(Vector2(1040, 520), 0.05)
+	set_box.position = Vector2(120, 125)
+	set_box.mouse_filter = Control.MOUSE_FILTER_PASS
 	settings_panel.add_child(set_box)
 	
 	var m = MarginContainer.new()
@@ -1786,24 +1792,26 @@ func _build_settings_panel() -> void:
 	m.add_theme_constant_override("margin_top", 20)
 	m.add_theme_constant_override("margin_right", 24)
 	m.add_theme_constant_override("margin_bottom", 20)
+	m.mouse_filter = Control.MOUSE_FILTER_PASS
 	set_box.add_child(m)
 	
 	var main_h = HBoxContainer.new()
 	main_h.add_theme_constant_override("separation", 24)
+	main_h.mouse_filter = Control.MOUSE_FILTER_PASS
 	m.add_child(main_h)
 	
-	# Left vertical tabs
 	var tabs_vbox = VBoxContainer.new()
 	tabs_vbox.custom_minimum_size = Vector2(180, 480)
 	tabs_vbox.add_theme_constant_override("separation", 10)
+	tabs_vbox.mouse_filter = Control.MOUSE_FILTER_PASS
 	main_h.add_child(tabs_vbox)
 	
 	var content_stack = Control.new()
 	content_stack.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	content_stack.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	content_stack.mouse_filter = Control.MOUSE_FILTER_PASS
 	main_h.add_child(content_stack)
 	
-	# Sub content panels
 	var p_audio = _build_settings_audio_tab()
 	var p_gfx = _build_settings_gfx_tab()
 	var p_acc = _build_settings_account_tab()
@@ -1844,6 +1852,7 @@ func _build_settings_audio_tab() -> VBoxContainer:
 	var v = VBoxContainer.new()
 	v.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	v.add_theme_constant_override("separation", 16)
+	v.mouse_filter = Control.MOUSE_FILTER_PASS
 	
 	var t = Label.new()
 	t.text = "CÀI ĐẶT ÂM THANH (THE SPIKE LEVEL INDICATOR)"
@@ -1851,10 +1860,8 @@ func _build_settings_audio_tab() -> VBoxContainer:
 	t.modulate = Color(1.0, 0.85, 0.3)
 	v.add_child(t)
 	
-	# Master Volume Stepped Bar
 	v.add_child(_create_stepped_volume_row("Âm lượng tổng (Master Volume):", 5, func(val): pass))
 	
-	# BGM Volume Stepped Bar
 	var bgm_cur_step = int(round(bgm_match_volume * 5.0))
 	v.add_child(_create_stepped_volume_row("Nhạc nền trong trận (Match BGM):", bgm_cur_step, func(step):
 		bgm_match_volume = float(step) / 5.0
@@ -1862,8 +1869,8 @@ func _build_settings_audio_tab() -> VBoxContainer:
 		settings_updated.emit(squeak_enabled, bgm_match_enabled, bgm_match_volume, low_graphics_mode)
 	))
 	
-	# Squeak Sound Toggle
 	var sq_row = HBoxContainer.new()
+	sq_row.mouse_filter = Control.MOUSE_FILTER_PASS
 	var sq_lbl = Label.new()
 	sq_lbl.text = "Tiếng rít giày sàn đấu (Shoe Squeak):"
 	sq_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -1886,6 +1893,7 @@ func _build_settings_gfx_tab() -> VBoxContainer:
 	var v = VBoxContainer.new()
 	v.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	v.add_theme_constant_override("separation", 16)
+	v.mouse_filter = Control.MOUSE_FILTER_PASS
 	
 	var t = Label.new()
 	t.text = "CÀI ĐẶT ĐỒ HỌA & HIỆU NĂNG"
@@ -1895,6 +1903,7 @@ func _build_settings_gfx_tab() -> VBoxContainer:
 	
 	if OS.has_feature("web"):
 		var gfx_row = HBoxContainer.new()
+		gfx_row.mouse_filter = Control.MOUSE_FILTER_PASS
 		var lbl_gfx = Label.new()
 		lbl_gfx.text = "Chế độ đồ họa mượt mà (Low GFX Web):"
 		lbl_gfx.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -1917,8 +1926,8 @@ func _build_settings_gfx_tab() -> VBoxContainer:
 		lbl_pc.modulate = Color(0.3, 0.9, 0.5)
 		v.add_child(lbl_pc)
 		
-	# Screen Shake Toggle
 	var shk_row = HBoxContainer.new()
+	shk_row.mouse_filter = Control.MOUSE_FILTER_PASS
 	var shk_lbl = Label.new()
 	shk_lbl.text = "Rung màn hình khi SMASH:"
 	shk_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -1940,6 +1949,7 @@ func _build_settings_account_tab() -> VBoxContainer:
 	var v = VBoxContainer.new()
 	v.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	v.add_theme_constant_override("separation", 14)
+	v.mouse_filter = Control.MOUSE_FILTER_PASS
 	
 	var t = Label.new()
 	t.text = "HỒ SƠ NGƯỜI CHƠI"
@@ -1954,7 +1964,7 @@ func _build_settings_account_tab() -> VBoxContainer:
 	v.add_child(id_lbl)
 	
 	var ver_lbl = Label.new()
-	ver_lbl.text = "Phiên bản: Kaiser Shuttle v8.3.1 (Spike Cross UI Edition)"
+	ver_lbl.text = "Phiên bản: Kaiser Shuttle v8.3.1 (Spike Liquid Glass Edition)"
 	ver_lbl.add_theme_font_size_override("font_size", 12)
 	ver_lbl.modulate = Color(0.65, 0.72, 0.80)
 	v.add_child(ver_lbl)
@@ -1965,6 +1975,7 @@ func _build_settings_account_tab() -> VBoxContainer:
 func _create_stepped_volume_row(label_text: String, init_step: int, on_step_change: Callable) -> HBoxContainer:
 	var row = HBoxContainer.new()
 	row.add_theme_constant_override("separation", 12)
+	row.mouse_filter = Control.MOUSE_FILTER_PASS
 	
 	var lbl = Label.new()
 	lbl.text = label_text
@@ -1974,19 +1985,20 @@ func _create_stepped_volume_row(label_text: String, init_step: int, on_step_chan
 	
 	var controls_box = HBoxContainer.new()
 	controls_box.add_theme_constant_override("separation", 4)
+	controls_box.mouse_filter = Control.MOUSE_FILTER_PASS
 	
-	var cur_val = [init_step] # wrap in array for closure mutation
+	var cur_val = [init_step]
 	var blocks: Array[ColorRect] = []
 	
 	var btn_left = _create_clean_button("‹", Color(1.0, 0.85, 0.3), Vector2(28, 28), 14)
 	controls_box.add_child(btn_left)
 	
-	# 5 stepped blocks
 	for i in range(5):
 		var b = ColorRect.new()
-		b.custom_minimum_size = Vector2(16, 12 + i * 4) # Tăng dần chiều cao như sóng âm
+		b.custom_minimum_size = Vector2(16, 12 + i * 4)
 		b.size_flags_vertical = Control.SIZE_SHRINK_END
 		b.color = Color(1.0, 0.82, 0.25) if i < cur_val[0] else Color(0.2, 0.24, 0.32)
+		b.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		controls_box.add_child(b)
 		blocks.append(b)
 		
@@ -2017,21 +2029,22 @@ func _create_stepped_volume_row(label_text: String, init_step: int, on_step_chan
 # ==========================================================
 func _create_character_card(cid: String) -> PanelContainer:
 	var data = CHAR_DATA[cid]
-	var p = PanelContainer.new()
-	p.custom_minimum_size = Vector2(310, 340)
+	var p = _create_liquid_glass_panel(Vector2(310, 335), 0.08)
+	p.mouse_filter = Control.MOUSE_FILTER_PASS
 	
 	var m = MarginContainer.new()
 	m.add_theme_constant_override("margin_left", 14)
 	m.add_theme_constant_override("margin_top", 12)
 	m.add_theme_constant_override("margin_right", 14)
 	m.add_theme_constant_override("margin_bottom", 12)
+	m.mouse_filter = Control.MOUSE_FILTER_PASS
 	p.add_child(m)
 	
 	var vbox = VBoxContainer.new()
 	vbox.add_theme_constant_override("separation", 6)
+	vbox.mouse_filter = Control.MOUSE_FILTER_PASS
 	m.add_child(vbox)
 	
-	# Header Card
 	var title = Label.new()
 	title.text = data["name"]
 	title.add_theme_font_size_override("font_size", 16)
@@ -2044,7 +2057,6 @@ func _create_character_card(cid: String) -> PanelContainer:
 	arch.modulate = Color(0.70, 0.80, 0.90, 0.85)
 	vbox.add_child(arch)
 	
-	# Stat bars
 	vbox.add_child(_create_stat_bar("LỰC ĐẬP", data["power"], data["color"]))
 	vbox.add_child(_create_stat_bar("TỐC ĐỘ", data["agility"], Color(0.25, 0.85, 1.0)))
 	vbox.add_child(_create_stat_bar("KIỂM SOÁT", data["control"], Color(0.35, 0.95, 0.55)))
@@ -2071,6 +2083,7 @@ func _create_character_card(cid: String) -> PanelContainer:
 	
 	var b_row = HBoxContainer.new()
 	b_row.add_theme_constant_override("separation", 8)
+	b_row.mouse_filter = Control.MOUSE_FILTER_PASS
 	vbox.add_child(b_row)
 	
 	var btn_p = _create_clean_button("CHỌN PLAYER", Color(0.25, 0.85, 0.45), Vector2(0, 30), 11)
@@ -2119,6 +2132,7 @@ func _create_stat_bar(stat_name: String, val: int, col: Color) -> HBoxContainer:
 func _create_clean_button(text: String, col: Color, min_size: Vector2, font_size: int = 14) -> Button:
 	var b = Button.new()
 	b.focus_mode = Control.FOCUS_NONE
+	b.mouse_filter = Control.MOUSE_FILTER_STOP
 	b.pressed.connect(b.release_focus)
 	b.text = text
 	b.custom_minimum_size = min_size
@@ -2260,7 +2274,7 @@ func _confirm_and_start_match() -> void:
 	visible = false
 
 # ==========================================================
-# NETWORKING & PVP METHODS (PRESERVED)
+# NETWORKING & PVP METHODS
 # ==========================================================
 func set_network_manager(net: PvPNetworkManager) -> void:
 	net_manager = net
@@ -2275,53 +2289,23 @@ func _load_saved_player_name() -> String:
 	if OS.has_feature("web"):
 		var js_name = JavaScriptBridge.eval("localStorage.getItem('kaiser_player_name') || ''")
 		if js_name is String and not js_name.strip_edges().is_empty():
-			return js_name.strip_edges().to_upper()
+			return js_name.strip_edges()
 	if FileAccess.file_exists("user://player_name.txt"):
 		var f = FileAccess.open("user://player_name.txt", FileAccess.READ)
 		if f:
-			var txt = f.get_as_text().strip_edges().to_upper()
+			var txt = f.get_as_text().strip_edges()
 			if not txt.is_empty():
 				return txt
-	return "PLAYER 1"
+	return "BaoHodaka"
 
 func _save_player_name(name_str: String) -> void:
-	var clean = name_str.strip_edges().to_upper()
-	if clean.is_empty(): clean = "PLAYER 1"
+	var clean = name_str.strip_edges()
+	if clean.is_empty(): clean = "BaoHodaka"
 	if OS.has_feature("web"):
 		JavaScriptBridge.eval("localStorage.setItem('kaiser_player_name', '%s')" % clean)
 	var f = FileAccess.open("user://player_name.txt", FileAccess.WRITE)
 	if f:
 		f.store_string(clean)
-
-func _is_mobile_environment() -> bool:
-	if OS.has_feature("mobile") or DisplayServer.is_touchscreen_available():
-		return true
-	if OS.has_feature("web"):
-		return bool(JavaScriptBridge.eval("/Android|iPhone|iPad|iPod|Touch/i.test(navigator.userAgent)"))
-	return false
-
-func _open_mobile_text_prompt(target_line_edit: LineEdit, title: String, max_len: int = 12) -> void:
-	if not target_line_edit:
-		return
-	if OS.has_feature("web"):
-		var cur_val = target_line_edit.text.strip_edges()
-		var js_code = "window.prompt(" + JSON.stringify(title) + ", " + JSON.stringify(cur_val) + ")"
-		var res = JavaScriptBridge.eval(js_code)
-		if res != null and res is String:
-			var txt = (res as String).strip_edges()
-			if max_len > 0 and txt.length() > max_len:
-				txt = txt.substr(0, max_len)
-			target_line_edit.text = txt
-			target_line_edit.text_changed.emit(txt)
-			if target_line_edit == pvp_name_input:
-				pvp_player_name = txt if not txt.is_empty() else "PLAYER 1"
-				_save_player_name(pvp_player_name)
-				if lbl_top_player_name: lbl_top_player_name.text = pvp_player_name
-			elif target_line_edit == pvp_room_input:
-				pvp_current_code = txt.to_upper()
-	else:
-		DisplayServer.virtual_keyboard_show(target_line_edit.text)
-		target_line_edit.grab_focus()
 
 func _select_pvp_char(cid: String) -> void:
 	pvp_selected_char = cid

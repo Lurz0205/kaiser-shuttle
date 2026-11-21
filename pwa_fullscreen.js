@@ -30,6 +30,18 @@
     }
 
     // -------------------------------------------------------------
+    // 1b. Tích hợp thư viện Liquid Glass (ybouane/liquidglass WebGL)
+    // -------------------------------------------------------------
+    try {
+        var lgScript = document.createElement('script');
+        lgScript.type = 'module';
+        lgScript.innerHTML = "import { LiquidGlass } from 'https://cdn.jsdelivr.net/npm/@ybouane/liquidglass/dist/index.js'; window.LiquidGlass = LiquidGlass; console.log('[Kaiser] ybouane/liquidglass WebGL engine loaded.');";
+        document.head.appendChild(lgScript);
+    } catch (e) {
+        console.warn('[Kaiser] LiquidGlass CDN load:', e);
+    }
+
+    // -------------------------------------------------------------
     // 2. Mobile Auto-Fullscreen & Auto-Landscape (Xoay Ngang & Toàn Màn Hình Tự Động)
     // "Mới vào thì tự full màn hình và xoay ngang luôn, không đợi người dùng tự bấm full"
     // -------------------------------------------------------------
