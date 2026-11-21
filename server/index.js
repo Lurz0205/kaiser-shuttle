@@ -58,6 +58,11 @@ wss.on('connection', (ws) => {
     ws.roomCode = null;
     ws.playerRole = null; // 'p1' or 'p2'
 
+    // Disable Nagle's algorithm for zero packet buffering delay (FPS-grade low latency)
+    if (ws._socket && typeof ws._socket.setNoDelay === 'function') {
+        ws._socket.setNoDelay(true);
+    }
+
     ws.on('pong', () => { ws.isAlive = true; });
 
     ws.on('message', (message) => {

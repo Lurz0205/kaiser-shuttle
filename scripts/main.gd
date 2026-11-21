@@ -131,6 +131,9 @@ var is_point_transition_active: bool = false
 var serve_cooldown: float = 0.0
 var pvp_local_player_name: String = "PLAYER 1"
 var pvp_opponent_player_name: String = "PLAYER 2"
+var pvp_net_sync_timer: float = 0.0
+const PVP_NET_TICK_RATE: float = 30.0 # 30 Hz fixed network tick rate for optimal WebSocket TCP throughput
+const PVP_NET_SYNC_INTERVAL: float = 1.0 / PVP_NET_TICK_RATE # ~0.0333s
 
 @onready var btn_settings: Button = $HUD/BtnSettings
 @onready var settings_panel: PanelContainer = $HUD/SettingsPanel
@@ -974,8 +977,12 @@ func _on_network_packet_received(data: Dictionary) -> void:
 	match t:
 		"opp_sync":
 			if ai_rival:
-				ai_rival.global_position.x = lerp(ai_rival.global_position.x, float(data.get("x", ai_rival.global_position.x)), 0.5)
-				ai_rival.global_position.y = lerp(ai_rival.global_position.y, float(data.get("y", ai_rival.global_position.y)), 0.5)
+				var target_x = float(data.get("x", ai_rival.global_position.x))
+				var target_y = float(data.get("y", ai_rival.global_position.y))
+				ai_rival.net_target_pos = Vector2(target_x, target_y)
+				if not ai_rival.has_net_target or ai_rival.global_position.distance_to(ai_rival.net_target_pos) > 160.0:
+					ai_rival.global_position = ai_rival.net_target_pos
+				ai_rival.has_net_target = true
 				ai_rival.velocity.x = float(data.get("vx", 0.0))
 				ai_rival.velocity.y = float(data.get("vy", 0.0))
 				ai_rival.facing = float(data.get("f", -1.0))
@@ -1207,8 +1214,12 @@ func _on_network_packet_received(data: Dictionary) -> void:
 			var role = str(data.get("role", "p1"))
 			var target_node = player if role == "p1" else ai_rival
 			if target_node:
-				target_node.global_position.x = lerp(target_node.global_position.x, float(data.get("x", target_node.global_position.x)), 0.5)
-				target_node.global_position.y = lerp(target_node.global_position.y, float(data.get("y", target_node.global_position.y)), 0.5)
+				var target_x = float(data.get("x", target_node.global_position.x))
+				var target_y = float(data.get("y", target_node.global_position.y))
+				target_node.net_target_pos = Vector2(target_x, target_y)
+				if not target_node.has_net_target or target_node.global_position.distance_to(target_node.net_target_pos) > 160.0:
+					target_node.global_position = target_node.net_target_pos
+				target_node.has_net_target = true
 				target_node.velocity.x = float(data.get("vx", 0.0))
 				target_node.velocity.y = float(data.get("vy", 0.0))
 				target_node.facing = float(data.get("f", 1.0 if role == "p1" else -1.0))
@@ -1570,23 +1581,26 @@ func _process(delta: float) -> void:
 			fuji_slowmo_active = false
 		_redraw_effects()
 	
-	# Authoritative WebSocket PvP Multiplayer Sync (Mirrored 100% independent low-latency)
+	# Authoritative WebSocket PvP Multiplayer Sync (Fixed 30Hz Tick Rate with Compact Precision)
 	if is_pvp_active and not is_spectator and net_manager:
-		net_manager.send_packet({
-			"t": "sync",
-			"x": player.global_position.x,
-			"y": player.global_position.y,
-			"vx": player.velocity.x,
-			"vy": player.velocity.y,
-			"f": player.facing,
-			"sw": player.is_swinging,
-			"dv": player.is_diving,
-			"wp": player.walk_phase,
-			"bal": player.balance,
-			"stm": player.stats.stamina if player.stats else 100.0,
-			"cap": player.stats.max_stamina_cap if player.stats else 100.0,
-			"acc": player.stats.accuracy if player.stats else 100.0
-		})
+		pvp_net_sync_timer += delta
+		if pvp_net_sync_timer >= PVP_NET_SYNC_INTERVAL:
+			pvp_net_sync_timer = fmod(pvp_net_sync_timer, PVP_NET_SYNC_INTERVAL)
+			net_manager.send_packet({
+				"t": "sync",
+				"x": snapped(player.global_position.x, 0.1),
+				"y": snapped(player.global_position.y, 0.1),
+				"vx": snapped(player.velocity.x, 0.1),
+				"vy": snapped(player.velocity.y, 0.1),
+				"f": player.facing,
+				"sw": player.is_swinging,
+				"dv": player.is_diving,
+				"wp": snapped(player.walk_phase, 0.01),
+				"bal": snapped(player.balance, 0.1),
+				"stm": snapped(player.stats.stamina, 0.1) if player.stats else 100.0,
+				"cap": snapped(player.stats.max_stamina_cap, 0.1) if player.stats else 100.0,
+				"acc": snapped(player.stats.accuracy, 0.1) if player.stats else 100.0
+			})
 	
 	_update_stats_display()
 	

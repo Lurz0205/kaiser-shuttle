@@ -39,6 +39,10 @@ var prev_key_k: bool = false
 var prev_key_l: bool = false
 var prev_key_u: bool = false
 
+# Network dead reckoning & interpolation for PvP remote puppet:
+var net_target_pos: Vector2 = Vector2.ZERO
+var has_net_target: bool = false
+
 # AI Decision and reaction parameters
 var ai_reaction_timer: float = 0.0
 var ai_has_reacted: bool = false
@@ -320,6 +324,22 @@ func _physics_process(delta: float) -> void:
 			rally_hits = shuttlecock.tension_level
 	
 	if is_remote_puppet:
+		if has_net_target:
+			var d = global_position.distance_to(net_target_pos)
+			if d > 160.0:
+				global_position = net_target_pos
+			else:
+				# Smoothly interpolate position toward net_target_pos:
+				global_position = global_position.lerp(net_target_pos, clamp(20.0 * delta, 0.0, 1.0))
+				# Dead reckoning: continue movement using velocity between network packet intervals:
+				global_position += velocity * delta
+				net_target_pos += velocity * delta
+			
+			global_position.x = clamp(global_position.x, min_x, max_x)
+			if global_position.y >= current_ground_y:
+				global_position.y = current_ground_y
+				velocity.y = 0.0
+
 		if is_swinging:
 			swing_timer += delta
 			swing_prog = clamp(swing_timer / SWING_DURATION, 0.0, 1.0)
