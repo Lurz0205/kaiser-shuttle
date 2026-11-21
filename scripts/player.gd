@@ -2307,8 +2307,9 @@ func _draw() -> void:
 	var is_perfect = hit_status["is_perfect"]
 	var is_in_air = not is_on_ground() and global_position.y < current_ground_y - 25.0
 	
-	# 1. Oval ground shadow
-	draw_ellipse_shape(Vector2(0, 0), 32.0, 12.0, Color(0.05, 0.08, 0.12, 0.45))
+	# 1. Oval ground shadow (Chỉ vẽ trên Desktop để giữ đồ họa đẹp; tắt hoàn toàn trên Web để tối ưu FPS)
+	if not OS.has_feature("web"):
+		draw_ellipse_shape(Vector2(0, 0), 32.0, 12.0, Color(0.05, 0.08, 0.12, 0.45))
 	
 	# Dual Athletic Gauges (Stamina & Accuracy) dưới chân:
 	if stats:
