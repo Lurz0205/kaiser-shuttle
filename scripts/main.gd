@@ -121,7 +121,7 @@ const CharacterStats = preload("res://scripts/core/character_stats.gd")
 const MainMenuController = preload("res://scripts/ui/main_menu_controller.gd")
 const PvPNetworkManager = preload("res://scripts/network/pvp_network_manager.gd")
 @onready var btn_char_select: Button = $HUD/BtnCharSelect
-var main_menu: MainMenuController
+@onready var main_menu: MainMenuController = $HUD/MainMenu
 var net_manager: PvPNetworkManager
 var is_pvp_active: bool = false
 var is_pvp_host: bool = false
@@ -202,6 +202,12 @@ var prev_shuttle_x: float = 0.0
 
 
 func _ready() -> void:
+	# Khởi động ẩn ngay toàn bộ HUD trong trận và ưu tiên hiển thị màn hình bắt đầu / sảnh chờ
+	_set_in_game_hud_visible(false)
+	if main_menu:
+		main_menu.visible = true
+		main_menu.switch_state(MainMenuController.MenuState.TITLE)
+		
 	# Nạp các biến thể âm thanh string (ngẫu nhiên không trùng lặp)
 	sfx_string_streams.append(preload("res://assets/audio/string1.wav"))
 	sfx_string_streams.append(preload("res://assets/audio/string2.wav"))
@@ -487,14 +493,21 @@ func _ready() -> void:
 	net_manager.peer_disconnected.connect(_on_network_peer_disconnected)
 	
 	# Khởi tạo Main Menu & Match Setup (Kaiser Shuttle UI)
-	main_menu = MainMenuController.new()
+	if not main_menu:
+		main_menu = get_node_or_null("HUD/MainMenu")
+	if not main_menu:
+		main_menu = MainMenuController.new()
+		$HUD.add_child(main_menu)
 	main_menu.touch_controls_enabled = touch_controls_enabled
-	$HUD.add_child(main_menu)
 	main_menu.set_network_manager(net_manager)
-	main_menu.start_match_requested.connect(_on_menu_start_match)
-	main_menu.start_pvp_match_requested.connect(_on_menu_start_pvp_match)
-	main_menu.spectate_room_requested.connect(_on_menu_spectate_room)
-	main_menu.settings_updated.connect(_on_menu_settings_updated)
+	if not main_menu.start_match_requested.is_connected(_on_menu_start_match):
+		main_menu.start_match_requested.connect(_on_menu_start_match)
+	if not main_menu.start_pvp_match_requested.is_connected(_on_menu_start_pvp_match):
+		main_menu.start_pvp_match_requested.connect(_on_menu_start_pvp_match)
+	if not main_menu.spectate_room_requested.is_connected(_on_menu_spectate_room):
+		main_menu.spectate_room_requested.connect(_on_menu_spectate_room)
+	if not main_menu.settings_updated.is_connected(_on_menu_settings_updated):
+		main_menu.settings_updated.connect(_on_menu_settings_updated)
 	main_menu.touch_toggle_requested.connect(func(en: bool):
 		touch_controls_enabled = en
 		_update_settings_ui()

@@ -26,6 +26,21 @@
                 }
             }).catch(function() {});
         }
+        // Force fresh load of .pck, .wasm, and .json by bypassing stale browser cache
+        var origFetch = window.fetch;
+        if (origFetch) {
+            window.fetch = function(input, init) {
+                var url = (typeof input === 'string') ? input : (input && input.url ? input.url : '');
+                if (url && (url.indexOf('.pck') !== -1 || url.indexOf('.wasm') !== -1 || url.indexOf('.json') !== -1)) {
+                    if (init) {
+                        init.cache = 'no-cache';
+                    } else {
+                        init = { cache: 'no-cache' };
+                    }
+                }
+                return origFetch.call(this, input, init);
+            };
+        }
         if ('localStorage' in window) {
             var keepKey = 'kaiser_player_name';
             var savedName = localStorage.getItem(keepKey);

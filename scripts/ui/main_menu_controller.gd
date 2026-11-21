@@ -202,6 +202,9 @@ const CHAR_DATA = {
 
 func _ready() -> void:
 	_load_selected_avatar()
+	custom_minimum_size = Vector2(1280, 720)
+	size = Vector2(1280, 720)
+	position = Vector2.ZERO
 	set_anchors_preset(Control.PRESET_FULL_RECT)
 	anchor_right = 1.0
 	anchor_bottom = 1.0
@@ -215,6 +218,7 @@ func _ready() -> void:
 	
 	_build_ui()
 	switch_state(MenuState.TITLE)
+	visible = true
 	
 	var vp = get_viewport()
 	if vp:
@@ -227,6 +231,10 @@ func _on_viewport_size_changed() -> void:
 	if not is_inside_tree() or get_viewport() == null:
 		return
 	var vp_size = get_viewport_rect().size
+	if vp_size.x > 0 and vp_size.y > 0:
+		custom_minimum_size = vp_size
+		size = vp_size
+		position = Vector2.ZERO
 	if global_bg:
 		global_bg.set_deferred("size", vp_size)
 	if global_tint:
