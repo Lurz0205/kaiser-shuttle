@@ -97,6 +97,18 @@ func advance_to_next_set() -> void:
 	current_active_set += 1
 	refresh_display()
 
+func sync_full_state(p1_scores: Array, p2_scores: Array, winners: Array, active_set: int, total_sets: int) -> void:
+	max_sets = total_sets
+	current_active_set = clamp(active_set, 0, 2)
+	for i in range(3):
+		if i < p1_scores.size():
+			scores_p1[i] = int(p1_scores[i])
+		if i < p2_scores.size():
+			scores_p2[i] = int(p2_scores[i])
+		if i < winners.size():
+			set_winners[i] = int(winners[i])
+	refresh_display()
+
 func refresh_display() -> void:
 	_ensure_nodes()
 	var p1_labels = [score_p1_s1, score_p1_s2, score_p1_s3]

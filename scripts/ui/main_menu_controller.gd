@@ -9,7 +9,7 @@ extends Control
 const CustomIcon = preload("res://scripts/ui/custom_icon.gd")
 
 signal start_match_requested(player_char: String, rival_char: String, difficulty: int, target_points: int, match_sets: int)
-signal start_pvp_match_requested(room_code: String, is_host: bool, player_char: String, target_points: int, match_sets: int, first_server: String, opponent_char: String)
+signal start_pvp_match_requested(room_code: String, is_host: bool, player_char: String, target_points: int, match_sets: int, first_server: String, opponent_char: String, player_name: String, opponent_name: String)
 signal spectate_room_requested(room_code: String)
 signal settings_updated(squeak: bool, bgm_enabled: bool, bgm_vol: float, low_gfx: bool)
 
@@ -44,6 +44,9 @@ var pvp_selected_sets: int = 1
 var pvp_first_server: String = "p1"
 var pvp_is_host: bool = false
 var pvp_is_connected: bool = false
+var pvp_player_name: String = "PLAYER 1"
+var pvp_opponent_name: String = "PLAYER 2"
+var pvp_name_input: LineEdit
 var btn_pvp_start: Button
 var pvp_countdown_lbl: Label
 var pvp_char_desc_lbl: Label
@@ -147,7 +150,7 @@ func _process(delta: float) -> void:
 			pvp_is_counting_down = false
 			if pvp_countdown_lbl:
 				pvp_countdown_lbl.text = "VÀO SÂN!"
-			start_pvp_match_requested.emit(pvp_current_code, pvp_is_host, pvp_selected_char, pvp_selected_points, pvp_selected_sets, pvp_first_server, pvp_opponent_char)
+			start_pvp_match_requested.emit(pvp_current_code, pvp_is_host, pvp_selected_char, pvp_selected_points, pvp_selected_sets, pvp_first_server, pvp_opponent_char, pvp_player_name, pvp_opponent_name)
 			visible = false
 
 func _draw() -> void:
@@ -795,6 +798,28 @@ func set_network_manager(net: PvPNetworkManager) -> void:
 		net_manager.ping_updated.connect(_on_net_ping_updated)
 		net_manager.packet_received.connect(_on_net_packet_received)
 
+func _load_saved_player_name() -> String:
+	if OS.has_feature("web"):
+		var js_name = JavaScriptBridge.eval("localStorage.getItem('kaiser_player_name') || ''")
+		if js_name is String and not js_name.strip_edges().is_empty():
+			return js_name.strip_edges().to_upper()
+	if FileAccess.file_exists("user://player_name.txt"):
+		var f = FileAccess.open("user://player_name.txt", FileAccess.READ)
+		if f:
+			var txt = f.get_as_text().strip_edges().to_upper()
+			if not txt.is_empty():
+				return txt
+	return "PLAYER 1"
+
+func _save_player_name(name_str: String) -> void:
+	var clean = name_str.strip_edges().to_upper()
+	if clean.is_empty(): clean = "PLAYER 1"
+	if OS.has_feature("web"):
+		JavaScriptBridge.eval("localStorage.setItem('kaiser_player_name', '%s')" % clean)
+	var f = FileAccess.open("user://player_name.txt", FileAccess.WRITE)
+	if f:
+		f.store_string(clean)
+
 func _build_pvp_panel(sb_setup: StyleBoxFlat) -> void:
 	pvp_panel = Control.new()
 	pvp_panel.custom_minimum_size = Vector2(1280, 720)
@@ -838,11 +863,48 @@ func _build_pvp_panel(sb_setup: StyleBoxFlat) -> void:
 	lbl_sub.modulate = Color(0.70, 0.80, 0.90, 0.8)
 	vbox.add_child(lbl_sub)
 	
-	# Config row: Character + Points + Sets
+	# Config row: Name + Character + Points + Sets
 	var cfg_row = HBoxContainer.new()
 	cfg_row.alignment = BoxContainer.ALIGNMENT_CENTER
-	cfg_row.add_theme_constant_override("separation", 24)
+	cfg_row.add_theme_constant_override("separation", 18)
 	vbox.add_child(cfg_row)
+	
+	# Name input
+	var name_box = HBoxContainer.new()
+	name_box.add_theme_constant_override("separation", 6)
+	var lbl_n = Label.new()
+	lbl_n.text = "TÊN BẠN:"
+	lbl_n.add_theme_font_size_override("font_size", 12)
+	lbl_n.modulate = Color(0.85, 0.88, 0.92)
+	name_box.add_child(lbl_n)
+	
+	pvp_name_input = LineEdit.new()
+	pvp_name_input.text = _load_saved_player_name()
+	pvp_player_name = pvp_name_input.text
+	pvp_name_input.custom_minimum_size = Vector2(115, 32)
+	pvp_name_input.max_length = 12
+	pvp_name_input.placeholder_text = "TÊN PLAYER"
+	pvp_name_input.alignment = HORIZONTAL_ALIGNMENT_CENTER
+	var sb_name = StyleBoxFlat.new()
+	sb_name.bg_color = Color(0.12, 0.16, 0.22, 0.95)
+	sb_name.border_width_left = 1
+	sb_name.border_width_top = 1
+	sb_name.border_width_right = 1
+	sb_name.border_width_bottom = 1
+	sb_name.border_color = Color(0.25, 0.85, 0.75, 0.6)
+	sb_name.corner_radius_top_left = 4
+	sb_name.corner_radius_top_right = 4
+	sb_name.corner_radius_bottom_right = 4
+	sb_name.corner_radius_bottom_left = 4
+	pvp_name_input.add_theme_stylebox_override("normal", sb_name)
+	pvp_name_input.add_theme_stylebox_override("focus", sb_name)
+	pvp_name_input.text_changed.connect(func(new_text: String):
+		var clean = new_text.strip_edges().to_upper()
+		pvp_player_name = clean if not clean.is_empty() else "PLAYER 1"
+		_save_player_name(pvp_player_name)
+	)
+	name_box.add_child(pvp_name_input)
+	cfg_row.add_child(name_box)
 	
 	# Character picker
 	var char_box = HBoxContainer.new()
@@ -1184,7 +1246,7 @@ func _on_host_create_room() -> void:
 		pvp_status_lbl.text = "Đang mở phòng [%s] trên WebSocket Server... Hãy gửi mã cho đối thủ!" % pvp_current_code
 		pvp_status_lbl.modulate = Color(0.95, 0.85, 0.3)
 	if net_manager:
-		net_manager.host_room(pvp_current_code, pvp_selected_char, pvp_selected_points, pvp_selected_sets)
+		net_manager.host_room(pvp_current_code, pvp_selected_char, pvp_selected_points, pvp_selected_sets, pvp_player_name)
 
 func _on_paste_room_code_pressed() -> void:
 	if not pvp_room_input: return
@@ -1227,7 +1289,7 @@ func _on_guest_join_room() -> void:
 		pvp_status_lbl.text = "Đang kết nối tới phòng [%s] trên WebSocket Server..." % code
 		pvp_status_lbl.modulate = Color(0.3, 0.7, 1.0)
 	if net_manager:
-		net_manager.join_room(code, pvp_selected_char)
+		net_manager.join_room(code, pvp_selected_char, pvp_player_name)
 
 func _on_spectate_room() -> void:
 	if not pvp_room_input: return
@@ -1301,8 +1363,10 @@ func _on_net_packet_received(data: Dictionary) -> void:
 	var t = str(data.get("t", ""))
 	if t == "guest_joined":
 		pvp_opponent_char = str(data.get("guest_char", "wall"))
+		pvp_opponent_name = str(data.get("guest_name", "GUEST"))
 	elif t == "room_joined":
 		pvp_opponent_char = str(data.get("host_char", "nishikawa"))
+		pvp_opponent_name = str(data.get("host_name", "HOST"))
 	elif t == "lobby_start" or t == "countdown_start":
 		pvp_selected_points = int(data.get("pts", pvp_selected_points))
 		pvp_selected_sets = int(data.get("sets", pvp_selected_sets))
@@ -1315,6 +1379,13 @@ func _on_net_packet_received(data: Dictionary) -> void:
 			else:
 				pvp_selected_char = p2_c
 				pvp_opponent_char = p1_c
+		if data.has("p1_name") and data.has("p2_name"):
+			var p1_n = str(data.get("p1_name", "PLAYER 1"))
+			var p2_n = str(data.get("p2_name", "PLAYER 2"))
+			if pvp_is_host:
+				pvp_opponent_name = p2_n
+			else:
+				pvp_opponent_name = p1_n
 		if data.has("first_server"):
 			pvp_first_server = str(data.get("first_server"))
 		_start_pvp_countdown()

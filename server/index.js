@@ -82,6 +82,7 @@ wss.on('connection', (ws) => {
                     code = generateRoomCode();
                 }
 
+                const hostName = (data.name || 'PLAYER 1').slice(0, 12).toUpperCase().trim();
                 const room = {
                     code: code,
                     p1: ws,
@@ -89,6 +90,8 @@ wss.on('connection', (ws) => {
                     spectators: [],
                     p1_char: data.char || 'nishikawa',
                     p2_char: 'wall',
+                    p1_name: hostName || 'PLAYER 1',
+                    p2_name: 'PLAYER 2',
                     pts: data.pts || 11,
                     sets: data.sets || 1,
                     p1_pts: 0,
@@ -108,9 +111,10 @@ wss.on('connection', (ws) => {
                     code: code,
                     role: 'p1',
                     pts: room.pts,
-                    sets: room.sets
+                    sets: room.sets,
+                    name: room.p1_name
                 });
-                console.log(`[ROOM CREATED] Code: ${code}`);
+                console.log(`[ROOM CREATED] Code: ${code} - Host: ${room.p1_name}`);
                 break;
             }
 
@@ -127,8 +131,10 @@ wss.on('connection', (ws) => {
                     return;
                 }
 
+                const guestName = (data.name || 'PLAYER 2').slice(0, 12).toUpperCase().trim();
                 room.p2 = ws;
                 room.p2_char = data.char || 'wall';
+                room.p2_name = guestName || 'PLAYER 2';
                 room.status = 'ready';
                 ws.roomCode = code;
                 ws.playerRole = 'p2';
@@ -140,6 +146,8 @@ wss.on('connection', (ws) => {
                     role: 'p2',
                     host_char: room.p1_char,
                     guest_char: room.p2_char,
+                    host_name: room.p1_name,
+                    guest_name: room.p2_name,
                     pts: room.pts,
                     sets: room.sets
                 });
@@ -148,10 +156,11 @@ wss.on('connection', (ws) => {
                 sendTo(room.p1, {
                     t: 'guest_joined',
                     code: code,
-                    guest_char: room.p2_char
+                    guest_char: room.p2_char,
+                    guest_name: room.p2_name
                 });
 
-                console.log(`[ROOM JOINED] Code: ${code} - Guest entered`);
+                console.log(`[ROOM JOINED] Code: ${code} - Guest entered: ${room.p2_name}`);
                 break;
             }
 
@@ -211,6 +220,8 @@ wss.on('connection', (ws) => {
                     sets: room.sets,
                     p1_char: room.p1_char,
                     p2_char: room.p2_char,
+                    p1_name: room.p1_name || 'PLAYER 1',
+                    p2_name: room.p2_name || 'PLAYER 2',
                     first_server: firstServer
                 };
                 broadcastToRoom(room, countdownMsg);
@@ -369,7 +380,12 @@ wss.on('connection', (ws) => {
                     p2_pts: Number(data.p1_pts || 0), // Host's pts
                     p1_sets: Number(data.p2_sets || 0),
                     p2_sets: Number(data.p1_sets || 0),
-                    next_server: data.next_server === 'player' ? 'ai' : 'player'
+                    next_server: data.next_server === 'player' ? 'ai' : 'player',
+                    cur_set: Number(data.cur_set != null ? data.cur_set : 0),
+                    s_p1: Array.isArray(data.s_p2) ? data.s_p2 : [], // For Guest: Guest's set history
+                    s_p2: Array.isArray(data.s_p1) ? data.s_p1 : [], // For Guest: Host's set history
+                    s_win: Array.isArray(data.s_win) ? data.s_win.map(w => w === 0 ? 1 : (w === 1 ? 0 : w)) : [-1, -1, -1],
+                    max_sets: Number(data.max_sets || room.sets || 1)
                 });
 
                 // For Spectators: normal Host (P1) vs Guest (P2)
@@ -382,7 +398,12 @@ wss.on('connection', (ws) => {
                         p2_pts: room.p2_pts,
                         p1_sets: room.p1_sets,
                         p2_sets: room.p2_sets,
-                        next_server: data.next_server === 'player' ? 'p1' : 'p2'
+                        next_server: data.next_server === 'player' ? 'p1' : 'p2',
+                        cur_set: Number(data.cur_set != null ? data.cur_set : 0),
+                        s_p1: Array.isArray(data.s_p1) ? data.s_p1 : [],
+                        s_p2: Array.isArray(data.s_p2) ? data.s_p2 : [],
+                        s_win: Array.isArray(data.s_win) ? data.s_win : [-1, -1, -1],
+                        max_sets: Number(data.max_sets || room.sets || 1)
                     });
                 }
                 break;

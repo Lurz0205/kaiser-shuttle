@@ -22,6 +22,7 @@ var is_jump_drop: bool = false
 var is_serve: bool = false
 var is_net_fault: bool = false
 var is_weak_return: bool = false
+var last_error_offset_x: float = 0.0
 var tension_speed_mult: float = 1.0
 var tension_level: int = 0
 var last_hitter: String = "" # "player" or "ai"
@@ -193,6 +194,7 @@ func launch_to_target_2d(from_pt: Vector2, target_pt: Vector2, shot_type: String
 	flight_time_elapsed = 0.0
 	h_start = max(5.0, floor_y - from_pt.y)
 	is_jump_drop = (shot_type == "drop" and h_start > t_res.net_height + 25.0)
+	last_error_offset_x = error_offset_x
 	
 	var final_target_x = target_pt.x + error_offset_x
 	if shot_type == "weak_return":

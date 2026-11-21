@@ -25,6 +25,7 @@ var connection_timeout_timer: float = 0.0
 
 var pending_action: String = "" # "host", "join", or "spectate"
 var pending_char: String = "nishikawa"
+var pending_name: String = "PLAYER"
 var pending_pts: int = 11
 var pending_sets: int = 1
 
@@ -70,6 +71,7 @@ func _physics_process(delta: float) -> void:
 						"t": "create_room",
 						"code": current_room,
 						"char": pending_char,
+						"name": pending_name,
 						"pts": pending_pts,
 						"sets": pending_sets
 					}
@@ -78,7 +80,8 @@ func _physics_process(delta: float) -> void:
 					var pkt = {
 						"t": "join_room",
 						"code": current_room,
-						"char": pending_char
+						"char": pending_char,
+						"name": pending_name
 					}
 					send_packet(pkt)
 				elif act == "spectate":
@@ -162,26 +165,28 @@ func _handle_server_packet(data: Dictionary) -> void:
 		_:
 			packet_received.emit(data)
 
-func host_room(code: String, char_id: String = "nishikawa", pts: int = 11, sets: int = 1) -> void:
+func host_room(code: String, char_id: String = "nishikawa", pts: int = 11, sets: int = 1, player_name: String = "PLAYER") -> void:
 	is_active = true
 	is_host = true
 	is_spectator = false
 	current_room = code.to_upper().strip_edges()
 	pending_action = "host"
 	pending_char = char_id
+	pending_name = player_name.strip_edges().to_upper() if not player_name.strip_edges().is_empty() else "PLAYER"
 	pending_pts = pts
 	pending_sets = sets
 	connection_timeout_timer = 0.0
 
 	_connect_if_needed()
 
-func join_room(code: String, char_id: String = "wall") -> void:
+func join_room(code: String, char_id: String = "wall", player_name: String = "PLAYER") -> void:
 	is_active = true
 	is_host = false
 	is_spectator = false
 	current_room = code.to_upper().strip_edges()
 	pending_action = "join"
 	pending_char = char_id
+	pending_name = player_name.strip_edges().to_upper() if not player_name.strip_edges().is_empty() else "PLAYER"
 	connection_timeout_timer = 0.0
 
 	_connect_if_needed()
