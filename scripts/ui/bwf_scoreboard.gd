@@ -24,8 +24,10 @@ var current_active_set: int = 0
 var max_sets: int = 3
 
 func _ready() -> void:
+	set_anchors_preset(Control.PRESET_TOP_LEFT)
 	custom_minimum_size = Vector2(440, 64)
 	size = Vector2(440, 64)
+	position = Vector2(420.0, 14.0)
 	z_index = 100
 	_ensure_nodes()
 	_apply_bold_names()

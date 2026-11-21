@@ -330,7 +330,7 @@ func _build_ui() -> void:
 	# ----------------------------------------------------
 	# GLOBAL BACKGROUND (Sân đấu & Phòng thay đồ thể thao cao cấp)
 	# ----------------------------------------------------
-	var global_bg = TextureRect.new()
+	global_bg = TextureRect.new()
 	global_bg.texture = TEX_LOBBY_BG
 	global_bg.custom_minimum_size = Vector2(1280, 720)
 	global_bg.size = Vector2(1280, 720)
@@ -340,7 +340,7 @@ func _build_ui() -> void:
 	add_child(global_bg)
 	
 	# Light Vignette để làm nổi bật bối cảnh sân đấu phía sau (The Spike Translucent Style)
-	var global_tint = ColorRect.new()
+	global_tint = ColorRect.new()
 	global_tint.custom_minimum_size = Vector2(1280, 720)
 	global_tint.size = Vector2(1280, 720)
 	global_tint.color = Color(0.02, 0.05, 0.10, 0.25)
@@ -440,6 +440,7 @@ func _build_top_bar() -> void:
 	# Left: Player Profile Pill with Real Studio Avatar & Direct Text Input
 	var prof_box = HBoxContainer.new()
 	prof_box.add_theme_constant_override("separation", 10)
+	prof_box.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	prof_box.mouse_filter = Control.MOUSE_FILTER_PASS
 	
 	# Clickable Avatar Button with Cozy Faceless Art
@@ -502,6 +503,7 @@ func _build_top_bar() -> void:
 	
 	# 2. Next Locked Feature Pill (Ổ khóa hoàng kim 3D)
 	var lock_pill = PanelContainer.new()
+	lock_pill.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	var sb_lp = StyleBoxFlat.new()
 	sb_lp.bg_color = Color(0.10, 0.13, 0.18, 0.85)
 	sb_lp.corner_radius_top_left = 14
@@ -541,6 +543,7 @@ func _build_top_bar() -> void:
 	# Top Navigation Tabs (Click-Through Guaranteed)
 	var tabs_row = HBoxContainer.new()
 	tabs_row.add_theme_constant_override("separation", 8)
+	tabs_row.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	tabs_row.mouse_filter = Control.MOUSE_FILTER_PASS
 	
 	var btn_home = _create_nav_tab("Trang Chủ", "lobby", func(): switch_state(MenuState.LOBBY))
@@ -558,6 +561,7 @@ func _build_top_bar() -> void:
 
 func _create_currency_pill_tex(tex: Texture2D, amount_str: String, col: Color) -> PanelContainer:
 	var p = PanelContainer.new()
+	p.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	var sb = StyleBoxFlat.new()
 	sb.bg_color = Color(0.12, 0.15, 0.20, 0.85)
 	sb.corner_radius_top_left = 14
@@ -778,7 +782,7 @@ func _build_lobby_panel() -> void:
 	
 	# Left Side Widgets (Banner Event & Điểm Danh)
 	var left_col = VBoxContainer.new()
-	left_col.position = Vector2(30, 90)
+	left_col.position = Vector2(30, 105)
 	left_col.custom_minimum_size = Vector2(280, 500)
 	left_col.add_theme_constant_override("separation", 14)
 	left_col.mouse_filter = Control.MOUSE_FILTER_PASS
@@ -820,15 +824,13 @@ func _build_lobby_panel() -> void:
 	btn_gacha.pressed.connect(func(): switch_state(MenuState.SHOP))
 	btn_row.add_child(btn_gacha)
 	
-	# Primary Giant Play Button with Studio Shuttlecock Icon
+	# Primary Giant Play Button (The Spike Cross Style - Bold Clean Typography)
 	var btn_play_cta = Button.new()
-	btn_play_cta.text = " TRẬN ĐẤU"
-	btn_play_cta.icon = TEX_SHUTTLECOCK
-	btn_play_cta.expand_icon = true
+	btn_play_cta.text = "TRẬN ĐẤU"
 	btn_play_cta.focus_mode = Control.FOCUS_NONE
 	btn_play_cta.mouse_filter = Control.MOUSE_FILTER_STOP
 	btn_play_cta.custom_minimum_size = Vector2(210, 68)
-	btn_play_cta.add_theme_font_size_override("font_size", 20)
+	btn_play_cta.add_theme_font_size_override("font_size", 22)
 	
 	var sb_cta = StyleBoxFlat.new()
 	sb_cta.bg_color = Color(0.96, 0.60, 0.10, 0.95)

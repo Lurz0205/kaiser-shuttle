@@ -279,7 +279,8 @@ func _ready() -> void:
 		else:
 			floor_refl.visible = true
 			_update_floor_reflection()
-			get_viewport().size_changed.connect(_update_floor_reflection)
+			if get_viewport():
+				get_viewport().size_changed.connect(_update_floor_reflection)
 	
 	# Tách riêng hiệu ứng động (shockwave, burst, jump takeoff) ra overlay độc lập để không vẽ lại toàn bộ sân vận động
 	effects_overlay = Node2D.new()
@@ -565,14 +566,18 @@ func _ready() -> void:
 
 
 func _set_in_game_hud_visible(show: bool) -> void:
+	if main_menu and show:
+		main_menu.visible = false
 	if bwf_scoreboard:
 		bwf_scoreboard.visible = show
 		if show:
 			bwf_scoreboard.show()
+			bwf_scoreboard.set_anchors_preset(Control.PRESET_TOP_LEFT)
 			bwf_scoreboard.custom_minimum_size = Vector2(440, 64)
 			bwf_scoreboard.size = Vector2(440, 64)
 			bwf_scoreboard.position = Vector2(420.0, 14.0)
 			bwf_scoreboard.z_index = 100
+			bwf_scoreboard.move_to_front()
 			if bwf_scoreboard.has_method("refresh_display"):
 				bwf_scoreboard.refresh_display()
 	if scoreboard:
@@ -707,6 +712,8 @@ func _on_menu_start_match(p_id: String, r_id: String, diff: int, target_points: 
 	
 	if match_over_dialog:
 		match_over_dialog.visible = false
+	if main_menu:
+		main_menu.visible = false
 	_set_in_game_hud_visible(true)
 	if virtual_touch_pad:
 		virtual_touch_pad.set_target_player(player)
@@ -811,6 +818,8 @@ func _on_menu_start_pvp_match(room_code: String, is_host: bool, local_char: Stri
 	
 	if match_over_dialog:
 		match_over_dialog.visible = false
+	if main_menu:
+		main_menu.visible = false
 	_set_in_game_hud_visible(true)
 	if virtual_touch_pad:
 		virtual_touch_pad.set_target_player(player)
