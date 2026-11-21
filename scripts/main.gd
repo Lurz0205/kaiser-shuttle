@@ -1063,6 +1063,15 @@ func _on_network_packet_received(data: Dictionary) -> void:
 					shuttlecock.last_hitter = "ai"
 					shuttlecock.is_serve = false
 					shuttlecock.launch_to_target_2d(from_pt, target_pt, s_type, err, is_perf, is_jump, t_mult, t_lvl)
+					# Client-side Lag Compensation (Catch-up Tick):
+					if is_pvp_active and net_manager:
+						var ping_ms = net_manager.current_ping
+						var transit_sec = clamp(float(ping_ms) / 2000.0, 0.005, 0.050)
+						var sim = 0.0
+						while sim < transit_sec:
+							var dt = min(1.0 / 60.0, transit_sec - sim)
+							shuttlecock._physics_process(dt)
+							sim += dt
 				
 			var is_incoming_smash_type = (s_type == "smash" or s_type == "boom_smash" or s_type == "kill_smash")
 			_on_shot_hit(s_type, is_incoming_smash_type, q, is_perf, is_jump, from_pt, "ai")
@@ -1071,6 +1080,14 @@ func _on_network_packet_received(data: Dictionary) -> void:
 			if current_state == MatchState.SERVE and current_server == "ai" and not is_serve_in_progress and not is_point_transition_active and serve_cooldown <= 0.0:
 				var s_type = str(data.get("shot_type", "clear"))
 				_execute_serve("ai", s_type)
+				if is_pvp_active and net_manager and shuttlecock:
+					var ping_ms = net_manager.current_ping
+					var transit_sec = clamp(float(ping_ms) / 2000.0, 0.005, 0.050)
+					var sim = 0.0
+					while sim < transit_sec:
+						var dt = min(1.0 / 60.0, transit_sec - sim)
+						shuttlecock._physics_process(dt)
+						sim += dt
 
 		"score_update":
 			var winner = str(data.get("winner", "ai"))
@@ -1284,6 +1301,14 @@ func _on_network_packet_received(data: Dictionary) -> void:
 					shuttlecock.last_hitter = hitter_str
 					shuttlecock.is_serve = false
 					shuttlecock.launch_to_target_2d(from_pt, target_pt, s_type, err, is_perf, is_jump, t_mult, t_lvl)
+					if is_pvp_active and net_manager:
+						var ping_ms = net_manager.current_ping
+						var transit_sec = clamp(float(ping_ms) / 2000.0, 0.005, 0.050)
+						var sim = 0.0
+						while sim < transit_sec:
+							var dt = min(1.0 / 60.0, transit_sec - sim)
+							shuttlecock._physics_process(dt)
+							sim += dt
 					
 			var is_spec_smash = (s_type == "smash" or s_type == "boom_smash" or s_type == "kill_smash")
 			_on_shot_hit(s_type, is_spec_smash, q, is_perf, is_jump, from_pt, hitter_str)

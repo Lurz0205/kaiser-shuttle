@@ -32,6 +32,22 @@ var pending_sets: int = 1
 func _ready() -> void:
 	process_physics_priority = -100
 	_resolve_server_url()
+	_prewarm_render_server()
+
+func _prewarm_render_server() -> void:
+	var http_url = server_url.replace("wss://", "https://").replace("ws://", "http://")
+	if not http_url.begins_with("http"):
+		return
+	var health_url = http_url + "/healthz"
+	var http_req = HTTPRequest.new()
+	http_req.timeout = 6.0
+	add_child(http_req)
+	http_req.request_completed.connect(func(_result, _response_code, _headers, _body):
+		http_req.queue_free()
+	)
+	var err = http_req.request(health_url)
+	if err != OK:
+		http_req.queue_free()
 
 func _resolve_server_url() -> void:
 	if OS.has_feature("web"):

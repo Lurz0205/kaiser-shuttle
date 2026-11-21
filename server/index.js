@@ -10,12 +10,45 @@ const WebSocket = require('ws');
 const PORT = process.env.PORT || 8080;
 
 const server = http.createServer((req, res) => {
+    // CORS headers for browser pre-warm and status queries
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
+    if (req.method === 'OPTIONS') {
+        res.writeHead(204);
+        res.end();
+        return;
+    }
+    if (req.url === '/healthz' || req.url === '/ping') {
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({
+            status: 'ok',
+            activeRooms: Object.keys(rooms).length,
+            clients: wss ? wss.clients.size : 0,
+            uptime: process.uptime()
+        }));
+        return;
+    }
     res.writeHead(200, { 'Content-Type': 'text/plain; charset=utf-8' });
     res.end(`Kaiser Shuttle PvP Relay Server is ONLINE!\nActive Rooms: ${Object.keys(rooms).length}\nConnected Clients: ${wss.clients.size}\n`);
 });
 
-const wss = new WebSocket.Server({ server });
+const wss = new WebSocket.Server({
+    server,
+    perMessageDeflate: false, // 10x throughput boost for small real-time game packets (disables zlib overhead)
+    maxPayload: 1024 * 64
+});
 const rooms = {};
+
+// Render Free tier self-keepalive (keeps server warm during active gameplay hours)
+const RENDER_EXTERNAL_URL = process.env.RENDER_EXTERNAL_URL || 'https://kaiser-shuttle-server.onrender.com';
+const KEEP_ALIVE_INTERVAL = 10 * 60 * 1000; // Every 10 mins
+setInterval(() => {
+    try {
+        const https = require('https');
+        const client = RENDER_EXTERNAL_URL.startsWith('https') ? https : http;
+        client.get(`${RENDER_EXTERNAL_URL}/healthz`, (res) => {}).on('error', () => {});
+    } catch (e) {}
+}, KEEP_ALIVE_INTERVAL);
 
 function generateRoomCode() {
     const chars = '23456789ABCDEFGHJKLMNPQRSTUVWXYZ';
@@ -58,9 +91,10 @@ wss.on('connection', (ws) => {
     ws.roomCode = null;
     ws.playerRole = null; // 'p1' or 'p2'
 
-    // Disable Nagle's algorithm for zero packet buffering delay (FPS-grade low latency)
-    if (ws._socket && typeof ws._socket.setNoDelay === 'function') {
-        ws._socket.setNoDelay(true);
+    // Disable Nagle's algorithm & enable TCP keepalive for zero packet buffering delay (FPS-grade low latency)
+    if (ws._socket) {
+        if (typeof ws._socket.setNoDelay === 'function') ws._socket.setNoDelay(true);
+        if (typeof ws._socket.setKeepAlive === 'function') ws._socket.setKeepAlive(true, 10000);
     }
 
     ws.on('pong', () => { ws.isAlive = true; });
