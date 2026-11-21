@@ -4,7 +4,7 @@
 
 [resource]
 script = ExtResource("1_tuning")
-move_speed_x = 245.0
+move_speed_x = 220.5
 floor_y = 550.0
 net_x = 640.0
 net_height = 110.0
@@ -12,12 +12,12 @@ baseline_left = 140.0
 baseline_right = 1140.0
 short_service_left = 450.0
 short_service_right = 830.0
-smash_speed = 1900.0
-boom_smash_speed = 2500.0
-drive_speed = 1200.0
+smash_speed = 1330.0
+boom_smash_speed = 1750.0
+drive_speed = 960.0
 clear_apex_h = 400.0
-clear_flight_time = 1.75
+clear_flight_time = 2.18
 drop_apex_h = 126.0
-drop_flight_time = 0.92
+drop_flight_time = 1.15
 lift_apex_h = 360.0
-lift_flight_time = 1.80
+lift_flight_time = 2.25

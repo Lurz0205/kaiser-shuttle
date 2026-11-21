@@ -113,9 +113,10 @@ func _ready() -> void:
 		trail.clear_points()
 		var curve = Curve.new()
 		curve.add_point(Vector2(0.0, 1.0))
-		curve.add_point(Vector2(1.0, 0.05))
+		curve.add_point(Vector2(0.35, 0.85))
+		curve.add_point(Vector2(1.0, 0.08))
 		trail.width_curve = curve
-		trail.width = 11.0
+		trail.width = 22.0
 		trail.texture_mode = Line2D.LINE_TEXTURE_STRETCH
 		trail.joint_mode = Line2D.LINE_JOINT_ROUND
 		trail.begin_cap_mode = Line2D.LINE_CAP_ROUND
@@ -230,11 +231,11 @@ func launch_to_target_2d(from_pt: Vector2, target_pt: Vector2, shot_type: String
 	if is_smash:
 		var v_base = t_res.boom_smash_speed if is_boom_smash else t_res.smash_speed
 		if is_kill_smash:
-			# ĐẬP DỨT ĐIỂM CẦU NON CỰC NHANH (0.16s - 0.22s):
-			flight_duration = clamp(dist_x / (v_base * 1.15), 0.16, 0.22)
+			# ĐẬP DỨT ĐIỂM CẦU NON (Giảm còn 70% tốc độ: 0.23s - 0.32s để đối thủ có cửa phản xạ cứu):
+			flight_duration = clamp(dist_x / (v_base * 1.15), 0.23, 0.32)
 		else:
-			# ĐẬP CẦU TỐC ĐỘ CAO XÉ GIÓ (0.30s - 0.46s)
-			flight_duration = clamp(dist_x / (v_base * 0.72), 0.30, 0.46)
+			# ĐẬP CẦU TỐC ĐỘ CAO (Giảm còn 70% tốc độ: 0.43s - 0.65s để người chơi kịp nghe âm thanh và định hướng):
+			flight_duration = clamp(dist_x / (v_base * 0.72), 0.43, 0.65)
 		h_apex = h_start
 		is_ground_smash = false
 				
@@ -244,11 +245,11 @@ func launch_to_target_2d(from_pt: Vector2, target_pt: Vector2, shot_type: String
 		
 		is_net_drop = (dist_net < 220.0 and dist_x < 280.0)
 		if is_net_drop:
-			# VÊ CẦU SÁT LƯỚI: Bay mềm mại, thanh thoát (0.80s - 0.98s, tăng tốc nhẹ so với trước)
-			flight_duration = clamp(dist_x / 200.0, 0.80, 0.98)
+			# VÊ CẦU SÁT LƯỚI: Bay mềm mại, thanh thoát (Tốc độ giảm còn 80%: 1.00s - 1.22s)
+			flight_duration = clamp(dist_x / 160.0, 1.00, 1.22)
 		else:
-			# BỎ NHỎ Ở ĐOẠN GIỮA SÂN VÀ SÂN SAU: Nhanh đoạn đầu, bay thanh thoát (0.85s - 1.05s)
-			flight_duration = clamp(dist_x / 560.0, 0.85, 1.05)
+			# BỎ NHỎ Ở ĐOẠN GIỮA SÂN VÀ SÂN SAU: Thanh thoát (Tốc độ giảm còn 80%: 1.06s - 1.31s)
+			flight_duration = clamp(dist_x / 448.0, 1.06, 1.31)
 		
 		# Quỹ đạo thuần 1 vòng cung lõm (Concave down, h''(u) <= 0 tuyệt đối):
 		# Không gãy khúc, không cong vẹo hàm bậc 3: Xuất phát ngang/bổng 5 độ rồi rơi cong đều qua lưới
@@ -273,9 +274,8 @@ func launch_to_target_2d(from_pt: Vector2, target_pt: Vector2, shot_type: String
 		drop_alpha = clamp(log(ratio) / log(drop_u_net), 1.25, 4.5)
 		
 	elif shot_type == "tsubame_gaeshi":
-		# TSUBAME GAESHI (Én lượn trở về - Cắt xoáy lướt sà sát mép lưới):
-		# Tốc độ lướt nhanh hơn (0.60s - 0.70s), điểm rơi cắm dốc sà sát lưới
-		flight_duration = clamp(dist_x / 620.0, 0.60, 0.70)
+		# TSUBAME GAESHI (Én lượn trở về - Cắt xoáy lướt sà sát mép lưới, tốc độ giảm còn 80%: 0.75s - 0.88s):
+		flight_duration = clamp(dist_x / 496.0, 0.75, 0.88)
 		var dist_net = clamp(abs(t_res.net_x - from_pt.x), 15.0, dist_x - 20.0)
 		drop_u_net = clamp(dist_net / max(dist_x, 1.0), 0.15, 0.85)
 		drop_h_net = t_res.net_height + 12.0 # Lướt sà sát mép lưới 12px
@@ -287,29 +287,26 @@ func launch_to_target_2d(from_pt: Vector2, target_pt: Vector2, shot_type: String
 		fuji_h_control = max(drop_h_net + 8.0, (drop_h_net - base_term) / max(denom, 0.05))
 		
 	elif shot_type == "mirage_counter":
-		# MIRAGE COUNTER (The Wall): Bung cầu cao nhanh về cuối sân (0.96s - 1.05s)
-		# Chỉ nhanh hơn phông/lift thường (1.15s) một tí xíu, bay cao vút ra cuối sân và hoàn toàn có thể đón đỡ được
+		# MIRAGE COUNTER (The Wall): Bung cầu cao nhanh về cuối sân (Tốc độ giảm còn 80%: 1.20s - 1.31s)
 		h_apex = 320.0
-		flight_duration = clamp(dist_x / 620.0, 0.96, 1.05)
+		flight_duration = clamp(dist_x / 496.0, 1.20, 1.31)
 		
 	elif shot_type == "underhand_lift":
-		# BUNG CẦU THẤP TAY: Cao vút anime 340px, sâu cuối sân
+		# BUNG CẦU THẤP TAY: Cao vút anime 340px, sâu cuối sân (2.25s)
 		h_apex = t_res.lift_apex_h
 		flight_duration = t_res.lift_flight_time
 		
 	elif shot_type == "weak_return":
-		# CẦU NON BỔNG LƠ LỬNG (CHANCE BALL / POP-UP FLOAT):
-		# Rơi nông ở khoảng giữa sân đối thủ, độ cao cực bổng (390px), bay lơ lửng 1.62s (chậm hơn 15%)
-		# để đối phương dễ dàng định vị, bứt tốc bật nhảy BOOM SMASH dứt điểm!
+		# CẦU NON BỔNG LƠ LỬNG (CHANCE BALL / POP-UP FLOAT, 2.02s):
 		h_apex = 390.0
-		flight_duration = 1.62
+		flight_duration = 2.02
 		
 	elif shot_type == "drive":
 		h_apex = t_res.net_height + 14.0
-		flight_duration = max(0.35, dist_x / (t_res.drive_speed * 0.55))
+		flight_duration = max(0.44, dist_x / (t_res.drive_speed * 0.55))
 		
 	else: # "clear" / "lob" / "serve"
-		# PHÔNG CẦU: Cao vút 370px, bay thẳng hơi cong, cuối sân rơi gần thẳng đứng
+		# PHÔNG CẦU / PHÁT CẦU: Cao vút, rơi cuối sân (2.18s)
 		h_apex = t_res.clear_apex_h
 		flight_duration = t_res.clear_flight_time
 	
@@ -504,8 +501,9 @@ func _physics_process(delta: float) -> void:
 				landing_indicator.visible = false
 			return
 	
-	# Chạm sàn (Floor Landing Check)
-	if p >= 1.0 or h <= 0.0:
+	# Chạm sàn (Floor Landing Check) - Ngăn hoàn toàn lỗi ngộ nhận chạm sàn ngay khi vừa rời mặt vợt (p < 0.18 / p < 0.25)
+	var can_land_on_floor = p >= 1.0 or (h <= 0.0 and (p > 0.25 if is_serve else p > 0.18))
+	if can_land_on_floor:
 		global_position.y = floor_y
 		velocity = Vector2.ZERO
 		
@@ -577,27 +575,27 @@ func _update_trail_styling() -> void:
 	if is_boom_smash or tension_level == 2:
 		trail.texture = TEX_TRAIL_LIGHTNING
 		trail.default_color = Color(1.2, 1.1, 0.9, 1.0)
-		trail.width = 24.0
+		trail.width = 42.0
 	elif is_tsubame_gaeshi:
 		trail.texture = TEX_TRAIL_EMERALD
 		trail.default_color = Color(1.0, 1.2, 1.0, 1.0)
-		trail.width = 22.0
+		trail.width = 36.0
 	elif is_mirage_counter:
 		trail.texture = TEX_TRAIL_MIRAGE
 		trail.default_color = Color(1.0, 1.2, 1.3, 1.0)
-		trail.width = 20.0
+		trail.width = 34.0
 	elif is_weak_return:
 		trail.texture = TEX_TRAIL_SPEED
 		trail.default_color = Color(1.0, 1.0, 1.0, 0.95)
-		trail.width = 13.0
+		trail.width = 24.0
 	elif is_smash:
 		trail.texture = TEX_TRAIL_LIGHTNING
 		trail.default_color = Color(1.2, 0.9, 0.6, 0.95)
-		trail.width = 18.0
+		trail.width = 32.0
 	else:
 		trail.texture = TEX_TRAIL_SPEED
 		trail.default_color = Color(1.0, 1.0, 1.0, 0.85)
-		trail.width = 11.0
+		trail.width = 22.0
 
 
 func _update_trail() -> void:

@@ -6,8 +6,8 @@ class_name GameTuning
 # ==========================================================
 
 @export_group("Player Movement")
-## Tốc độ di chuyển tiến/lùi của người chơi (px/s)
-@export var move_speed_x: float = 245.0
+## Tốc độ di chuyển tiến/lùi của người chơi (px/s) - Giảm còn 90% (220.5 px/s) để trận đấu nhịp nhàng
+@export var move_speed_x: float = 220.5
 
 @export_group("Court Dimensions (2D Gameplay)")
 ## Mặt sàn cố định (Y pixel)
@@ -26,21 +26,21 @@ class_name GameTuning
 @export var short_service_right: float = 830.0
 
 @export_group("Shot Profiles")
-## Vận tốc cú Smash thường (px/s) - Cực nhanh, xé gió
-@export var smash_speed: float = 1900.0
-## Vận tốc cú Boom Smash (px/s)
-@export var boom_smash_speed: float = 2500.0
-## Vận tốc cú Drive ngang mặt lưới (px/s)
-@export var drive_speed: float = 1200.0
+## Vận tốc cú Smash thường (px/s) - Giảm còn 70% (1330 px/s) để người chơi kịp phản xạ và nghe âm thanh
+@export var smash_speed: float = 1330.0
+## Vận tốc cú Boom Smash (px/s) - Giảm còn 70% (1750 px/s)
+@export var boom_smash_speed: float = 1750.0
+## Vận tốc cú Drive ngang mặt lưới (px/s) - Giảm còn 80% (960 px/s)
+@export var drive_speed: float = 960.0
 ## Độ cao đỉnh cú Phông cầu (Clear) so với mặt đất (px) - Cao vút lên khán đài
 @export var clear_apex_h: float = 400.0
-## Thời gian bay cú Clear (s) - Chậm rãi để người chơi và AI kịp lùi đón cầu
-@export var clear_flight_time: float = 1.75
+## Thời gian bay cú Clear (s) - Tốc độ cầu giảm còn 80% (Thời gian bay tăng lên 2.18s)
+@export var clear_flight_time: float = 2.18
 ## Độ cao đỉnh cú Bỏ nhỏ (Drop) so với mặt đất (px)
 @export var drop_apex_h: float = 126.0
-## Thời gian bay cú Drop (s) - Bay thoai thoải mượt mà để AI kịp chạy lên cứu
-@export var drop_flight_time: float = 0.92
+## Thời gian bay cú Drop (s) - Tốc độ cầu giảm còn 80% (Thời gian bay tăng lên 1.15s)
+@export var drop_flight_time: float = 1.15
 ## Độ cao đỉnh cú Bung cầu / Cứu cầu thấp tay (Lift) so với mặt đất (px)
 @export var lift_apex_h: float = 360.0
-## Thời gian bay cú Lift (s)
-@export var lift_flight_time: float = 1.80
+## Thời gian bay cú Lift (s) - Tốc độ cầu giảm còn 80% (Thời gian bay tăng lên 2.25s)
+@export var lift_flight_time: float = 2.25

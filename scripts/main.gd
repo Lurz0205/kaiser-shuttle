@@ -672,7 +672,7 @@ func _on_menu_start_match(p_id: String, r_id: String, diff: int, target_points: 
 			"fuji": player.stats = CharacterStats.create_fuji()
 			"wall": player.stats = CharacterStats.create_wall()
 			_: player.stats = CharacterStats.create_nishikawa()
-		player.move_speed_x = lerp(230.0, 265.0, (player.stats.agility - 40.0) / 59.0)
+		player.move_speed_x = lerp(207.0, 238.5, (player.stats.agility - 40.0) / 59.0)
 		if player.stats:
 			player.stats.reset_stamina()
 			player.stats.reset_torque()
@@ -683,7 +683,7 @@ func _on_menu_start_match(p_id: String, r_id: String, diff: int, target_points: 
 			"fuji": ai_rival.stats = CharacterStats.create_fuji()
 			"wall": ai_rival.stats = CharacterStats.create_wall()
 			_: ai_rival.stats = CharacterStats.create_wall()
-		ai_rival.move_speed_x = lerp(230.0, 265.0, (ai_rival.stats.agility - 40.0) / 59.0)
+		ai_rival.move_speed_x = lerp(207.0, 238.5, (ai_rival.stats.agility - 40.0) / 59.0)
 		if ai_rival.stats:
 			ai_rival.stats.reset_stamina()
 			ai_rival.stats.reset_torque()
@@ -786,13 +786,13 @@ func _on_menu_start_pvp_match(room_code: String, is_host: bool, local_char: Stri
 	ai_rival.max_x = 1260.0
 	
 	player.stats = _create_char_stats(local_char)
-	player.move_speed_x = lerp(230.0, 265.0, (player.stats.agility - 40.0) / 59.0)
+	player.move_speed_x = lerp(207.0, 238.5, (player.stats.agility - 40.0) / 59.0)
 	
 	var r_char = opponent_char
 	if r_char.is_empty():
 		r_char = "wall" if local_char != "wall" else "nishikawa"
 	ai_rival.stats = _create_char_stats(r_char)
-	ai_rival.move_speed_x = lerp(230.0, 265.0, (ai_rival.stats.agility - 40.0) / 59.0)
+	ai_rival.move_speed_x = lerp(207.0, 238.5, (ai_rival.stats.agility - 40.0) / 59.0)
 	
 	if is_host:
 		net_manager.send_packet({
@@ -894,7 +894,7 @@ func _start_spectator_mode(data: Dictionary) -> void:
 		player.facing = 1.0
 		var p1_char = str(data.get("p1_char", "nishikawa"))
 		player.stats = _create_char_stats(p1_char)
-		player.move_speed_x = lerp(230.0, 265.0, (player.stats.agility - 40.0) / 59.0)
+		player.move_speed_x = lerp(207.0, 238.5, (player.stats.agility - 40.0) / 59.0)
 		player.opponent_player = ai_rival
 		if label_player_badge:
 			label_player_badge.text = "P1: " + player.stats.character_name.to_upper()
@@ -906,7 +906,7 @@ func _start_spectator_mode(data: Dictionary) -> void:
 		ai_rival.facing = -1.0
 		var p2_char = str(data.get("p2_char", "wall"))
 		ai_rival.stats = _create_char_stats(p2_char)
-		ai_rival.move_speed_x = lerp(230.0, 265.0, (ai_rival.stats.agility - 40.0) / 59.0)
+		ai_rival.move_speed_x = lerp(207.0, 238.5, (ai_rival.stats.agility - 40.0) / 59.0)
 		ai_rival.opponent_player = player
 		if label_rival_badge:
 			label_rival_badge.text = "P2: " + ai_rival.stats.character_name.to_upper()
@@ -1061,6 +1061,24 @@ func _on_network_packet_received(data: Dictionary) -> void:
 			var t_lvl = int(data.get("t_lvl", 0))
 			var q = float(data.get("quality", 0.8))
 			
+			var is_incoming_smash_type = (s_type == "smash" or s_type == "boom_smash" or s_type == "kill_smash")
+			
+			# ZERO-LATENCY AUDIO TRIGGER: Phát âm thanh lập tức ngay khoảnh khắc nhận gói từ đối thủ (Không chờ vật lý bù trễ)
+			if is_incoming_smash_type:
+				sfx_smash.play()
+			elif s_type == "drop":
+				var dist_to_net_incoming = abs(from_pt.x - 640.0)
+				if previous_shot_type == "smash" or previous_shot_type == "boom_smash" or previous_shot_type == "kill_smash" or dist_to_net_incoming < 220.0:
+					_play_sfx_string()
+				else:
+					if sfx_chem:
+						sfx_chem.pitch_scale = randf_range(0.95, 1.05)
+						sfx_chem.play()
+					else:
+						sfx_phong.play()
+			elif s_type == "clear" or s_type == "lob" or s_type == "underhand_lift" or s_type == "weak_return":
+				sfx_phong.play()
+			
 			if ai_rival:
 				ai_rival.is_swinging = true
 				ai_rival.swing_timer = 0.0
@@ -1112,11 +1130,16 @@ func _on_network_packet_received(data: Dictionary) -> void:
 							shuttlecock._physics_process(dt)
 							sim += dt
 				
-			var is_incoming_smash_type = (s_type == "smash" or s_type == "boom_smash" or s_type == "kill_smash")
 			_on_shot_hit(s_type, is_incoming_smash_type, q, is_perf, is_jump, from_pt, "ai")
 
 		"opp_serve":
 			var s_type = str(data.get("shot_type", "clear"))
+			# ZERO-LATENCY AUDIO CUE KHI ĐỐI THỦ PHÁT CẦU:
+			if s_type == "drop":
+				_play_sfx_string()
+			else:
+				sfx_phong.play()
+			
 			# Khi đối thủ đã phát cầu qua mạng, bên nhận lập tức dỡ bỏ mọi khóa và thực thi phát cầu:
 			is_point_transition_active = false
 			is_umpire_speaking = false
@@ -1192,7 +1215,7 @@ func _on_network_packet_received(data: Dictionary) -> void:
 					_setup_serve(current_server)
 				ai_rival.character_id = host_char
 				ai_rival.stats = _create_char_stats(host_char)
-				ai_rival.move_speed_x = lerp(230.0, 265.0, (ai_rival.stats.agility - 40.0) / 59.0)
+				ai_rival.move_speed_x = lerp(207.0, 238.5, (ai_rival.stats.agility - 40.0) / 59.0)
 				if bwf_scoreboard:
 					bwf_scoreboard.reset_scoreboard(total_match_sets)
 					bwf_scoreboard.set_match_mode(total_match_sets)
@@ -1208,7 +1231,7 @@ func _on_network_packet_received(data: Dictionary) -> void:
 				pvp_opponent_player_name = guest_name
 				ai_rival.character_id = guest_char
 				ai_rival.stats = _create_char_stats(guest_char)
-				ai_rival.move_speed_x = lerp(230.0, 265.0, (ai_rival.stats.agility - 40.0) / 59.0)
+				ai_rival.move_speed_x = lerp(207.0, 238.5, (ai_rival.stats.agility - 40.0) / 59.0)
 				if bwf_scoreboard:
 					bwf_scoreboard.set_players(
 						pvp_local_player_name,
@@ -1932,11 +1955,12 @@ func _execute_serve(server: String, shot_type: String = "clear", force_network_s
 	shuttlecock.launch_to_target_2d(from_pos, target_pos, shot_type, 0.0, false, false, 1.0, 0)
 	previous_shot_type = shot_type
 	
-	current_shot_max_speed = (86.0 if shot_type == "drop" else 104.0) + randf_range(-3.5, 3.5)
-	if shot_type == "drop":
-		_play_sfx_string()
-	else:
-		sfx_phong.play()
+	current_shot_max_speed = ((86.0 if shot_type == "drop" else 104.0) * 0.80) + randf_range(-3.5, 3.5)
+	if not (is_pvp_active and force_network_serve):
+		if shot_type == "drop":
+			_play_sfx_string()
+		else:
+			sfx_phong.play()
 	
 	if server == "player":
 		player.can_hit = false
@@ -2030,7 +2054,7 @@ func _on_shot_hit(shot_type: String, is_smash: bool, quality: float, is_perfect:
 
 	# 1. NISHIKAWA GOLDEN SMASH (boom_smash): Ngưng đọng 1s, sấm sét nổ vang, đảo màu trắng đen!
 	if shot_type == "boom_smash" and is_perfect:
-		var base_spd = 192.0
+		var base_spd = 134.4 # Giảm 70%
 		var floor_prox = clamp((contact_pos.y - 360.0) / 220.0, 0.0, 1.0)
 		var low_smash_boost = 1.0 + floor_prox * 0.10 # Cầu càng gần sân thì đập càng nhanh hơn tí
 		current_shot_max_speed = (base_spd + (quality * 8.0) + randf_range(-4.0, 4.0)) * tension_mult * torque_mult * low_smash_boost
@@ -2039,7 +2063,7 @@ func _on_shot_hit(shot_type: String, is_smash: bool, quality: float, is_perfect:
 		
 	# 2. TSUBAME GAESHI (Fuji): Cắt xoáy lướt sà sát mép lưới, góc cắm hiểm kèm slow-mo (KHÔNG TRẮNG ĐEN)
 	if shot_type == "tsubame_gaeshi":
-		current_shot_max_speed = (104.0 + randf_range(-3.0, 3.0)) * tension_mult
+		current_shot_max_speed = (83.2 + randf_range(-3.0, 3.0)) * tension_mult # Giảm 80%
 		if is_perfect and floating_text_mgr:
 			floating_text_mgr.spawn("PERFECT!", contact_pos + Vector2(0, -22), Color(1.0, 0.92, 0.25), 16)
 		_trigger_fuji_cinematic_slowmo(contact_pos, hitter)
@@ -2051,7 +2075,7 @@ func _on_shot_hit(shot_type: String, is_smash: bool, quality: float, is_perfect:
 		_trigger_aoi_shield_effect(shield_center)
 		_trigger_aoi_cinematic_slowmo(contact_pos, hitter)
 		
-		current_shot_max_speed = (122.0 + randf_range(-3.0, 3.0)) * tension_mult
+		current_shot_max_speed = (97.6 + randf_range(-3.0, 3.0)) * tension_mult # Giảm 80%
 		if is_perfect and floating_text_mgr:
 			floating_text_mgr.spawn("PERFECT!", contact_pos + Vector2(0, -22), Color(1.0, 0.92, 0.25), 16)
 		return
@@ -2061,17 +2085,20 @@ func _on_shot_hit(shot_type: String, is_smash: bool, quality: float, is_perfect:
 		floating_text_mgr.spawn("PERFECT!", contact_pos + Vector2(0, -22), Color(1.0, 0.92, 0.25), 16)
 
 	var dist_to_net = abs(contact_pos.x - 640.0)
+	var skip_audio = is_pvp_active and hitter == "ai"
 
 	# Các cú đánh thông thường khác:
 	if shot_type == "weak_return":
-		sfx_phong.play()
-		current_shot_max_speed = (72.0 + randf_range(-2.0, 2.0))
+		if not skip_audio:
+			sfx_phong.play()
+		current_shot_max_speed = (57.6 + randf_range(-2.0, 2.0))
 		shake_amount = 1.0
 		_show_banner("CHANCE BALL!", Color(1.0, 1.0, 1.0), true, 1.0)
 	elif is_actual_smash:
-		sfx_smash.play()
+		if not skip_audio:
+			sfx_smash.play()
 		var is_kill = (shot_type == "kill_smash")
-		var base_spd = 180.0 if is_kill else 142.0
+		var base_spd = 126.0 if is_kill else 99.4 # Giảm 70% (180 -> 126, 142 -> 99.4)
 		var floor_prox = clamp((contact_pos.y - 360.0) / 220.0, 0.0, 1.0)
 		var low_smash_boost = 1.0 + floor_prox * 0.10 # Cầu càng gần sân thì đập càng nhanh hơn tí
 		current_shot_max_speed = (base_spd + (quality * 7.0) + randf_range(-4.2, 4.2)) * tension_mult * torque_mult * low_smash_boost
@@ -2087,34 +2114,36 @@ func _on_shot_hit(shot_type: String, is_smash: bool, quality: float, is_perfect:
 		# 1. Đỡ cầu đập bằng drop HOẶC drop sát mép lưới -> Âm thanh string.wav
 		# 2. Cắt / chém drop từ sau sân -> Âm thanh chem_cau.wav
 		var is_near_net_drop = (dist_to_net < 220.0) or (shuttlecock and shuttlecock.is_net_drop)
-		if was_incoming_smash or is_near_net_drop:
-			_play_sfx_string()
-		else:
-			if sfx_chem:
-				sfx_chem.pitch_scale = randf_range(0.95, 1.05)
-				sfx_chem.play()
+		if not skip_audio:
+			if was_incoming_smash or is_near_net_drop:
+				_play_sfx_string()
 			else:
-				sfx_phong.play()
+				if sfx_chem:
+					sfx_chem.pitch_scale = randf_range(0.95, 1.05)
+					sfx_chem.play()
+				else:
+					sfx_phong.play()
 				
 		if shuttlecock and shuttlecock.is_net_drop:
-			current_shot_max_speed = (78.0 + randf_range(-3.0, 3.0)) * tension_mult
+			current_shot_max_speed = (62.4 + randf_range(-3.0, 3.0)) * tension_mult # Giảm 80%
 			shake_amount = 2.0
 		else:
-			var base_spd = 90.0 if is_perfect else 80.0
+			var base_spd = 72.0 if is_perfect else 64.0 # Giảm 80% (90 -> 72, 80 -> 64)
 			current_shot_max_speed = (base_spd + randf_range(-3.2, 3.2)) * tension_mult
 			shake_amount = 4.0 if is_perfect else 2.0
 	elif shot_type == "clear" or shot_type == "underhand_lift":
 		# PHÂN LOẠI CLEAR / LIFT:
 		# Nếu bung cầu gần lưới -> Âm thanh string.wav
 		# Nếu phông sâu từ đáy sân -> Âm thanh phong.wav
-		if dist_to_net < 220.0:
-			_play_sfx_string()
-		else:
-			if sfx_phong:
-				sfx_phong.pitch_scale = randf_range(0.97, 1.04)
-				sfx_phong.play()
+		if not skip_audio:
+			if dist_to_net < 220.0:
+				_play_sfx_string()
+			else:
+				if sfx_phong:
+					sfx_phong.pitch_scale = randf_range(0.97, 1.04)
+					sfx_phong.play()
 				
-		var base_spd = 112.0 if is_perfect else (100.0 if quality > 0.7 else 88.0)
+		var base_spd = 89.6 if is_perfect else (80.0 if quality > 0.7 else 70.4) # Giảm 80% (112 -> 89.6, 100 -> 80)
 		current_shot_max_speed = (base_spd + (quality * 5.0) + randf_range(-3.5, 3.5)) * tension_mult
 		shake_amount = 6.0 if is_perfect else max(shake_amount, 2.5)
 	else:
@@ -2639,6 +2668,10 @@ func _on_shuttlecock_landed(pos: Vector2, _floor_3d: Vector3 = Vector3.ZERO) -> 
 	if current_state != MatchState.RALLY and not pvp_landing_pending:
 		return
 	
+	# Ngăn hoàn toàn lỗi va chạm sàn sớm trong 250ms đầu sau khi phát cầu
+	if is_serve_in_progress and shuttlecock and shuttlecock.flight_time_elapsed < 0.25:
+		return
+	
 	if is_pvp_active and not is_pvp_host:
 		return
 	
@@ -2660,6 +2693,8 @@ func _on_shuttlecock_landed(pos: Vector2, _floor_3d: Vector3 = Vector3.ZERO) -> 
 
 func _confirm_shuttlecock_landed(pos: Vector2, p_is_serve: bool = false) -> void:
 	if is_point_transition_active:
+		return
+	if p_is_serve and shuttlecock and shuttlecock.flight_time_elapsed < 0.25:
 		return
 	is_point_transition_active = true
 	pvp_landing_pending = false

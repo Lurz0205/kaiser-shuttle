@@ -21,8 +21,8 @@ var squeak_cooldown: float = 0.0
 @export var ai_difficulty: int = 1 # 0: EASY (Dễ), 1: MEDIUM (TB), 2: HARD (Khó)
 @export var stats: CharacterStats
 
-# Movement parameters (Athletic badminton footwork scale)
-var move_speed_x: float = 245.0
+# Movement parameters (Athletic badminton footwork scale) - Giảm còn 90% (220.5 px/s)
+var move_speed_x: float = 220.5
 const JUMP_FORCE: float = -880.0
 const GRAVITY: float = 2400.0
 
@@ -168,8 +168,8 @@ func _ready() -> void:
 		current_ground_y = tuning.floor_y
 		
 	if stats:
-		# Agility quyết định tốc độ di chuyển thể thao [230px/s -> 265px/s]
-		move_speed_x = lerp(230.0, 265.0, (stats.agility - 40.0) / 59.0)
+		# Agility quyết định tốc độ di chuyển thể thao [207px/s -> 238.5px/s] (Đã giảm còn 90%)
+		move_speed_x = lerp(207.0, 238.5, (stats.agility - 40.0) / 59.0)
 		
 	if court_side == "ai":
 		min_x = 660.0
