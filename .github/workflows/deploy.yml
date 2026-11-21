@@ -47,12 +47,6 @@ jobs:
           cp assets/icons/icon_192.png build/web/icon_192.png
           cp assets/icons/icon_512.png build/web/icon_512.png
           cp assets/icons/icon_maskable.png build/web/icon_maskable.png
-          
-          # Inject dynamic cache buster to guarantee zero-cache web loads
-          BUILD_TIME=$(date +%s)
-          sed -i "s/pwa_fullscreen.js/pwa_fullscreen.js?v=$BUILD_TIME/g" build/web/index.html
-          sed -i "s/\"index.pck\"/\"index.pck?v=$BUILD_TIME\"/g" build/web/index.html
-          sed -i "s/\"index.wasm\"/\"index.wasm?v=$BUILD_TIME\"/g" build/web/index.html
 
       - name: Upload GitHub Pages Artifact
         uses: actions/upload-pages-artifact@v3

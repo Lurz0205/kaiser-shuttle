@@ -447,12 +447,19 @@ func _ready() -> void:
 				gfx_row.add_child(btn_low_gfx_toggle)
 				vbox.add_child(gfx_row)
 		
-	# Tự động nhận diện thiết bị: Mặc định TẮT trên Desktop/PC, chỉ BẬT trên Mobile/Touchscreen
-	var is_mobile = OS.has_feature("mobile") or OS.has_feature("web_android") or OS.has_feature("web_ios")
-	if OS.has_feature("web"):
-		var js_mobile = JavaScriptBridge.eval("Boolean(/Android|iPhone|iPad|iPod/i.test(navigator.userAgent) || (navigator.maxTouchPoints && navigator.maxTouchPoints > 1))")
+	# Tự động nhận diện thiết bị chính xác: BẬT nút cảm ứng trên Mobile/Tablet, TẮT hoàn toàn trên PC/Desktop
+	var is_mobile: bool = false
+	if OS.has_feature("mobile") or OS.has_feature("android") or OS.has_feature("ios") or OS.has_feature("web_android") or OS.has_feature("web_ios"):
+		is_mobile = true
+	elif OS.has_feature("web"):
+		var js_mobile = JavaScriptBridge.eval("""(function() {
+			var ua = navigator.userAgent || '';
+			return /Android|iPhone|iPad|iPod|Mobile/i.test(ua) || (('ontouchstart' in window) && window.innerWidth < 1100);
+		})()""")
 		if js_mobile == true or str(js_mobile).to_lower() == "true":
 			is_mobile = true
+	elif DisplayServer.is_touchscreen_available() and not (OS.has_feature("windows") or OS.has_feature("macos") or OS.has_feature("linux")):
+		is_mobile = true
 	touch_controls_enabled = is_mobile
 	
 	# Nút Toàn Màn Hình (Fullscreen) ở góc trên bên phải màn hình (Căn chỉnh tuyệt đối, không đè nút Cài đặt)
@@ -1503,14 +1510,6 @@ func _input(event: InputEvent) -> void:
 			cur_focus.release_focus()
 
 func _unhandled_input(event: InputEvent) -> void:
-	if (event is InputEventScreenTouch or event is InputEventScreenDrag) and not touch_controls_enabled:
-		touch_controls_enabled = true
-		if virtual_touch_pad and (not main_menu or not main_menu.visible):
-			virtual_touch_pad.visible = true
-		if controls_bar:
-			controls_bar.visible = false
-		_update_settings_ui()
-		
 	if main_menu and main_menu.visible:
 		if event is InputEventKey and event.pressed and not event.echo:
 			if event.keycode == KEY_ESCAPE:

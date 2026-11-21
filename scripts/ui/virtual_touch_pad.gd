@@ -56,14 +56,9 @@ var _last_viewport_size: Vector2 = Vector2.ZERO
 func _ready() -> void:
 	z_index = 150
 	mouse_filter = MOUSE_FILTER_IGNORE
-	set_anchors_preset(PRESET_FULL_RECT)
-	anchor_right = 1.0
-	anchor_bottom = 1.0
 	custom_minimum_size = Vector2(1280, 720)
-	
-	var vp = get_viewport()
-	if vp:
-		vp.size_changed.connect(_update_layout)
+	size = Vector2(1280, 720)
+	position = Vector2.ZERO
 	_update_layout()
 	queue_redraw()
 
@@ -71,63 +66,50 @@ func set_target_player(p: BadmintonPlayer) -> void:
 	player = p
 
 func _update_layout() -> void:
-	var vp = get_viewport()
-	if not vp:
-		return
-	var vp_size = get_viewport_rect().size
-	if vp_size.x <= 0 or vp_size.y <= 0:
-		return
-	_last_viewport_size = vp_size
+	custom_minimum_size = Vector2(1280, 720)
+	size = Vector2(1280, 720)
+	position = Vector2.ZERO
 	
-	# Scale factor dựa trên chiều cao (chuẩn 720p)
-	var s = clamp(vp_size.y / 720.0, 0.85, 1.25)
+	# Safe area padding tren khung co dinh 1280x720
+	var pad_bottom: float = 30.0
+	var pad_side: float = 35.0
 	
-	# Safe area padding
-	var pad_bottom = 32.0 * s
-	var pad_side = 32.0 * s
-	
-	# 1. LEFT TRACK: Neo góc dưới bên trái
-	var track_w = 280.0 * s
-	var track_h = 84.0 * s
-	track_rect = Rect2(pad_side, vp_size.y - pad_bottom - track_h, track_w, track_h)
+	# 1. LEFT TRACK: Neo goc duoi ben trai (Fixed 1280x720 canvas)
+	var track_w: float = 280.0
+	var track_h: float = 84.0
+	track_rect = Rect2(pad_side, 720.0 - pad_bottom - track_h, track_w, track_h)
 	knob_center = track_rect.get_center()
 	if not is_dragging_knob:
 		knob_pos = knob_center
-	knob_radius = 38.0 * s
+	knob_radius = 38.0
 	max_drag_dist = (track_w * 0.5) - (knob_radius * 0.6)
 	
-	# 2. RIGHT BUTTONS: Cụm phím neo góc dưới bên phải theo vòng cung ngón tay
-	var r_std = 48.0 * s
-	var r_big = 62.0 * s
-	btn_slide_radius = r_std
-	btn_j_radius = r_std
-	btn_k_radius = r_std
-	btn_l_radius = r_big
+	# 2. RIGHT BUTTONS: Cum phim neo goc duoi ben phai theo chuan 1280x720
+	btn_slide_radius = 48.0
+	btn_j_radius = 48.0
+	btn_k_radius = 48.0
+	btn_l_radius = 62.0
 	
-	var rx = vp_size.x - pad_side
-	var ry = vp_size.y - pad_bottom
+	var rx: float = 1280.0 - pad_side
+	var ry: float = 720.0 - pad_bottom
 	
-	# Button L (Jump & Smash) - Góc phải ngoài cùng, to nhất
-	btn_l_center = Vector2(rx - r_big, ry - r_big)
+	# Button L (Jump & Smash) - Goc phai ngoai cung
+	btn_l_center = Vector2(rx - btn_l_radius, ry - btn_l_radius)
 	
-	# Button K (Clear - Phông cầu) - Nằm phía trên lệch trái một chút
-	btn_k_center = Vector2(rx - r_big - (88.0 * s), ry - r_big - (105.0 * s))
+	# Button K (Clear - Phong cau) - Nam phia tren lech trai
+	btn_k_center = Vector2(rx - btn_l_radius - 88.0, ry - btn_l_radius - 105.0)
 	
-	# Button J (Drop - Bỏ nhỏ) - Nằm cạnh L về phía bên trái
-	btn_j_center = Vector2(rx - r_big - (148.0 * s), ry - r_big)
+	# Button J (Drop - Bo nho) - Nam canh L ve phia ben trai
+	btn_j_center = Vector2(rx - btn_l_radius - 148.0, ry - btn_l_radius)
 	
-	# Button Slide (Cứu cầu / Trượt sàn) - Nằm ngoài cùng bên trái của cụm phím
-	btn_slide_center = Vector2(rx - r_big - (262.0 * s), ry - r_big)
+	# Button Slide (Cuu cau / Truot san) - Nam ngoai cung ben trai
+	btn_slide_center = Vector2(rx - btn_l_radius - 262.0, ry - btn_l_radius)
 	
 	queue_redraw()
 
 func _process(delta: float) -> void:
 	if not visible:
 		return
-		
-	var vp_size = get_viewport_rect().size
-	if vp_size != _last_viewport_size:
-		_update_layout()
 		
 	var needs_redraw = false
 	

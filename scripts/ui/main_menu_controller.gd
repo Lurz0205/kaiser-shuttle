@@ -10,15 +10,15 @@ extends Control
 const CustomIcon = preload("res://scripts/ui/custom_icon.gd")
 
 # Full HD Screen Backgrounds (Title vs Lobby)
-const TEX_TITLE_BG = preload("res://assets/images/menu_banner.png")
 const TEX_LOBBY_BG = preload("res://assets/images/lobby_locker_room.png")
+const TEX_TITLE_BG = preload("res://assets/images/menu_banner.png")
+const TEX_KAISER_LOGO = preload("res://assets/ui/kaiser_logo.png")
 
 var global_bg: TextureRect = null
 var global_tint: ColorRect = null
 
 # Studio Pre-rendered High-Quality Icons (0% Vector CPU lag, 100% Anti-Aliased)
 const TEX_SHUTTLECOCK = preload("res://assets/icons/icon_shuttlecock_gold.png")
-const TEX_KAISER_LOGO = preload("res://assets/ui/kaiser_logo.png")
 const TEX_PADLOCK = preload("res://assets/icons/icon_padlock_gold.png")
 const TEX_COIN = preload("res://assets/icons/icon_coin_gold.png")
 const TEX_AVATAR = preload("res://assets/icons/icon_avatar_pro.png")
@@ -51,12 +51,12 @@ const SHADER_LIQUID_GLASS = preload("res://shaders/liquid_glass.gdshader")
 signal start_match_requested(player_char: String, rival_char: String, difficulty: int, target_points: int, match_sets: int)
 signal start_pvp_match_requested(room_code: String, is_host: bool, player_char: String, target_points: int, match_sets: int, first_server: String, opponent_char: String, player_name: String, opponent_name: String)
 signal spectate_room_requested(room_code: String)
-signal settings_updated(squeak: bool, bgm_enabled: bool, bgm_vol: float, low_gfx: bool)
 signal touch_toggle_requested(enabled: bool)
 
 var _state_switch_cooldown_until: int = 0
 var touch_controls_enabled: bool = false
 var btn_touch_toggle_menu: Button = null
+signal settings_updated(squeak: bool, bgm_enabled: bool, bgm_vol: float, low_gfx: bool)
 
 enum MenuState {
 	TITLE,          # Màn hình bắt đầu (Press any key / touch)
@@ -207,113 +207,13 @@ func _ready() -> void:
 	size = Vector2(1280, 720)
 	position = Vector2.ZERO
 	set_anchors_preset(Control.PRESET_FULL_RECT)
-	anchor_right = 1.0
-	anchor_bottom = 1.0
-	grow_horizontal = Control.GROW_DIRECTION_BOTH
-	grow_vertical = Control.GROW_DIRECTION_BOTH
 	
-	# Mặc định đồ họa cao kể cả trên Web
 	low_graphics_mode = false
 		
 	pvp_player_name = _load_saved_player_name()
 	
 	_build_ui()
 	switch_state(MenuState.TITLE)
-	visible = true
-	
-	var vp = get_viewport()
-	if vp:
-		vp.size_changed.connect(_on_viewport_size_changed)
-		_on_viewport_size_changed()
-
-var portrait_warning_panel: Control = null
-
-func _on_viewport_size_changed() -> void:
-	if not is_inside_tree() or get_viewport() == null:
-		return
-	var vp_size = get_viewport_rect().size
-	if vp_size.x > 0 and vp_size.y > 0:
-		custom_minimum_size = vp_size
-		size = vp_size
-		position = Vector2.ZERO
-	if global_bg:
-		global_bg.set_deferred("size", vp_size)
-	if global_tint:
-		global_tint.set_deferred("size", vp_size)
-	if top_bar:
-		top_bar.set_deferred("size", Vector2(vp_size.x, top_bar.size.y))
-	_check_orientation_guard(vp_size)
-
-func _check_orientation_guard(vp_size: Vector2) -> void:
-	# Nếu màn hình là chiều dọc (chiều rộng nhỏ hơn chiều cao hoặc tỉ lệ < 1.15)
-	var is_portrait = vp_size.x > 0 and vp_size.y > 0 and (vp_size.x < vp_size.y * 1.15)
-	if is_portrait:
-		if portrait_warning_panel == null:
-			_build_portrait_warning_overlay()
-		if portrait_warning_panel:
-			portrait_warning_panel.visible = true
-	else:
-		if portrait_warning_panel:
-			portrait_warning_panel.visible = false
-
-func _build_portrait_warning_overlay() -> void:
-	portrait_warning_panel = Panel.new()
-	portrait_warning_panel.name = "PortraitWarningOverlay"
-	portrait_warning_panel.set_anchors_preset(Control.PRESET_FULL_RECT)
-	portrait_warning_panel.anchor_right = 1.0
-	portrait_warning_panel.anchor_bottom = 1.0
-	portrait_warning_panel.grow_horizontal = Control.GROW_DIRECTION_BOTH
-	portrait_warning_panel.grow_vertical = Control.GROW_DIRECTION_BOTH
-	portrait_warning_panel.z_index = 300
-	
-	var sb = StyleBoxFlat.new()
-	sb.bg_color = Color(0.04, 0.07, 0.12, 0.98)
-	portrait_warning_panel.add_theme_stylebox_override("panel", sb)
-	
-	var center = CenterContainer.new()
-	center.set_anchors_preset(Control.PRESET_FULL_RECT)
-	center.anchor_right = 1.0
-	center.anchor_bottom = 1.0
-	portrait_warning_panel.add_child(center)
-	
-	var vbox = VBoxContainer.new()
-	vbox.alignment = BoxContainer.ALIGNMENT_CENTER
-	vbox.add_theme_constant_override("separation", 14)
-	center.add_child(vbox)
-	
-	var icon_lbl = Label.new()
-	icon_lbl.text = "📱 🔄"
-	icon_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	icon_lbl.add_theme_font_size_override("font_size", 52)
-	vbox.add_child(icon_lbl)
-	
-	var title_lbl = Label.new()
-	title_lbl.text = "VUI LÒNG XOAY NGANG MÀN HÌNH"
-	title_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	title_lbl.add_theme_font_size_override("font_size", 20)
-	title_lbl.modulate = Color(1.0, 0.85, 0.3)
-	vbox.add_child(title_lbl)
-	
-	var desc_lbl = Label.new()
-	desc_lbl.text = "Kaiser Shuttle là game thể thao yêu cầu góc nhìn sân đấu nằm ngang.\nHãy bật tính năng tự xoay và nghiêng ngang điện thoại!"
-	desc_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	desc_lbl.add_theme_font_size_override("font_size", 13)
-	desc_lbl.modulate = Color(0.85, 0.9, 0.95, 0.85)
-	vbox.add_child(desc_lbl)
-	
-	var btn_fs = Button.new()
-	btn_fs.text = "⛶ TOÀN MÀN HÌNH & XOAY NGANG"
-	btn_fs.custom_minimum_size = Vector2(240, 42)
-	btn_fs.focus_mode = Control.FOCUS_NONE
-	btn_fs.pressed.connect(func():
-		if OS.has_feature("web"):
-			JavaScriptBridge.eval("window.kaiserToggleFullscreen && window.kaiserToggleFullscreen();")
-		else:
-			DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_FULLSCREEN)
-	)
-	vbox.add_child(btn_fs)
-	
-	add_child(portrait_warning_panel)
 
 func _process(delta: float) -> void:
 	# Web Mobile text sync
@@ -339,10 +239,8 @@ func _process(delta: float) -> void:
 			visible = false
 
 func switch_state(new_state: MenuState) -> void:
-	current_state = new_state
 	_state_switch_cooldown_until = Time.get_ticks_msec() + 350
-	
-	# Switch background between Title Arena and Lobby Locker Room
+	current_state = new_state
 	if global_bg:
 		if new_state == MenuState.TITLE:
 			global_bg.texture = TEX_TITLE_BG
@@ -430,29 +328,21 @@ func _create_spike_translucent_panel(box_size: Vector2, corner_r: int = 12, bord
 
 func _build_ui() -> void:
 	# ----------------------------------------------------
-	# GLOBAL BACKGROUND (Full HD Responsive / No Black Borders)
+	# GLOBAL BACKGROUND (Sân đấu & Phòng thay đồ thể thao cao cấp)
 	# ----------------------------------------------------
-	global_bg = TextureRect.new()
-	global_bg.name = "GlobalBG"
-	global_bg.texture = TEX_TITLE_BG
-	global_bg.set_anchors_preset(Control.PRESET_FULL_RECT)
-	global_bg.anchor_right = 1.0
-	global_bg.anchor_bottom = 1.0
-	global_bg.grow_horizontal = Control.GROW_DIRECTION_BOTH
-	global_bg.grow_vertical = Control.GROW_DIRECTION_BOTH
+	var global_bg = TextureRect.new()
+	global_bg.texture = TEX_LOBBY_BG
+	global_bg.custom_minimum_size = Vector2(1280, 720)
+	global_bg.size = Vector2(1280, 720)
 	global_bg.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	global_bg.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
 	global_bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(global_bg)
 	
 	# Light Vignette để làm nổi bật bối cảnh sân đấu phía sau (The Spike Translucent Style)
-	global_tint = ColorRect.new()
-	global_tint.name = "GlobalTint"
-	global_tint.set_anchors_preset(Control.PRESET_FULL_RECT)
-	global_tint.anchor_right = 1.0
-	global_tint.anchor_bottom = 1.0
-	global_tint.grow_horizontal = Control.GROW_DIRECTION_BOTH
-	global_tint.grow_vertical = Control.GROW_DIRECTION_BOTH
+	var global_tint = ColorRect.new()
+	global_tint.custom_minimum_size = Vector2(1280, 720)
+	global_tint.size = Vector2(1280, 720)
 	global_tint.color = Color(0.02, 0.05, 0.10, 0.25)
 	global_tint.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(global_tint)
@@ -512,9 +402,6 @@ func _build_top_bar() -> void:
 	top_bar.custom_minimum_size = Vector2(1280, 68)
 	top_bar.size = Vector2(1280, 68)
 	top_bar.position = Vector2.ZERO
-	top_bar.set_anchors_preset(Control.PRESET_TOP_WIDE)
-	top_bar.anchor_right = 1.0
-	top_bar.grow_horizontal = Control.GROW_DIRECTION_BOTH
 	top_bar.z_index = 100
 	top_bar.mouse_filter = Control.MOUSE_FILTER_PASS
 	top_bar.visible = false
@@ -522,10 +409,6 @@ func _build_top_bar() -> void:
 	
 	# Liquid Glass Top Bar Background
 	var bar_bg = ColorRect.new()
-	bar_bg.name = "BarBG"
-	bar_bg.set_anchors_preset(Control.PRESET_FULL_RECT)
-	bar_bg.anchor_right = 1.0
-	bar_bg.grow_horizontal = Control.GROW_DIRECTION_BOTH
 	bar_bg.custom_minimum_size = Vector2(1280, 68)
 	bar_bg.size = Vector2(1280, 68)
 	bar_bg.color = Color(0.08, 0.11, 0.16, 0.90)
@@ -533,10 +416,6 @@ func _build_top_bar() -> void:
 	top_bar.add_child(bar_bg)
 	
 	var h_line = ColorRect.new()
-	h_line.name = "BarHLine"
-	h_line.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
-	h_line.anchor_right = 1.0
-	h_line.grow_horizontal = Control.GROW_DIRECTION_BOTH
 	h_line.custom_minimum_size = Vector2(1280, 1.5)
 	h_line.size = Vector2(1280, 1.5)
 	h_line.position = Vector2(0, 66.5)
@@ -545,10 +424,6 @@ func _build_top_bar() -> void:
 	top_bar.add_child(h_line)
 	
 	var m = MarginContainer.new()
-	m.name = "TopMargin"
-	m.set_anchors_preset(Control.PRESET_FULL_RECT)
-	m.anchor_right = 1.0
-	m.grow_horizontal = Control.GROW_DIRECTION_BOTH
 	m.custom_minimum_size = Vector2(1280, 68)
 	m.size = Vector2(1280, 68)
 	m.add_theme_constant_override("margin_left", 20)
@@ -622,7 +497,7 @@ func _build_top_bar() -> void:
 	# Currencies: Gold Coin & Locked Next Feature ("chưa có cứ ổ khóa thôi")
 	row.add_child(VSeparator.new())
 	
-	# 1. Real Gold Coin Pill (Số dư 0 & Khóa tính năng giao dịch)
+	# 1. Real Gold Coin Pill
 	row.add_child(_create_currency_pill_tex(TEX_COIN, "0", Color(1.0, 0.82, 0.25)))
 	
 	# 2. Next Locked Feature Pill (Ổ khóa hoàng kim 3D)
@@ -707,17 +582,20 @@ func _create_currency_pill_tex(tex: Texture2D, amount_str: String, col: Color) -
 	h.add_theme_constant_override("separation", 6)
 	m.add_child(h)
 	
-	var icon = _create_tex_icon(tex, Vector2(20, 20))
+	var icon = _create_tex_icon(tex, Vector2(22, 22))
 	h.add_child(icon)
 	
 	var lbl = Label.new()
-	lbl.text = "0"
+	lbl.text = amount_str
 	lbl.add_theme_font_size_override("font_size", 12)
 	lbl.modulate = Color(0.96, 0.96, 0.96)
 	h.add_child(lbl)
 	
-	var lock_icon = _create_tex_icon(TEX_PADLOCK, Vector2(13, 13))
-	h.add_child(lock_icon)
+	var add_lbl = Label.new()
+	add_lbl.text = "+"
+	add_lbl.add_theme_font_size_override("font_size", 12)
+	add_lbl.modulate = Color(col.r, col.g, col.b, 0.8)
+	h.add_child(add_lbl)
 	
 	return p
 
@@ -751,29 +629,22 @@ func _create_nav_tab(title: String, tab_id: String, on_click: Callable) -> Butto
 # ==========================================================
 func _build_title_panel() -> void:
 	title_panel = Control.new()
-	title_panel.set_anchors_preset(Control.PRESET_FULL_RECT)
-	title_panel.anchor_right = 1.0
-	title_panel.anchor_bottom = 1.0
-	title_panel.grow_horizontal = Control.GROW_DIRECTION_BOTH
-	title_panel.grow_vertical = Control.GROW_DIRECTION_BOTH
 	title_panel.custom_minimum_size = Vector2(1280, 720)
+	title_panel.size = Vector2(1280, 720)
 	title_panel.position = Vector2.ZERO
 	title_panel.mouse_filter = Control.MOUSE_FILTER_PASS
 	add_child(title_panel)
 	
 	var center = VBoxContainer.new()
-	center.set_anchors_preset(Control.PRESET_FULL_RECT)
-	center.anchor_right = 1.0
-	center.anchor_bottom = 1.0
-	center.grow_horizontal = Control.GROW_DIRECTION_BOTH
-	center.grow_vertical = Control.GROW_DIRECTION_BOTH
+	center.custom_minimum_size = Vector2(1280, 720)
+	center.size = Vector2(1280, 720)
 	center.alignment = BoxContainer.ALIGNMENT_CENTER
 	center.add_theme_constant_override("separation", 16)
 	center.mouse_filter = Control.MOUSE_FILTER_PASS
 	title_panel.add_child(center)
 	
-	# High-Impact 3D Esports Tournament Logo Emblem (The Spike Style)
-	var logo_icon = _create_tex_icon(TEX_KAISER_LOGO, Vector2(320, 330))
+	# High-Impact 3D Esports Tournament Logo Emblem
+	var logo_icon = _create_tex_icon(TEX_KAISER_LOGO, Vector2(300, 310))
 	var logo_row = HBoxContainer.new()
 	logo_row.alignment = BoxContainer.ALIGNMENT_CENTER
 	logo_row.add_child(logo_icon)
@@ -790,12 +661,8 @@ func _build_title_panel() -> void:
 	sp.custom_minimum_size = Vector2(0, 36)
 	center.add_child(sp)
 	
-	var btn_start_any = _create_clean_button("▶  CHẠM ĐỂ VÀO SẢNH (PRESS TO START)", Color(1.0, 0.85, 0.25), Vector2(380, 52), 15)
-	btn_start_any.pressed.connect(func():
-		if Time.get_ticks_msec() < _state_switch_cooldown_until:
-			return
-		switch_state(MenuState.LOBBY)
-	)
+	var btn_start_any = _create_clean_button("CHẠM HOẶC NHẤN PHÍM BẤT KỲ ĐỂ VÀO SẢNH", Color(1.0, 0.85, 0.25), Vector2(380, 52), 15)
+	btn_start_any.pressed.connect(func(): switch_state(MenuState.LOBBY))
 	var b_row = HBoxContainer.new()
 	b_row.alignment = BoxContainer.ALIGNMENT_CENTER
 	b_row.add_child(btn_start_any)
@@ -803,11 +670,9 @@ func _build_title_panel() -> void:
 
 func _unhandled_input(event: InputEvent) -> void:
 	if current_state == MenuState.TITLE and visible:
-		if event is InputEventKey and event.pressed and not event.echo:
-			if event.keycode == KEY_SPACE or event.keycode == KEY_ENTER or event.keycode == KEY_KP_ENTER:
-				if Time.get_ticks_msec() >= _state_switch_cooldown_until:
-					switch_state(MenuState.LOBBY)
-					get_viewport().set_input_as_handled()
+		if (event is InputEventKey and event.pressed) or (event is InputEventScreenTouch and event.pressed) or (event is InputEventMouseButton and event.pressed):
+			switch_state(MenuState.LOBBY)
+			get_viewport().set_input_as_handled()
 
 # ==========================================================
 # 3. MAIN LOBBY SCREEN (Hero Standee, Widgets, Primary CTA)
@@ -988,8 +853,7 @@ func _build_lobby_panel() -> void:
 	btn_play_cta.add_theme_stylebox_override("focus", sb_cta_h)
 	
 	btn_play_cta.pressed.connect(func():
-		if Time.get_ticks_msec() < _state_switch_cooldown_until:
-			return
+		if Time.get_ticks_msec() < _state_switch_cooldown_until: return
 		switch_state(MenuState.MATCH_SELECT)
 	)
 	btn_row.add_child(btn_play_cta)
@@ -1459,7 +1323,7 @@ func _build_pvp_panel() -> void:
 	cfg_row.add_child(name_box)
 	cfg_row.add_child(VSeparator.new())
 	
-	# Character selector (Đầy đủ cả 3 siêu sao BWF)
+	# Character selector
 	var char_box = HBoxContainer.new()
 	char_box.add_theme_constant_override("separation", 6)
 	var lbl_c = Label.new()
@@ -1468,7 +1332,7 @@ func _build_pvp_panel() -> void:
 	lbl_c.modulate = Color(0.75, 0.82, 0.90)
 	char_box.add_child(lbl_c)
 	for cid in ["nishikawa", "fuji", "wall"]:
-		var b = _create_clean_button(CHAR_DATA[cid]["name"], CHAR_DATA[cid]["color"], Vector2(92, 30), 11)
+		var b = _create_clean_button(CHAR_DATA[cid]["name"], CHAR_DATA[cid]["color"], Vector2(96, 30), 11)
 		b.pressed.connect(func(): _select_pvp_char(cid))
 		char_box.add_child(b)
 		pvp_char_btns[cid] = b
@@ -2116,25 +1980,6 @@ func _build_settings_gfx_tab() -> VBoxContainer:
 	shk_row.add_child(btn_shk)
 	v.add_child(shk_row)
 	
-	# Hàng cài đặt phím ảo cảm ứng (Mobile Virtual Touch Pad)
-	var touch_row = HBoxContainer.new()
-	touch_row.mouse_filter = Control.MOUSE_FILTER_PASS
-	var lbl_touch = Label.new()
-	lbl_touch.text = "Phím cảm ứng ảo di động (Virtual Touch Pad):"
-	lbl_touch.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	lbl_touch.add_theme_font_size_override("font_size", 13)
-	touch_row.add_child(lbl_touch)
-	
-	btn_touch_toggle_menu = _create_clean_button("BẬT" if touch_controls_enabled else "TẮT", Color(0.2, 1.0, 0.4) if touch_controls_enabled else Color(1.0, 0.4, 0.4), Vector2(90, 32), 12)
-	btn_touch_toggle_menu.pressed.connect(func():
-		touch_controls_enabled = not touch_controls_enabled
-		btn_touch_toggle_menu.text = "BẬT" if touch_controls_enabled else "TẮT"
-		btn_touch_toggle_menu.modulate = Color(0.2, 1.0, 0.4) if touch_controls_enabled else Color(1.0, 0.4, 0.4)
-		touch_toggle_requested.emit(touch_controls_enabled)
-	)
-	touch_row.add_child(btn_touch_toggle_menu)
-	v.add_child(touch_row)
-	
 	return v
 
 func _build_settings_account_tab() -> VBoxContainer:
@@ -2462,8 +2307,6 @@ func _update_setup_cards() -> void:
 		label_matchup_summary.text = "KÈO ĐẤU:  [PLAYER: %s]   VS   [AI: %s]   •   ĐỘ KHÓ: [%s]   •   CHẠM: [%d ĐIỂM]   •   [%s]" % [p_name, r_name, diff_str, selected_target_points, set_str]
 
 func _confirm_and_start_match() -> void:
-	if Time.get_ticks_msec() < _state_switch_cooldown_until:
-		return
 	start_match_requested.emit(selected_player_id, selected_rival_id, selected_difficulty, selected_target_points, selected_match_sets)
 	visible = false
 
@@ -2610,10 +2453,11 @@ func _on_avatar_selected(idx: int) -> void:
 		avatar_picker_modal.visible = false
 
 func _save_selected_avatar(_idx: int) -> void:
-	# Chỉ lưu tên người chơi theo yêu cầu. Không lưu avatar vào file/localStorage để tránh cache cũ.
+	# Chi luu ten nguoi choi theo yeu cau. Khong luu avatar
 	pass
 
 func _load_selected_avatar() -> void:
+	# Chi luu ten nguoi choi theo yeu cau. Khong luu hoac doc avatar tu o dia
 	current_avatar_idx = 0
 
 func _select_pvp_char(cid: String) -> void:
@@ -2672,7 +2516,7 @@ func _update_pvp_controls() -> void:
 func _on_host_create_room() -> void:
 	pvp_is_host = true
 	if net_manager:
-		net_manager.host_room("", pvp_selected_char, pvp_selected_points, pvp_selected_sets, pvp_player_name)
+		net_manager.create_room()
 		if pvp_status_lbl:
 			pvp_status_lbl.text = "● ĐANG TẠO PHÒNG..."
 			pvp_status_lbl.modulate = Color(1.0, 0.85, 0.3)
@@ -2684,7 +2528,7 @@ func _on_client_join_room() -> void:
 		return
 	pvp_current_code = code
 	if net_manager:
-		net_manager.join_room(code, pvp_selected_char, pvp_player_name)
+		net_manager.join_room(code)
 		if pvp_status_lbl:
 			pvp_status_lbl.text = "● ĐANG KẾT NỐI: " + code
 			pvp_status_lbl.modulate = Color(0.35, 0.75, 1.0)
@@ -2706,11 +2550,7 @@ func _on_pvp_start_pressed() -> void:
 			"type": "start_match",
 			"first_server": pvp_first_server,
 			"pts": pvp_selected_points,
-			"sets": pvp_selected_sets,
-			"host_char": pvp_selected_char,
-			"guest_char": pvp_opponent_char,
-			"host_name": pvp_player_name,
-			"guest_name": pvp_opponent_name
+			"sets": pvp_selected_sets
 		})
 	_start_pvp_countdown()
 
@@ -2757,13 +2597,6 @@ func _on_net_packet_received(pkt: Dictionary) -> void:
 	elif ptype == "char_pick":
 		pvp_opponent_char = str(pkt.get("char", "wall"))
 		pvp_opponent_name = str(pkt.get("player_name", "PLAYER 2"))
-		if net_manager and not pkt.has("is_ack"):
-			net_manager.send_packet({
-				"type": "char_pick",
-				"char": pvp_selected_char,
-				"player_name": pvp_player_name,
-				"is_ack": true
-			})
 	elif ptype == "match_config":
 		pvp_selected_points = int(pkt.get("pts", 11))
 		pvp_selected_sets = int(pkt.get("sets", 1))
@@ -2772,8 +2605,4 @@ func _on_net_packet_received(pkt: Dictionary) -> void:
 		pvp_first_server = str(pkt.get("first_server", "p1"))
 		pvp_selected_points = int(pkt.get("pts", pvp_selected_points))
 		pvp_selected_sets = int(pkt.get("sets", pvp_selected_sets))
-		if pkt.has("host_char"):
-			pvp_opponent_char = str(pkt.get("host_char"))
-		if pkt.has("host_name"):
-			pvp_opponent_name = str(pkt.get("host_name"))
 		_start_pvp_countdown()
