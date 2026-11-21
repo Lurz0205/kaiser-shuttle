@@ -74,6 +74,7 @@ const TEX_TRAIL_MIRAGE: Texture2D = preload("res://assets/images/trails/trail_mi
 # Visual Trail & Ground Shadow
 var trail_points: Array[Vector2] = []
 const MAX_TRAIL: int = 26
+var low_graphics_mode: bool = false
 
 var is_perfect: bool = false
 
@@ -104,6 +105,9 @@ func _ready() -> void:
 	if not tuning:
 		tuning = load("res://resources/GameTuning.tres")
 	
+	if OS.has_feature("web"):
+		low_graphics_mode = true
+	
 	if trail:
 		trail.top_level = true
 		trail.clear_points()
@@ -119,10 +123,14 @@ func _ready() -> void:
 		trail.antialiased = not OS.has_feature("web")
 		trail.texture = TEX_TRAIL_SPEED
 		trail.default_color = Color(1.0, 1.0, 1.0, 0.85)
+		if low_graphics_mode:
+			trail.visible = false
 	
 	if lightning_trail:
 		lightning_trail.top_level = true
 		lightning_trail.draw.connect(_on_lightning_trail_draw)
+		if low_graphics_mode:
+			lightning_trail.visible = false
 	
 	if not leaf_trail:
 		if has_node("LeafTrail"):
@@ -519,8 +527,28 @@ func _physics_process(delta: float) -> void:
 	_update_landing_indicator()
 
 
+func set_low_graphics(enabled: bool) -> void:
+	low_graphics_mode = enabled
+	if low_graphics_mode:
+		if trail:
+			trail.visible = false
+			trail.clear_points()
+		trail_points.clear()
+		if lightning_trail:
+			lightning_trail.visible = false
+	else:
+		if trail:
+			trail.visible = true
+		if lightning_trail and not OS.has_feature("web"):
+			lightning_trail.visible = true
+
+
 func _sync_shadow() -> void:
 	if shadow_node:
+		if OS.has_feature("web"):
+			shadow_node.visible = false
+			return
+		shadow_node.visible = true
 		var floor_y = tuning.floor_y if tuning else 550.0
 		shadow_node.global_position = Vector2(global_position.x, floor_y)
 		var h = max(0.0, floor_y - global_position.y)
@@ -538,6 +566,11 @@ func _update_trail_styling() -> void:
 	trail_points.clear()
 	if not trail:
 		return
+	if low_graphics_mode:
+		trail.visible = false
+		trail.clear_points()
+		return
+	trail.visible = true
 	trail.clear_points()
 	trail.texture_mode = Line2D.LINE_TEXTURE_STRETCH
 	
@@ -570,6 +603,12 @@ func _update_trail_styling() -> void:
 func _update_trail() -> void:
 	if not trail:
 		return
+	if low_graphics_mode:
+		trail.visible = false
+		trail.clear_points()
+		trail_points.clear()
+		return
+	trail.visible = true
 	trail_points.push_front(global_position)
 	if trail_points.size() > MAX_TRAIL:
 		trail_points.pop_back()

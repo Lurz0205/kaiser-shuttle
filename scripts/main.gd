@@ -75,18 +75,22 @@ var sets_won_ai: int = 0
 var is_umpire_speaking: bool = false
 var match_over_dialog: PanelContainer = null
 
-# HUD Athletic Gauges (Stamina & Accuracy)
+# HUD Athletic Gauges (Stamina, Accuracy, Flow)
 var stamina_bar_bg_player: ColorRect
 var stamina_bar_fill_player: ColorRect
 var stamina_bar_cap_player: ColorRect
 var accuracy_bar_bg_player: ColorRect
 var accuracy_bar_fill_player: ColorRect
+var flow_bar_bg_player: ColorRect
+var flow_bar_fill_player: ColorRect
 
 var stamina_bar_bg_ai: ColorRect
 var stamina_bar_fill_ai: ColorRect
 var stamina_bar_cap_ai: ColorRect
 var accuracy_bar_bg_ai: ColorRect
 var accuracy_bar_fill_ai: ColorRect
+var flow_bar_bg_ai: ColorRect
+var flow_bar_fill_ai: ColorRect
 
 # Nishikawa Impact Lightning (Slow-mo chung với game, sau đó mới tỏa ra bình thường)
 var impact_lightning_pos: Vector2 = Vector2.ZERO
@@ -234,6 +238,10 @@ func _ready() -> void:
 	
 	if OS.has_feature("web"):
 		low_graphics_mode = true
+	else:
+		low_graphics_mode = false
+	if shuttlecock and shuttlecock.has_method("set_low_graphics"):
+		shuttlecock.set_low_graphics(low_graphics_mode)
 	
 	if flash_rect:
 		flash_rect.visible = false
@@ -413,24 +421,27 @@ func _ready() -> void:
 			fs_row.add_child(btn_fs_toggle)
 			vbox.add_child(fs_row)
 			
-			# Hàng cấu hình đồ họa thấp (Low Graphics Mode) cho máy yếu
-			var gfx_row = HBoxContainer.new()
-			var lbl_gfx = Label.new()
-			lbl_gfx.text = "Cấu hình đồ họa:"
-			lbl_gfx.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-			gfx_row.add_child(lbl_gfx)
-			
-			btn_low_gfx_toggle = Button.new()
-			btn_low_gfx_toggle.focus_mode = Control.FOCUS_NONE
-			btn_low_gfx_toggle.custom_minimum_size = Vector2(90, 28)
-			btn_low_gfx_toggle.text = "CAO (CHUẨN)"
-			btn_low_gfx_toggle.pressed.connect(func():
-				btn_low_gfx_toggle.release_focus()
-				low_graphics_mode = not low_graphics_mode
-				_update_settings_ui()
-			)
-			gfx_row.add_child(btn_low_gfx_toggle)
-			vbox.add_child(gfx_row)
+			# Hàng cấu hình đồ họa thấp (Low Graphics Mode): Chỉ hiển thị trên Web. Desktop chỉ để 1 loại đồ họa MAX
+			if OS.has_feature("web"):
+				var gfx_row = HBoxContainer.new()
+				var lbl_gfx = Label.new()
+				lbl_gfx.text = "Cấu hình đồ họa thấp:"
+				lbl_gfx.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+				gfx_row.add_child(lbl_gfx)
+				
+				btn_low_gfx_toggle = Button.new()
+				btn_low_gfx_toggle.focus_mode = Control.FOCUS_NONE
+				btn_low_gfx_toggle.custom_minimum_size = Vector2(90, 28)
+				btn_low_gfx_toggle.text = "[ BẬT ]" if low_graphics_mode else "[ TẮT ]"
+				btn_low_gfx_toggle.pressed.connect(func():
+					btn_low_gfx_toggle.release_focus()
+					low_graphics_mode = not low_graphics_mode
+					if shuttlecock and shuttlecock.has_method("set_low_graphics"):
+						shuttlecock.set_low_graphics(low_graphics_mode)
+					_update_settings_ui()
+				)
+				gfx_row.add_child(btn_low_gfx_toggle)
+				vbox.add_child(gfx_row)
 		
 	# Tự động nhận diện thiết bị: Mặc định TẮT trên Desktop/PC, chỉ BẬT trên Mobile/Touchscreen
 	var is_mobile = OS.has_feature("mobile") or OS.has_feature("web_android") or OS.has_feature("web_ios")
@@ -539,8 +550,16 @@ func _set_in_game_hud_visible(show: bool) -> void:
 		pill_stats.visible = false
 	if stamina_bar_bg_player:
 		stamina_bar_bg_player.visible = show
+	if accuracy_bar_bg_player:
+		accuracy_bar_bg_player.visible = show
+	if flow_bar_bg_player:
+		flow_bar_bg_player.visible = show
 	if stamina_bar_bg_ai:
 		stamina_bar_bg_ai.visible = show
+	if accuracy_bar_bg_ai:
+		accuracy_bar_bg_ai.visible = show
+	if flow_bar_bg_ai:
+		flow_bar_bg_ai.visible = show
 	if virtual_touch_pad:
 		virtual_touch_pad.visible = show and touch_controls_enabled
 
@@ -705,7 +724,12 @@ func _on_menu_settings_updated(sq: bool, bgm_en: bool = true, bgm_vol: float = 0
 	squeak_enabled = sq
 	bgm_match_enabled = bgm_en
 	bgm_match_volume = bgm_vol
-	low_graphics_mode = low_gfx
+	if OS.has_feature("web"):
+		low_graphics_mode = low_gfx
+	else:
+		low_graphics_mode = false
+	if shuttlecock and shuttlecock.has_method("set_low_graphics"):
+		shuttlecock.set_low_graphics(low_graphics_mode)
 	_update_settings_ui()
 	_apply_match_bgm(false)
 
@@ -1482,8 +1506,8 @@ func _update_settings_ui() -> void:
 		btn_touch_toggle.modulate = Color(1.2, 3.2, 1.2) if touch_controls_enabled else Color(1.8, 0.6, 0.6)
 
 	if btn_low_gfx_toggle:
-		btn_low_gfx_toggle.text = "THẤP (MƯỢT)" if low_graphics_mode else "CAO (CHUẨN)"
-		btn_low_gfx_toggle.modulate = Color(3.5, 2.5, 0.4) if low_graphics_mode else Color(1.2, 3.2, 1.2)
+		btn_low_gfx_toggle.text = "[ BẬT ]" if low_graphics_mode else "[ TẮT ]"
+		btn_low_gfx_toggle.modulate = Color(0.2, 2.5, 0.4) if low_graphics_mode else Color(1.8, 0.6, 0.6)
 	var floor_refl = get_node_or_null("FloorReflection")
 	if floor_refl:
 		floor_refl.visible = (not low_graphics_mode) and (not OS.has_feature("web"))
@@ -3302,6 +3326,21 @@ func _setup_hud_stamina_bars() -> void:
 	tick_p.size = Vector2(1.0, 5.5)
 	accuracy_bar_bg_player.add_child(tick_p)
 	
+	# 3. Player Flow Bar / Nộ Khí Tuyệt Kỹ (top=93.0, bottom=96.5)
+	flow_bar_bg_player = ColorRect.new()
+	flow_bar_bg_player.color = Color(0.08, 0.10, 0.14, 0.85)
+	flow_bar_bg_player.offset_left = 425.0
+	flow_bar_bg_player.offset_top = 93.0
+	flow_bar_bg_player.offset_right = 565.0
+	flow_bar_bg_player.offset_bottom = 96.5
+	hud.add_child(flow_bar_bg_player)
+	
+	flow_bar_fill_player = ColorRect.new()
+	flow_bar_fill_player.color = Color(0.78, 0.28, 0.95, 0.95)
+	flow_bar_fill_player.position = Vector2.ZERO
+	flow_bar_fill_player.size = Vector2(140.0, 3.5)
+	flow_bar_bg_player.add_child(flow_bar_fill_player)
+	
 	# --- RIVAL AI (Dưới BWFScoreboard cánh phải: left=715, right=855, top=82) ---
 	# 1. AI Stamina Bar
 	stamina_bar_bg_ai = ColorRect.new()
@@ -3344,19 +3383,35 @@ func _setup_hud_stamina_bars() -> void:
 	tick_ai.position = Vector2(70.0, -1.0)
 	tick_ai.size = Vector2(1.0, 5.5)
 	accuracy_bar_bg_ai.add_child(tick_ai)
+	
+	# 3. AI Flow Bar / Nộ Khí Tuyệt Kỹ (top=93.0, bottom=96.5)
+	flow_bar_bg_ai = ColorRect.new()
+	flow_bar_bg_ai.color = Color(0.08, 0.10, 0.14, 0.85)
+	flow_bar_bg_ai.offset_left = 715.0
+	flow_bar_bg_ai.offset_top = 93.0
+	flow_bar_bg_ai.offset_right = 855.0
+	flow_bar_bg_ai.offset_bottom = 96.5
+	hud.add_child(flow_bar_bg_ai)
+	
+	flow_bar_fill_ai = ColorRect.new()
+	flow_bar_fill_ai.color = Color(0.78, 0.28, 0.95, 0.95)
+	flow_bar_fill_ai.position = Vector2.ZERO
+	flow_bar_fill_ai.size = Vector2(140.0, 3.5)
+	flow_bar_bg_ai.add_child(flow_bar_fill_ai)
 
 
 func _update_hud_stamina_bars() -> void:
 	var time_val = Time.get_ticks_msec() / 1000.0
 	var pulse = 0.65 + 0.35 * sin(time_val * 14.0)
+	var flow_pulse = 0.75 + 0.25 * sin(time_val * 16.0)
 	
 	# Update Player Bars
 	if player and player.stats:
 		if stamina_bar_fill_player and stamina_bar_cap_player:
 			var p_cap = clamp(player.stats.max_stamina_cap / 100.0, 0.0, 1.0)
 			var p_val = clamp(player.stats.stamina / 100.0, 0.0, 1.0)
-			stamina_bar_cap_player.size.x = 124.0 * p_cap
-			stamina_bar_fill_player.size.x = 124.0 * p_val
+			stamina_bar_cap_player.size.x = 140.0 * p_cap
+			stamina_bar_fill_player.size.x = 140.0 * p_val
 			if player.stats.is_stamina_critical():
 				stamina_bar_fill_player.color = Color(1.0, 0.18, 0.18, pulse)
 			else:
@@ -3364,21 +3419,29 @@ func _update_hud_stamina_bars() -> void:
 				
 		if accuracy_bar_fill_player:
 			var p_acc = clamp(player.stats.accuracy / 100.0, 0.0, 1.0)
-			accuracy_bar_fill_player.size.x = 124.0 * p_acc
+			accuracy_bar_fill_player.size.x = 140.0 * p_acc
 			if player.stats.accuracy < 25.0:
 				accuracy_bar_fill_player.color = Color(1.0, 0.25, 0.35, pulse)
 			elif player.stats.accuracy < 50.0:
 				accuracy_bar_fill_player.color = Color(1.0, 0.72, 0.20, 0.95)
 			else:
 				accuracy_bar_fill_player.color = Color(0.20, 0.88, 1.0, 0.95)
+				
+		if flow_bar_fill_player:
+			var p_flow = clamp(player.stats.flow / 100.0, 0.0, 1.0)
+			flow_bar_fill_player.size.x = 140.0 * p_flow
+			if player.stats.can_use_special():
+				flow_bar_fill_player.color = Color(1.0, 0.90, 0.25, flow_pulse)
+			else:
+				flow_bar_fill_player.color = Color(0.78, 0.28, 0.95, 0.95)
 			
 	# Update AI Rival Bars
 	if ai_rival and ai_rival.stats:
 		if stamina_bar_fill_ai and stamina_bar_cap_ai:
 			var ai_cap = clamp(ai_rival.stats.max_stamina_cap / 100.0, 0.0, 1.0)
 			var ai_val = clamp(ai_rival.stats.stamina / 100.0, 0.0, 1.0)
-			stamina_bar_cap_ai.size.x = 124.0 * ai_cap
-			stamina_bar_fill_ai.size.x = 124.0 * ai_val
+			stamina_bar_cap_ai.size.x = 140.0 * ai_cap
+			stamina_bar_fill_ai.size.x = 140.0 * ai_val
 			if ai_rival.stats.is_stamina_critical():
 				stamina_bar_fill_ai.color = Color(1.0, 0.18, 0.18, pulse)
 			else:
@@ -3386,10 +3449,18 @@ func _update_hud_stamina_bars() -> void:
 				
 		if accuracy_bar_fill_ai:
 			var ai_acc = clamp(ai_rival.stats.accuracy / 100.0, 0.0, 1.0)
-			accuracy_bar_fill_ai.size.x = 124.0 * ai_acc
+			accuracy_bar_fill_ai.size.x = 140.0 * ai_acc
 			if ai_rival.stats.accuracy < 25.0:
 				accuracy_bar_fill_ai.color = Color(1.0, 0.25, 0.35, pulse)
 			elif ai_rival.stats.accuracy < 50.0:
 				accuracy_bar_fill_ai.color = Color(1.0, 0.72, 0.20, 0.95)
 			else:
 				accuracy_bar_fill_ai.color = Color(0.20, 0.88, 1.0, 0.95)
+				
+		if flow_bar_fill_ai:
+			var ai_flow = clamp(ai_rival.stats.flow / 100.0, 0.0, 1.0)
+			flow_bar_fill_ai.size.x = 140.0 * ai_flow
+			if ai_rival.stats.can_use_special():
+				flow_bar_fill_ai.color = Color(1.0, 0.90, 0.25, flow_pulse)
+			else:
+				flow_bar_fill_ai.color = Color(0.78, 0.28, 0.95, 0.95)

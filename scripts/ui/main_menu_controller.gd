@@ -127,6 +127,11 @@ func _ready() -> void:
 	position = Vector2.ZERO
 	set_anchors_preset(Control.PRESET_FULL_RECT)
 	
+	if OS.has_feature("web"):
+		low_graphics_mode = true
+	else:
+		low_graphics_mode = false
+	
 	_build_ui()
 	switch_state(MenuState.TITLE)
 
@@ -518,23 +523,24 @@ func _build_ui() -> void:
 	bgm_vol_row.add_child(slider_bgm)
 	set_vbox.add_child(bgm_vol_row)
 	
-	# Low Graphics Mode Toggle (Chế độ cấu hình thấp cho máy yếu)
-	var gfx_row = HBoxContainer.new()
-	var lbl_gfx = Label.new()
-	lbl_gfx.text = "Cấu hình đồ họa (Low Graphics):"
-	lbl_gfx.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	lbl_gfx.add_theme_font_size_override("font_size", 13)
-	gfx_row.add_child(lbl_gfx)
-	
-	var btn_gfx = _create_clean_button("CAO (CHUẨN)", Color(0.3, 0.9, 0.4), Vector2(120, 30), 12)
-	btn_gfx.pressed.connect(func():
-		low_graphics_mode = not low_graphics_mode
-		btn_gfx.text = "THẤP (MƯỢT)" if low_graphics_mode else "CAO (CHUẨN)"
-		btn_gfx.modulate = Color(0.95, 0.82, 0.25) if low_graphics_mode else Color(0.3, 0.9, 0.4)
-		settings_updated.emit(squeak_enabled, bgm_match_enabled, bgm_match_volume, low_graphics_mode)
-	)
-	gfx_row.add_child(btn_gfx)
-	set_vbox.add_child(gfx_row)
+	# Low Graphics Mode Toggle: Chỉ hiển thị trên Web. Bản trên máy xóa hoàn toàn để giữ 1 loại đồ họa MAX
+	if OS.has_feature("web"):
+		var gfx_row = HBoxContainer.new()
+		var lbl_gfx = Label.new()
+		lbl_gfx.text = "Cấu hình đồ họa thấp:"
+		lbl_gfx.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		lbl_gfx.add_theme_font_size_override("font_size", 13)
+		gfx_row.add_child(lbl_gfx)
+		
+		var btn_gfx = _create_clean_button("[ BẬT ]" if low_graphics_mode else "[ TẮT ]", Color(0.2, 2.5, 0.4) if low_graphics_mode else Color(1.8, 0.6, 0.6), Vector2(90, 30), 12)
+		btn_gfx.pressed.connect(func():
+			low_graphics_mode = not low_graphics_mode
+			btn_gfx.text = "[ BẬT ]" if low_graphics_mode else "[ TẮT ]"
+			btn_gfx.modulate = Color(0.2, 2.5, 0.4) if low_graphics_mode else Color(1.8, 0.6, 0.6)
+			settings_updated.emit(squeak_enabled, bgm_match_enabled, bgm_match_volume, low_graphics_mode)
+		)
+		gfx_row.add_child(btn_gfx)
+		set_vbox.add_child(gfx_row)
 	
 	var set_close_row = HBoxContainer.new()
 	set_close_row.alignment = BoxContainer.ALIGNMENT_CENTER
