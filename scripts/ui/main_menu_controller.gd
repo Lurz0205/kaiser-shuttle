@@ -623,7 +623,7 @@ func _build_top_bar() -> void:
 	var btn_home = _create_nav_tab("Trang Chủ", "lobby", func(): switch_state(MenuState.LOBBY))
 	var btn_shop = _create_nav_tab("Cửa Hàng", "shop", func(): switch_state(MenuState.SHOP))
 	var btn_quests = _create_nav_tab("Nhiệm Vụ", "quests", func(): switch_state(MenuState.QUESTS))
-	var btn_roster = _create_nav_tab("Quản Lý Cầu Thủ", "roster", func(): switch_state(MenuState.ROSTER))
+	var btn_roster = _create_nav_tab("Cầu Thủ", "roster", func(): switch_state(MenuState.ROSTER))
 	var btn_settings = _create_nav_tab("Cài Đặt", "settings", func(): switch_state(MenuState.SETTINGS))
 	
 	tabs_row.add_child(btn_home)
@@ -777,57 +777,87 @@ func _build_lobby_panel() -> void:
 	lobby_panel.visible = false
 	add_child(lobby_panel)
 	
-	# Center Hero Stage (Sân khấu sảnh trung tâm)
+	# Center Hero Stage (Full-body Standee Nhân Vật ở Màn Hình Chính)
 	hero_standee = Control.new()
-	hero_standee.custom_minimum_size = Vector2(400, 480)
-	hero_standee.size = Vector2(400, 480)
-	hero_standee.position = Vector2(440, 95)
+	hero_standee.custom_minimum_size = Vector2(440, 580)
+	hero_standee.size = Vector2(440, 580)
+	hero_standee.position = Vector2(420, 95)
 	hero_standee.mouse_filter = Control.MOUSE_FILTER_PASS
 	lobby_panel.add_child(hero_standee)
 	
-	# Spotlight circle on floor
+	# Spotlight circle on floor under feet
 	var spot = ColorRect.new()
-	spot.custom_minimum_size = Vector2(300, 20)
-	spot.size = Vector2(300, 20)
-	spot.position = Vector2(50, 435)
-	spot.color = Color(1.0, 0.85, 0.3, 0.12)
+	spot.custom_minimum_size = Vector2(280, 22)
+	spot.size = Vector2(280, 22)
+	spot.position = Vector2(80, 550)
+	spot.color = Color(0.0, 0.0, 0.0, 0.32)
 	spot.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	hero_standee.add_child(spot)
 	
-	# Character Visual Showcase with Liquid Glass Box
-	var hero_icon_center = CenterContainer.new()
-	hero_icon_center.custom_minimum_size = Vector2(400, 360)
-	hero_icon_center.size = Vector2(400, 360)
-	hero_icon_center.mouse_filter = Control.MOUSE_FILTER_PASS
-	hero_standee.add_child(hero_icon_center)
+	# Full Standee Texture (100% Full-body as provided, not inside box, not cropped)
+	var hero_full_standee = TextureRect.new()
+	hero_full_standee.name = "HeroFullStandee"
+	hero_full_standee.texture = CHAR_DATA["nishikawa"]["standee"]
+	hero_full_standee.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	hero_full_standee.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	hero_full_standee.custom_minimum_size = Vector2(440, 560)
+	hero_full_standee.size = Vector2(440, 560)
+	hero_full_standee.position = Vector2.ZERO
+	hero_full_standee.mouse_filter = Control.MOUSE_FILTER_PASS
+	hero_full_standee.gui_input.connect(func(event: InputEvent):
+		if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT and event.pressed:
+			switch_state(MenuState.ROSTER)
+	)
+	hero_standee.add_child(hero_full_standee)
 	
-	var hero_card = _create_spike_translucent_panel(Vector2(260, 340), 14, Color(1.0, 0.82, 0.25, 0.70))
-	hero_card.name = "HeroCard"
-	hero_card.clip_contents = true
-	hero_card.mouse_filter = Control.MOUSE_FILTER_PASS
-	hero_icon_center.add_child(hero_card)
+	# Fallback display for characters without full standee
+	var fallback_box = CenterContainer.new()
+	fallback_box.name = "HeroFallbackBox"
+	fallback_box.custom_minimum_size = Vector2(440, 560)
+	fallback_box.size = Vector2(440, 560)
+	fallback_box.visible = false
+	fallback_box.mouse_filter = Control.MOUSE_FILTER_PASS
+	hero_standee.add_child(fallback_box)
 	
-	var hero_card_standee_bg = TextureRect.new()
-	hero_card_standee_bg.name = "HeroCardStandeeBg"
-	hero_card_standee_bg.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	hero_card_standee_bg.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
-	hero_card_standee_bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	hero_card_standee_bg.modulate = Color(1.0, 1.0, 1.0, 0.30)
-	hero_card.add_child(hero_card_standee_bg)
+	var fallback_card = _create_spike_translucent_panel(Vector2(260, 320), 14, Color(0.25, 0.90, 0.60, 0.70))
+	fallback_box.add_child(fallback_card)
 	
-	var hm = MarginContainer.new()
-	hm.add_theme_constant_override("margin_left", 16)
-	hm.add_theme_constant_override("margin_top", 16)
-	hm.add_theme_constant_override("margin_right", 16)
-	hm.add_theme_constant_override("margin_bottom", 16)
-	hm.mouse_filter = Control.MOUSE_FILTER_PASS
-	hero_card.add_child(hm)
+	var fb_m = MarginContainer.new()
+	fb_m.add_theme_constant_override("margin_left", 16)
+	fb_m.add_theme_constant_override("margin_top", 16)
+	fb_m.add_theme_constant_override("margin_right", 16)
+	fb_m.add_theme_constant_override("margin_bottom", 16)
+	fallback_card.add_child(fb_m)
 	
-	var hv = VBoxContainer.new()
-	hv.alignment = BoxContainer.ALIGNMENT_CENTER
-	hv.add_theme_constant_override("separation", 10)
-	hv.mouse_filter = Control.MOUSE_FILTER_PASS
-	hm.add_child(hv)
+	var fb_v = VBoxContainer.new()
+	fb_v.alignment = BoxContainer.ALIGNMENT_CENTER
+	fb_v.add_theme_constant_override("separation", 12)
+	fb_m.add_child(fb_v)
+	
+	var hero_big_icon = _create_tex_icon(TEX_SKILL_WIND, Vector2(96, 96))
+	hero_big_icon.name = "HeroBigIcon"
+	fb_v.add_child(hero_big_icon)
+	
+	# Character Tag & Change Button (Floating beside Standee)
+	var hero_badge = _create_spike_translucent_panel(Vector2(190, 84), 10, Color(1.0, 0.82, 0.25, 0.60))
+	hero_badge.name = "HeroBadge"
+	hero_badge.position = Vector2(320, 110)
+	hero_badge.mouse_filter = Control.MOUSE_FILTER_PASS
+	lobby_panel.add_child(hero_badge)
+	
+	var bm = MarginContainer.new()
+	bm.add_theme_constant_override("margin_left", 12)
+	bm.add_theme_constant_override("margin_top", 8)
+	bm.add_theme_constant_override("margin_right", 12)
+	bm.add_theme_constant_override("margin_bottom", 8)
+	bm.mouse_filter = Control.MOUSE_FILTER_PASS
+	hero_badge.add_child(bm)
+	
+	var bv = VBoxContainer.new()
+	bv.add_theme_constant_override("separation", 4)
+	bv.alignment = BoxContainer.ALIGNMENT_CENTER
+	bv.mouse_filter = Control.MOUSE_FILTER_PASS
+	bm.add_child(bv)
 	
 	var badge_row = HBoxContainer.new()
 	badge_row.alignment = BoxContainer.ALIGNMENT_CENTER
@@ -835,37 +865,20 @@ func _build_lobby_panel() -> void:
 	
 	lbl_hero_rarity = Label.new()
 	lbl_hero_rarity.text = "S+"
-	lbl_hero_rarity.add_theme_font_size_override("font_size", 20)
+	lbl_hero_rarity.add_theme_font_size_override("font_size", 18)
 	lbl_hero_rarity.modulate = Color(1.0, 0.82, 0.25)
 	badge_row.add_child(lbl_hero_rarity)
 	
 	lbl_hero_name = Label.new()
 	lbl_hero_name.text = "NISHIKAWA"
-	lbl_hero_name.add_theme_font_size_override("font_size", 18)
+	lbl_hero_name.add_theme_font_size_override("font_size", 16)
 	lbl_hero_name.modulate = Color.WHITE
 	badge_row.add_child(lbl_hero_name)
-	hv.add_child(badge_row)
+	bv.add_child(badge_row)
 	
-	var hero_big_icon = _create_tex_icon(TEX_SKILL_THUNDER, Vector2(96, 96))
-	hero_big_icon.name = "HeroBigIcon"
-	var ic_row = HBoxContainer.new()
-	ic_row.alignment = BoxContainer.ALIGNMENT_CENTER
-	ic_row.add_child(hero_big_icon)
-	hv.add_child(ic_row)
-	
-	var stars_lbl = Label.new()
-	stars_lbl.text = "[ S+ CẦU THỦ CHỦ LỰC ]"
-	stars_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	stars_lbl.add_theme_font_size_override("font_size", 12)
-	stars_lbl.modulate = Color(1.0, 0.85, 0.25)
-	hv.add_child(stars_lbl)
-	
-	var btn_change_hero = _create_clean_button("ĐỔI TUYỂN THỦ", Color(0.35, 0.75, 1.0), Vector2(160, 32), 11)
+	var btn_change_hero = _create_clean_button("ĐỔI CẦU THỦ", Color(0.35, 0.75, 1.0), Vector2(160, 28), 11)
 	btn_change_hero.pressed.connect(func(): switch_state(MenuState.ROSTER))
-	var ch_row = HBoxContainer.new()
-	ch_row.alignment = BoxContainer.ALIGNMENT_CENTER
-	ch_row.add_child(btn_change_hero)
-	hv.add_child(ch_row)
+	bv.add_child(btn_change_hero)
 	
 	# Hero Passive banner under feet (Đẩy sát đáy màn hình theo yêu cầu)
 	lbl_hero_passive = Label.new()
@@ -998,26 +1011,32 @@ func _update_hero_standee() -> void:
 		
 	if not hero_standee:
 		return
-	var big_icon = hero_standee.find_child("HeroBigIcon", true, false) as TextureRect
-	if big_icon and data.has("skill_icon"):
-		big_icon.texture = data["skill_icon"]
 		
-	var hero_card_bg = hero_standee.find_child("HeroCardStandeeBg", true, false) as TextureRect
-	if hero_card_bg:
-		if data.has("standee") and data["standee"] != null:
-			var atlas = AtlasTexture.new()
-			atlas.atlas = data["standee"]
-			atlas.region = Rect2(0, 0, 1024, 850)
-			hero_card_bg.texture = atlas
-			hero_card_bg.visible = true
-		else:
-			hero_card_bg.visible = false
-		
-	# Smooth breathing idle animation
+	var full_standee = hero_standee.find_child("HeroFullStandee", true, false) as TextureRect
+	var fallback_box = hero_standee.find_child("HeroFallbackBox", true, false) as Control
+	
+	if data.has("standee") and data["standee"] != null:
+		if full_standee:
+			full_standee.texture = data["standee"]
+			full_standee.visible = true
+		if fallback_box:
+			fallback_box.visible = false
+	else:
+		if full_standee:
+			full_standee.texture = null
+			full_standee.visible = false
+		if fallback_box:
+			fallback_box.visible = true
+			var big_icon = fallback_box.find_child("HeroBigIcon", true, false) as TextureRect
+			if big_icon and data.has("skill_icon"):
+				big_icon.texture = data["skill_icon"]
+
+	# Smooth breathing idle animation anchored at the feet
 	if hero_breathing_tween and hero_breathing_tween.is_valid():
 		hero_breathing_tween.kill()
+	hero_standee.pivot_offset = Vector2(hero_standee.size.x * 0.5, hero_standee.size.y)
 	hero_breathing_tween = create_tween().set_loops()
-	hero_breathing_tween.tween_property(hero_standee, "scale", Vector2(1.0, 1.022), 2.2).set_trans(Tween.TRANS_SINE)
+	hero_breathing_tween.tween_property(hero_standee, "scale", Vector2(1.0, 1.018), 2.2).set_trans(Tween.TRANS_SINE)
 	hero_breathing_tween.tween_property(hero_standee, "scale", Vector2(1.0, 1.0), 2.2).set_trans(Tween.TRANS_SINE)
 
 # ==========================================================
@@ -1663,7 +1682,7 @@ func _build_roster_panel() -> void:
 	roster_panel.add_child(back_btn)
 	
 	var title_lbl = Label.new()
-	title_lbl.text = "QUẢN LÝ CẦU THỦ"
+	title_lbl.text = "CẦU THỦ"
 	title_lbl.position = Vector2(230, 84)
 	title_lbl.add_theme_font_size_override("font_size", 18)
 	title_lbl.modulate = Color(1.0, 0.85, 0.3)
