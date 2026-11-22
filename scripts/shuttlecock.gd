@@ -233,11 +233,11 @@ func launch_to_target_2d(from_pt: Vector2, target_pt: Vector2, shot_type: String
 	if is_smash:
 		var v_base = t_res.boom_smash_speed if is_boom_smash else t_res.smash_speed
 		if is_kill_smash:
-			# ĐẬP DỨT ĐIỂM CẦU NON (Tăng tốc độ thêm 10%: 0.21s - 0.29s):
-			flight_duration = clamp(dist_x / (v_base * 1.15), 0.21, 0.29)
+			# ĐẬP DỨT ĐIỂM CẦU NON (Giảm 5% tốc độ: 0.22s - 0.31s):
+			flight_duration = clamp(dist_x / (v_base * 1.15), 0.22, 0.31)
 		else:
-			# ĐẬP CẦU TỐC ĐỘ CAO (Tăng tốc độ thêm 10%: 0.39s - 0.59s):
-			flight_duration = clamp(dist_x / (v_base * 0.72), 0.39, 0.59)
+			# ĐẬP CẦU TỐC ĐỘ CAO (Giảm 5% tốc độ: 0.41s - 0.62s):
+			flight_duration = clamp(dist_x / (v_base * 0.72), 0.41, 0.62)
 		h_apex = h_start
 		is_ground_smash = false
 				

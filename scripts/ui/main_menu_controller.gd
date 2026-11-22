@@ -126,7 +126,8 @@ var nav_tabs: Dictionary = {}
 
 # Hero Standee Node
 var hero_standee: Control
-var hero_breathing_tween: Tween
+var _hero_standee_material: ShaderMaterial
+var _standee_breath_timer: float = 0.0
 var lbl_hero_name: Label
 var lbl_hero_rarity: Label
 var lbl_hero_passive: Label
@@ -246,6 +247,12 @@ func _process(delta: float) -> void:
 			JavaScriptBridge.eval("window._kaiserCodeUpdated = false")
 			if pvp_room_input and not code.is_empty():
 				pvp_room_input.text = code.strip_edges().to_upper()
+				
+	# Standee GPU vertex breathing animation update (100% smooth 120 FPS continuous float)
+	if lobby_panel and lobby_panel.visible:
+		_standee_breath_timer += delta
+		if _hero_standee_material:
+			_hero_standee_material.set_shader_parameter("breath_time", _standee_breath_timer)
 				
 	if pvp_is_counting_down:
 		pvp_countdown_timer -= delta
@@ -781,16 +788,7 @@ func _build_lobby_panel() -> void:
 	hero_standee.mouse_filter = Control.MOUSE_FILTER_PASS
 	lobby_panel.add_child(hero_standee)
 	
-	# Spotlight circle on floor under feet
-	var spot = ColorRect.new()
-	spot.custom_minimum_size = Vector2(280, 22)
-	spot.size = Vector2(280, 22)
-	spot.position = Vector2(80, 550)
-	spot.color = Color(0.0, 0.0, 0.0, 0.32)
-	spot.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	hero_standee.add_child(spot)
-	
-	# Full Standee Texture (100% Full-body as provided, not inside box, not cropped)
+	# Full Standee Texture (100% Full-body, không thanh đứng/hộp đế, lọc mượt mipmaps)
 	var hero_full_standee = TextureRect.new()
 	hero_full_standee.name = "HeroFullStandee"
 	hero_full_standee.texture = CHAR_DATA["nishikawa"]["standee"]
@@ -799,11 +797,31 @@ func _build_lobby_panel() -> void:
 	hero_full_standee.custom_minimum_size = Vector2(440, 560)
 	hero_full_standee.size = Vector2(440, 560)
 	hero_full_standee.position = Vector2.ZERO
+	hero_full_standee.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
 	hero_full_standee.mouse_filter = Control.MOUSE_FILTER_PASS
 	hero_full_standee.gui_input.connect(func(event: InputEvent):
 		if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT and event.pressed:
 			switch_state(MenuState.ROSTER)
 	)
+	
+	# GPU Vertex Breathing Shader: Chân bám vững trên sàn (0% trôi), ngực thở phập phồng mượt mà 120 FPS
+	var breath_shader = Shader.new()
+	breath_shader.code = """
+shader_type canvas_item;
+
+uniform float breath_time = 0.0;
+
+void vertex() {
+	float cycle = sin(breath_time * 2.2);
+	// Chân cố định vững chắc (UV.y = 1.0 -> factor = 0.0), ngực và vai nhấp nhô mềm mại
+	float factor = pow(1.0 - clamp(UV.y, 0.0, 1.0), 1.25);
+	VERTEX.y -= cycle * 6.5 * factor;
+	VERTEX.x += (UV.x - 0.5) * cycle * 7.5 * factor;
+}
+"""
+	_hero_standee_material = ShaderMaterial.new()
+	_hero_standee_material.shader = breath_shader
+	hero_full_standee.material = _hero_standee_material
 	hero_standee.add_child(hero_full_standee)
 	
 	# Fallback display for characters without full standee
@@ -1027,13 +1045,8 @@ func _update_hero_standee() -> void:
 			if big_icon and data.has("skill_icon"):
 				big_icon.texture = data["skill_icon"]
 
-	# Smooth breathing idle animation anchored at the feet
-	if hero_breathing_tween and hero_breathing_tween.is_valid():
-		hero_breathing_tween.kill()
-	hero_standee.pivot_offset = Vector2(hero_standee.size.x * 0.5, hero_standee.size.y)
-	hero_breathing_tween = create_tween().set_loops()
-	hero_breathing_tween.tween_property(hero_standee, "scale", Vector2(1.0, 1.018), 2.2).set_trans(Tween.TRANS_SINE)
-	hero_breathing_tween.tween_property(hero_standee, "scale", Vector2(1.0, 1.0), 2.2).set_trans(Tween.TRANS_SINE)
+	# Khôi phục scale tĩnh chuẩn (hiệu ứng thở chuyển hoàn toàn sang GPU Vertex Shader)
+	hero_standee.scale = Vector2.ONE
 
 # ==========================================================
 # 4. MATCH SELECTION PANEL (The Spike Horizontal Cards)
@@ -2245,6 +2258,7 @@ func _create_card_standee_bg(standee_tex: Texture2D, target_size: Vector2, opaci
 	tr.texture = atlas
 	tr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	tr.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+	tr.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
 	tr.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	tr.modulate = Color(1.0, 1.0, 1.0, opacity)
 	tr.custom_minimum_size = target_size

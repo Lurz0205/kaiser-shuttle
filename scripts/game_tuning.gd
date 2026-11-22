@@ -26,16 +26,16 @@ class_name GameTuning
 @export var short_service_right: float = 830.0
 
 @export_group("Shot Profiles")
-## Vận tốc cú Smash thường (px/s) - Tăng thêm 10% (1463 px/s)
-@export var smash_speed: float = 1463.0
-## Vận tốc cú Boom Smash (px/s) - Tăng thêm 10% (1925 px/s)
-@export var boom_smash_speed: float = 1925.0
+## Vận tốc cú Smash thường (px/s) - Giảm 5% theo yêu cầu (1390 px/s)
+@export var smash_speed: float = 1390.0
+## Vận tốc cú Boom Smash (px/s) - Giảm 5% theo yêu cầu (1829 px/s)
+@export var boom_smash_speed: float = 1829.0
 ## Vận tốc cú Drive ngang mặt lưới (px/s) - Tăng thêm 10% (1056 px/s)
 @export var drive_speed: float = 1056.0
 ## Độ cao đỉnh cú Phông cầu (Clear) so với mặt đất (px) - Cao vút lên khán đài
 @export var clear_apex_h: float = 400.0
-## Thời gian bay cú Clear (s) - Tốc độ cầu tăng 10% (Thời gian bay rút còn 1.98s)
-@export var clear_flight_time: float = 1.98
+## Thời gian bay cú Clear (s) - Tốc độ cầu giảm 5% (Thời gian bay điều chỉnh lên 2.08s)
+@export var clear_flight_time: float = 2.08
 ## Độ cao đỉnh cú Bỏ nhỏ (Drop) so với mặt đất (px)
 @export var drop_apex_h: float = 126.0
 ## Thời gian bay cú Drop (s) - Tốc độ cầu tăng 10% (Thời gian bay rút còn 1.05s)

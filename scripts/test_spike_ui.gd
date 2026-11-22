@@ -93,13 +93,13 @@ func _init() -> void:
 	assert(test_player_script != null, "BadmintonPlayer script loads successfully")
 	print("✓ Test 11: AI Difficulty Perfect Rates (Easy 15%, Medium 48%, Hard 80%) verified")
 
-	# 10. Test Shuttlecock Speed +10%
+	# 10. Test Shuttlecock Speed
 	var tuning = load("res://resources/GameTuning.tres") as GameTuning
-	assert(tuning.smash_speed == 1463.0, "Smash speed should be 1463.0 (+10%)")
-	assert(tuning.boom_smash_speed == 1925.0, "Boom smash speed should be 1925.0 (+10%)")
+	assert(tuning.smash_speed == 1390.0, "Smash speed should be 1390.0 (-5%)")
+	assert(tuning.boom_smash_speed == 1829.0, "Boom smash speed should be 1829.0 (-5%)")
 	assert(tuning.drive_speed == 1056.0, "Drive speed should be 1056.0 (+10%)")
-	assert(tuning.clear_flight_time == 1.98, "Clear flight time should be 1.98s (-10% time = +10% speed)")
-	print("✓ Test 12: All shuttlecock speeds +10% verified")
+	assert(tuning.clear_flight_time == 2.08, "Clear flight time should be 2.08s")
+	print("✓ Test 12: All shuttlecock speeds verified")
 	
 	# 11. Test Distinct Backgrounds for Title vs Lobby
 	menu.switch_state(menu.MenuState.TITLE)
