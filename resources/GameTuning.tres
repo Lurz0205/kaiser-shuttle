@@ -20,4 +20,4 @@ clear_flight_time = 1.98
 drop_apex_h = 126.0
 drop_flight_time = 1.05
 lift_apex_h = 360.0
-lift_flight_time = 2.05
+lift_flight_time = 1.85

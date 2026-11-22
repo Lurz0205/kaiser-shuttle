@@ -238,13 +238,13 @@ func _ready() -> void:
 	switch_state(MenuState.TITLE)
 
 func _process(delta: float) -> void:
-	# Web Mobile text sync
-	if OS.has_feature("web") and pvp_room_input:
+	# Web Mobile text sync & Paste detection
+	if OS.has_feature("web"):
 		var updated = JavaScriptBridge.eval("window._kaiserCodeUpdated === true")
 		if updated:
 			var code = str(JavaScriptBridge.eval("window._kaiserRoomCode || ''"))
 			JavaScriptBridge.eval("window._kaiserCodeUpdated = false")
-			if not code.is_empty():
+			if pvp_room_input and not code.is_empty():
 				pvp_room_input.text = code.strip_edges().to_upper()
 				
 	if pvp_is_counting_down:
@@ -525,7 +525,7 @@ func _build_top_bar() -> void:
 	# Direct Real Name Input Field (Nhập tên thật dễ dàng, không bị đơ)
 	top_name_input = LineEdit.new()
 	top_name_input.text = pvp_player_name
-	top_name_input.custom_minimum_size = Vector2(120, 28)
+	top_name_input.custom_minimum_size = Vector2(140, 28)
 	top_name_input.max_length = 16
 	top_name_input.placeholder_text = "Nhập tên..."
 	top_name_input.mouse_filter = Control.MOUSE_FILTER_STOP
@@ -546,10 +546,12 @@ func _build_top_bar() -> void:
 	top_name_input.add_theme_stylebox_override("focus", sb_inp)
 	top_name_input.add_theme_font_size_override("font_size", 13)
 	top_name_input.gui_input.connect(func(ev: InputEvent):
-		if ev is InputEventMouseButton and ev.pressed:
+		if (ev is InputEventMouseButton or ev is InputEventScreenTouch) and ev.is_pressed():
 			top_name_input.grab_focus()
-			if _is_mobile_environment():
-				_open_mobile_text_prompt(top_name_input, "Đổi tên người chơi (tối đa 12 ký tự):", 12)
+			DisplayServer.virtual_keyboard_show(top_name_input.text)
+	)
+	top_name_input.focus_entered.connect(func():
+		DisplayServer.virtual_keyboard_show(top_name_input.text)
 	)
 	top_name_input.text_changed.connect(func(new_text: String):
 		var clean = new_text.strip_edges()
@@ -559,12 +561,6 @@ func _build_top_bar() -> void:
 			pvp_name_input.text = pvp_player_name
 	)
 	name_col.add_child(top_name_input)
-	
-	var btn_edit_top_name = _create_clean_button("ĐỔI", Color(0.35, 0.75, 1.0), Vector2(36, 26), 9)
-	btn_edit_top_name.pressed.connect(func():
-		_open_mobile_text_prompt(top_name_input, "Đổi tên người chơi (tối đa 12 ký tự):", 12)
-	)
-	name_col.add_child(btn_edit_top_name)
 	
 	prof_box.add_child(name_col)
 	row.add_child(prof_box)
@@ -1433,7 +1429,7 @@ func _build_pvp_panel() -> void:
 	
 	pvp_name_input = LineEdit.new()
 	pvp_name_input.text = pvp_player_name
-	pvp_name_input.custom_minimum_size = Vector2(100, 30)
+	pvp_name_input.custom_minimum_size = Vector2(120, 30)
 	pvp_name_input.max_length = 16
 	pvp_name_input.alignment = HORIZONTAL_ALIGNMENT_CENTER
 	var sb_name = StyleBoxFlat.new()
@@ -1444,10 +1440,12 @@ func _build_pvp_panel() -> void:
 	sb_name.corner_radius_bottom_left = 4
 	pvp_name_input.add_theme_stylebox_override("normal", sb_name)
 	pvp_name_input.gui_input.connect(func(ev: InputEvent):
-		if ev is InputEventMouseButton and ev.pressed:
+		if (ev is InputEventMouseButton or ev is InputEventScreenTouch) and ev.is_pressed():
 			pvp_name_input.grab_focus()
-			if _is_mobile_environment():
-				_open_mobile_text_prompt(pvp_name_input, "Đổi tên người chơi (tối đa 12 ký tự):", 12)
+			DisplayServer.virtual_keyboard_show(pvp_name_input.text)
+	)
+	pvp_name_input.focus_entered.connect(func():
+		DisplayServer.virtual_keyboard_show(pvp_name_input.text)
 	)
 	pvp_name_input.text_changed.connect(func(new_text: String):
 		var clean = new_text.strip_edges()
@@ -1457,12 +1455,6 @@ func _build_pvp_panel() -> void:
 			top_name_input.text = pvp_player_name
 	)
 	name_box.add_child(pvp_name_input)
-	
-	var btn_edit_pvp_name = _create_clean_button("ĐỔI", Color(0.35, 0.75, 1.0), Vector2(36, 30), 10)
-	btn_edit_pvp_name.pressed.connect(func():
-		_open_mobile_text_prompt(pvp_name_input, "Đổi tên người chơi (tối đa 12 ký tự):", 12)
-	)
-	name_box.add_child(btn_edit_pvp_name)
 	cfg_row.add_child(name_box)
 	cfg_row.add_child(VSeparator.new())
 	
@@ -1604,37 +1596,28 @@ func _build_pvp_panel() -> void:
 	jv.add_child(j_title)
 	
 	var input_row = HBoxContainer.new()
-	input_row.add_theme_constant_override("separation", 6)
+	input_row.add_theme_constant_override("separation", 10)
 	pvp_room_input = LineEdit.new()
-	pvp_room_input.placeholder_text = "MÃ (4 KÝ TỰ)"
-	pvp_room_input.custom_minimum_size = Vector2(130, 38)
+	pvp_room_input.placeholder_text = "NHẬP 4 KÝ TỰ MÃ PHÒNG"
+	pvp_room_input.custom_minimum_size = Vector2(210, 38)
 	pvp_room_input.max_length = 8
 	pvp_room_input.alignment = HORIZONTAL_ALIGNMENT_CENTER
 	pvp_room_input.focus_mode = Control.FOCUS_ALL
 	pvp_room_input.mouse_filter = Control.MOUSE_FILTER_STOP
 	pvp_room_input.gui_input.connect(func(ev: InputEvent):
-		if ev is InputEventMouseButton and ev.pressed:
+		if (ev is InputEventMouseButton or ev is InputEventScreenTouch) and ev.is_pressed():
 			pvp_room_input.grab_focus()
-			if _is_mobile_environment():
-				_prompt_edit_room_code()
+			DisplayServer.virtual_keyboard_show(pvp_room_input.text)
 	)
-	pvp_room_input.text_changed.connect(func(new_text: String):
-		var up = new_text.to_upper().strip_edges()
-		if new_text != up:
-			pvp_room_input.text = up
-			pvp_room_input.caret_column = up.length()
+	pvp_room_input.focus_entered.connect(func():
+		DisplayServer.virtual_keyboard_show(pvp_room_input.text)
+	)
+	pvp_room_input.focus_exited.connect(func():
+		pvp_room_input.text = pvp_room_input.text.strip_edges().to_upper()
 	)
 	input_row.add_child(pvp_room_input)
 	
-	var btn_paste = _create_clean_button("DÁN", Color(0.25, 0.90, 0.85), Vector2(58, 38), 12)
-	btn_paste.pressed.connect(_paste_room_code)
-	input_row.add_child(btn_paste)
-	
-	var btn_type = _create_clean_button("NHẬP", Color(0.95, 0.75, 0.30), Vector2(58, 38), 12)
-	btn_type.pressed.connect(_prompt_edit_room_code)
-	input_row.add_child(btn_type)
-	
-	var btn_join = _create_clean_button("VÀO PHÒNG", Color(0.35, 0.75, 1.0), Vector2(100, 38), 12)
+	var btn_join = _create_clean_button("VÀO PHÒNG", Color(0.35, 0.75, 1.0), Vector2(110, 38), 12)
 	btn_join.pressed.connect(_on_client_join_room)
 	input_row.add_child(btn_join)
 	jv.add_child(input_row)
@@ -2607,85 +2590,6 @@ func _update_pvp_controls() -> void:
 		pvp_char_desc_lbl.text = "TUYỂN THỦ: %s • %s" % [cdata["name"], cdata["skill_desc"]]
 		pvp_char_desc_lbl.modulate = cdata["color"]
 
-func _is_mobile_environment() -> bool:
-	if OS.has_feature("mobile") or OS.has_feature("android") or OS.has_feature("ios"):
-		return true
-	if OS.has_feature("web"):
-		var is_mob = JavaScriptBridge.eval("""
-			(function() {
-				return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
-					(navigator.maxTouchPoints && navigator.maxTouchPoints > 2);
-			})()
-		""")
-		return is_mob == true
-	return false
-
-func _open_mobile_text_prompt(target_line_edit: LineEdit, prompt_title: String, max_len: int = 16) -> void:
-	if not target_line_edit:
-		return
-	if OS.has_feature("web"):
-		var curr = target_line_edit.text.strip_edges()
-		var res = JavaScriptBridge.eval("""
-			(function() {
-				var val = prompt('%s', '%s');
-				return (val != null) ? val : '';
-			})()
-		""" % [prompt_title.replace("'", "\\'"), curr.replace("'", "\\'")])
-		if res is String and not res.is_empty():
-			var clean = res.strip_edges()
-			if max_len > 0 and clean.length() > max_len:
-				clean = clean.substr(0, max_len)
-			target_line_edit.text = clean
-			target_line_edit.text_changed.emit(clean)
-	else:
-		target_line_edit.grab_focus()
-
-func _prompt_edit_room_code() -> void:
-	if OS.has_feature("web"):
-		var curr = pvp_room_input.text.strip_edges().to_upper() if pvp_room_input else ""
-		var res = JavaScriptBridge.eval("""
-			(function() {
-				var val = prompt('Nhập mã phòng (4 ký tự):', '%s');
-				return (val != null) ? val.trim().toUpperCase() : '';
-			})()
-		""" % curr.replace("'", "\\'"))
-		if res is String and not res.is_empty():
-			if pvp_room_input:
-				pvp_room_input.text = res.strip_edges().to_upper()
-	elif pvp_room_input:
-		pvp_room_input.grab_focus()
-
-func _paste_room_code() -> void:
-	if OS.has_feature("web"):
-		JavaScriptBridge.eval("""
-			(function() {
-				if (navigator.clipboard && navigator.clipboard.readText) {
-					navigator.clipboard.readText().then(function(clipText) {
-						if (clipText && clipText.trim()) {
-							window._kaiserRoomCode = clipText.trim().toUpperCase();
-							window._kaiserCodeUpdated = true;
-						}
-					}).catch(function(err) {
-						var promptVal = prompt("Dán mã phòng vào đây:", "");
-						if (promptVal && promptVal.trim()) {
-							window._kaiserRoomCode = promptVal.trim().toUpperCase();
-							window._kaiserCodeUpdated = true;
-						}
-					});
-				} else {
-					var promptVal = prompt("Dán mã phòng vào đây:", "");
-					if (promptVal && promptVal.trim()) {
-						window._kaiserRoomCode = promptVal.trim().toUpperCase();
-						window._kaiserCodeUpdated = true;
-					}
-				}
-			})()
-		""")
-	elif DisplayServer.has_feature(DisplayServer.FEATURE_CLIPBOARD):
-		var clip = DisplayServer.clipboard_get().strip_edges().to_upper()
-		if not clip.is_empty() and pvp_room_input:
-			pvp_room_input.text = clip
-
 func _generate_room_code() -> String:
 	var chars = "23456789ABCDEFGHJKLMNPQRSTUVWXYZ"
 	var code = ""
@@ -2708,10 +2612,13 @@ func _on_client_join_room() -> void:
 	pvp_is_host = false
 	var code = pvp_room_input.text.strip_edges().to_upper() if pvp_room_input else ""
 	if code.is_empty():
-		_prompt_edit_room_code()
-		code = pvp_room_input.text.strip_edges().to_upper() if pvp_room_input else ""
-		if code.is_empty():
-			return
+		if pvp_status_lbl:
+			pvp_status_lbl.text = "● VUI LÒNG NHẬP MÃ PHÒNG VÀO Ô TRÊN"
+			pvp_status_lbl.modulate = Color(1.0, 0.4, 0.4)
+		if pvp_room_input:
+			pvp_room_input.grab_focus()
+			DisplayServer.virtual_keyboard_show(pvp_room_input.text)
+		return
 	pvp_current_code = code
 	if net_manager:
 		net_manager.join_room(code, pvp_selected_char, pvp_player_name)
@@ -2722,11 +2629,15 @@ func _on_client_join_room() -> void:
 func _on_spectate_room() -> void:
 	var code = pvp_room_input.text.strip_edges().to_upper() if pvp_room_input else ""
 	if code.is_empty():
-		_prompt_edit_room_code()
-		code = pvp_room_input.text.strip_edges().to_upper() if pvp_room_input else ""
-		if code.is_empty():
-			return
+		if pvp_status_lbl:
+			pvp_status_lbl.text = "● VUI LÒNG NHẬP MÃ PHÒNG ĐỂ THEO DÕI"
+			pvp_status_lbl.modulate = Color(1.0, 0.4, 0.4)
+		if pvp_room_input:
+			pvp_room_input.grab_focus()
+			DisplayServer.virtual_keyboard_show(pvp_room_input.text)
+		return
 	spectate_room_requested.emit(code)
+	visible = false
 	visible = false
 
 func _on_pvp_start_pressed() -> void:

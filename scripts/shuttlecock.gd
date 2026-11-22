@@ -8,6 +8,8 @@ signal hit_net()
 # SHUTTLECOCK 2D PHYSICS (ANIME HIGH CLEAR & FAST BURST DECAY)
 # ==========================================================
 
+const DEFAULT_TUNING = preload("res://resources/GameTuning.tres")
+
 @export var tuning: GameTuning
 @export var is_network_client: bool = false
 
@@ -191,7 +193,7 @@ static func get_total_integral() -> float:
 # ==========================================================
 
 func launch_to_target_2d(from_pt: Vector2, target_pt: Vector2, shot_type: String, error_offset_x: float = 0.0, p_is_perfect: bool = false, p_is_jump_smash: bool = false, p_tension_mult: float = 1.0, p_tension_level: int = 0) -> void:
-	var t_res = tuning if tuning else GameTuning.new()
+	var t_res = tuning if tuning else DEFAULT_TUNING
 	var floor_y = t_res.floor_y
 	
 	is_suspended_in_smash_slowmo = false
@@ -297,11 +299,9 @@ func launch_to_target_2d(from_pt: Vector2, target_pt: Vector2, shot_type: String
 		flight_duration = t_res.lift_flight_time
 		
 	elif shot_type == "weak_return":
-		# CẦU NON BỔNG LƠ LỬNG (CHANCE BALL / POP-UP FLOAT, 1.84s):
+		# CẦU NON BỔNG LƠ LỬNG (CHANCE BALL / POP-UP FLOAT, 1.82s):
 		h_apex = 390.0
-		flight_duration = 1.84
-		h_apex = 390.0
-		flight_duration = 2.02
+		flight_duration = 1.82
 		
 	elif shot_type == "drive":
 		h_apex = t_res.net_height + 14.0
@@ -349,7 +349,7 @@ func _calc_height_at(p: float) -> float:
 	var I_p = get_speed_integral(cp)
 	var I_tot = get_total_integral()
 	var u = clamp(I_p / I_tot, 0.0, 1.0) # Tiến độ không gian [0 -> 1]
-	var t_res = tuning if tuning else GameTuning.new()
+	var t_res = tuning if tuning else DEFAULT_TUNING
 	
 	if is_smash:
 		return max(0.0, h_start * (1.0 - u))
@@ -462,7 +462,7 @@ func _physics_process(delta: float) -> void:
 			fuji_leaf_spawn_timer = 0.026
 			_spawn_fuji_leaf()
 	
-	var t_res = tuning if tuning else GameTuning.new()
+	var t_res = tuning if tuning else DEFAULT_TUNING
 	var floor_y = t_res.floor_y
 	flight_time_elapsed += delta
 	var p = clamp(flight_time_elapsed / max(flight_duration, 0.01), 0.0, 1.0)

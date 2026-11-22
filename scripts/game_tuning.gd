@@ -42,5 +42,5 @@ class_name GameTuning
 @export var drop_flight_time: float = 1.05
 ## Độ cao đỉnh cú Bung cầu / Cứu cầu thấp tay (Lift) so với mặt đất (px)
 @export var lift_apex_h: float = 360.0
-## Thời gian bay cú Lift (s) - Tốc độ cầu tăng 10% (Thời gian bay rút còn 2.05s)
-@export var lift_flight_time: float = 2.05
+## Thời gian bay cú Lift (s) - Tốc độ cầu tăng 10% (Thời gian bay rút còn 1.85s)
+@export var lift_flight_time: float = 1.85

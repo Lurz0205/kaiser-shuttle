@@ -191,14 +191,19 @@
             window.addEventListener('load', enterFullscreenAndLandscape, { once: true });
         }
 
-        // B. Chạm màn hình sẽ kích hoạt toàn màn hình và xoay ngang (Có debounce tránh spam sự kiện)
-        var lastFSTime = 0;
+        // B. Chạm màn hình lần đầu sẽ kích hoạt toàn màn hình và xoay ngang (Chỉ kích hoạt 1 lần duy nhất, tránh ngắt bàn phím ảo)
+        var hasTriggeredFS = false;
         function triggerImmediateAutoFullscreen(e) {
-            var now = Date.now();
-            if (now - lastFSTime < 1200) return;
+            if (hasTriggeredFS) return;
+            if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.isContentEditable)) {
+                return;
+            }
+            if (document.activeElement && (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA')) {
+                return;
+            }
             var isFS = document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement;
             if (!isFS) {
-                lastFSTime = now;
+                hasTriggeredFS = true;
                 enterFullscreenAndLandscape();
             }
         }
@@ -208,20 +213,38 @@
     }
 
     // -------------------------------------------------------------
-    // 3. Giữ Focus Canvas (Không cướp focus của ô nhập liệu / Modal)
+    // 3. Giữ Focus Canvas trên Desktop PC (Tuyệt đối KHÔNG cướp focus trên Mobile)
     // -------------------------------------------------------------
-    window.addEventListener('click', function(e) {
-        if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.isContentEditable || e.target.closest('#kaiser_code_modal'))) {
-            return;
+    if (!isMobile) {
+        window.addEventListener('click', function(e) {
+            if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.isContentEditable)) {
+                return;
+            }
+            if (document.activeElement && (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA')) {
+                return;
+            }
+            var canvas = document.querySelector('canvas') || document.getElementById('canvas');
+            if (canvas && e.target === canvas) {
+                try { canvas.focus(); } catch(err) {}
+            }
+        }, false);
+    }
+
+    // -------------------------------------------------------------
+    // Universal Mobile Virtual Keyboard Bridge for Godot Web:
+    // Tự động đồng bộ mọi ký tự từ bàn phím di động vào game
+    // -------------------------------------------------------------
+    window._kaiserLastInputVal = '';
+    window._kaiserLastInputSeq = 0;
+
+    document.addEventListener('input', function(e) {
+        if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA')) {
+            if (e.target.value !== undefined) {
+                window._kaiserLastInputVal = e.target.value;
+                window._kaiserLastInputSeq = (window._kaiserLastInputSeq || 0) + 1;
+            }
         }
-        if (document.activeElement && (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA')) {
-            return;
-        }
-        var canvas = document.querySelector('canvas') || document.getElementById('canvas');
-        if (canvas && document.activeElement !== canvas) {
-            try { canvas.focus(); } catch(err) {}
-        }
-    }, false);
+    }, true);
 
     // -------------------------------------------------------------
     // 4. Clipboard & Input Helper (Tương thích 100% PC & Mobile)
