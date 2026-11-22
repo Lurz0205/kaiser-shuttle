@@ -29,6 +29,10 @@ const TEX_GEAR = preload("res://assets/icons/icon_gear_silver.png")
 # Top Profile Avatar (Clean Default Studio Avatar)
 var top_avatar_rect: TextureRect = null
 
+# Studio Pre-rendered Character Standees (Full & Upper-body Cropped)
+const TEX_STANDEE_NISHIKAWA = preload("res://assets/characters/standee_nishikawa.png")
+const TEX_STANDEE_ISABEL = preload("res://assets/characters/standee_isabel.png")
+
 # Studio Pre-rendered Character Skill Icons
 const TEX_SKILL_THUNDER = preload("res://assets/icons/skills/skill_thunder_spike.png")
 const TEX_SKILL_WIND = preload("res://assets/icons/skills/skill_wind_feather.png")
@@ -149,6 +153,7 @@ const CHAR_DATA = {
 		"color": Color(1.0, 0.82, 0.22, 1.0),
 		"icon_type": CustomIcon.IconType.LIGHTNING,
 		"skill_icon": TEX_SKILL_THUNDER,
+		"standee": TEX_STANDEE_NISHIKAWA,
 		"power": 98,
 		"agility": 78,
 		"control": 74,
@@ -166,6 +171,7 @@ const CHAR_DATA = {
 		"color": Color(0.25, 0.90, 0.60, 1.0),
 		"icon_type": CustomIcon.IconType.FEATHER,
 		"skill_icon": TEX_SKILL_WIND,
+		"standee": null,
 		"power": 76,
 		"agility": 84,
 		"control": 96,
@@ -183,6 +189,7 @@ const CHAR_DATA = {
 		"color": Color(0.30, 0.75, 1.0, 1.0),
 		"icon_type": CustomIcon.IconType.SHIELD,
 		"skill_icon": TEX_SKILL_SHIELD,
+		"standee": TEX_STANDEE_ISABEL,
 		"power": 74,
 		"agility": 88,
 		"control": 85,
@@ -795,8 +802,18 @@ func _build_lobby_panel() -> void:
 	hero_standee.add_child(hero_icon_center)
 	
 	var hero_card = _create_spike_translucent_panel(Vector2(260, 340), 14, Color(1.0, 0.82, 0.25, 0.70))
+	hero_card.name = "HeroCard"
+	hero_card.clip_contents = true
 	hero_card.mouse_filter = Control.MOUSE_FILTER_PASS
 	hero_icon_center.add_child(hero_card)
+	
+	var hero_card_standee_bg = TextureRect.new()
+	hero_card_standee_bg.name = "HeroCardStandeeBg"
+	hero_card_standee_bg.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	hero_card_standee_bg.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+	hero_card_standee_bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	hero_card_standee_bg.modulate = Color(1.0, 1.0, 1.0, 0.30)
+	hero_card.add_child(hero_card_standee_bg)
 	
 	var hm = MarginContainer.new()
 	hm.add_theme_constant_override("margin_left", 16)
@@ -984,6 +1001,17 @@ func _update_hero_standee() -> void:
 	var big_icon = hero_standee.find_child("HeroBigIcon", true, false) as TextureRect
 	if big_icon and data.has("skill_icon"):
 		big_icon.texture = data["skill_icon"]
+		
+	var hero_card_bg = hero_standee.find_child("HeroCardStandeeBg", true, false) as TextureRect
+	if hero_card_bg:
+		if data.has("standee") and data["standee"] != null:
+			var atlas = AtlasTexture.new()
+			atlas.atlas = data["standee"]
+			atlas.region = Rect2(0, 0, 1024, 850)
+			hero_card_bg.texture = atlas
+			hero_card_bg.visible = true
+		else:
+			hero_card_bg.visible = false
 		
 	# Smooth breathing idle animation
 	if hero_breathing_tween and hero_breathing_tween.is_valid():
@@ -1683,6 +1711,12 @@ func _build_roster_panel() -> void:
 func _create_roster_card(cid: String, cname: String, rarity: String, arch: String, col: Color, skill_tex: Texture2D, is_locked: bool) -> PanelContainer:
 	var p = _create_spike_translucent_panel(Vector2(250, 160), 10, Color(col.r, col.g, col.b, 0.50))
 	p.mouse_filter = Control.MOUSE_FILTER_PASS
+	p.clip_contents = true
+	
+	if CHAR_DATA.has(cid) and CHAR_DATA[cid].has("standee") and CHAR_DATA[cid]["standee"] != null:
+		var s_bg = _create_card_standee_bg(CHAR_DATA[cid]["standee"], Vector2(250, 160), 0.25 if not is_locked else 0.10)
+		if s_bg:
+			p.add_child(s_bg)
 	
 	var m = MarginContainer.new()
 	m.add_theme_constant_override("margin_left", 14)
@@ -1745,6 +1779,12 @@ func _update_roster_view() -> void:
 		c.queue_free()
 		
 	var data = CHAR_DATA.get(selected_player_id, CHAR_DATA["nishikawa"])
+	active_box.clip_contents = true
+	
+	if data.has("standee") and data["standee"] != null:
+		var s_bg = _create_card_standee_bg(data["standee"], Vector2(380, 520), 0.28)
+		if s_bg:
+			active_box.add_child(s_bg)
 	
 	var m = MarginContainer.new()
 	m.add_theme_constant_override("margin_left", 20)
@@ -2192,10 +2232,33 @@ func _create_stepped_volume_row(label_text: String, init_step: int, on_step_chan
 # ==========================================================
 # HELPER FACTORY METHODS
 # ==========================================================
+func _create_card_standee_bg(standee_tex: Texture2D, target_size: Vector2, opacity: float = 0.28) -> TextureRect:
+	if not standee_tex:
+		return null
+	var tr = TextureRect.new()
+	var atlas = AtlasTexture.new()
+	atlas.atlas = standee_tex
+	# Cắt nửa trên người (đầu, vai, ngực, thắt lưng)
+	atlas.region = Rect2(0, 0, 1024, 850)
+	tr.texture = atlas
+	tr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	tr.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+	tr.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	tr.modulate = Color(1.0, 1.0, 1.0, opacity)
+	tr.custom_minimum_size = target_size
+	tr.size = target_size
+	return tr
+
 func _create_character_card(cid: String) -> PanelContainer:
 	var data = CHAR_DATA[cid]
 	var p = _create_spike_translucent_panel(Vector2(310, 335), 10, Color(data["color"].r, data["color"].g, data["color"].b, 0.50))
 	p.mouse_filter = Control.MOUSE_FILTER_PASS
+	p.clip_contents = true
+	
+	if data.has("standee") and data["standee"] != null:
+		var s_bg = _create_card_standee_bg(data["standee"], Vector2(310, 335), 0.28)
+		if s_bg:
+			p.add_child(s_bg)
 	
 	var m = MarginContainer.new()
 	m.add_theme_constant_override("margin_left", 14)
