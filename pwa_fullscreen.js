@@ -4,10 +4,7 @@
     'use strict';
 
     // -------------------------------------------------------------
-    // 1. Triệt để khử Cache cũ & Hủy đăng ký ServiceWorker cũ
-    // Đảm bảo thiết bị di động luôn tự động tải về bản cập nhật mới nhất
-    // mà người dùng KHÔNG BAO GIỜ phải tự xóa dữ liệu duyệt web thủ công.
-    // CHỈ GIỮ LẠI DUY NHẤT 'kaiser_player_name' TRONG LOCALSTORAGE.
+    // 1. Khử ServiceWorker cũ & Tự động tải mới .pck / .wasm (Bypass HTTP Cache)
     // -------------------------------------------------------------
     try {
         if ('serviceWorker' in navigator) {
@@ -26,37 +23,36 @@
                 }
             }).catch(function() {});
         }
-        if ('localStorage' in window) {
-            var keepKey = 'kaiser_player_name';
-            var savedName = localStorage.getItem(keepKey);
-            var keysToRemove = [];
-            for (var k = 0; k < localStorage.length; k++) {
-                var kName = localStorage.key(k);
-                if (kName && kName !== keepKey) {
-                    keysToRemove.push(kName);
-                }
-            }
-            for (var r = 0; r < keysToRemove.length; r++) {
-                localStorage.removeItem(keysToRemove[r]);
-            }
-            if (savedName) {
-                localStorage.setItem(keepKey, savedName);
-            }
-        }
     } catch (e) {
-        console.warn('[Kaiser] Cache & Storage purge check:', e);
+        console.warn('[Kaiser] Cache purge check:', e);
     }
 
     // -------------------------------------------------------------
-    // 1b. Tích hợp thư viện Liquid Glass (ybouane/liquidglass WebGL)
+    // 1b. Transparent Network Cache-Busting cho .pck và .wasm
+    // Đảm bảo trình duyệt luôn tải file mới nhất từ GitHub Pages,
+    // không bao giờ bị kẹt gói cũ ở HTTP cache hay treo màn hình tải.
     // -------------------------------------------------------------
     try {
-        var lgScript = document.createElement('script');
-        lgScript.type = 'module';
-        lgScript.innerHTML = "import { LiquidGlass } from 'https://cdn.jsdelivr.net/npm/@ybouane/liquidglass/dist/index.js'; window.LiquidGlass = LiquidGlass; console.log('[Kaiser] ybouane/liquidglass WebGL engine loaded.');";
-        document.head.appendChild(lgScript);
+        var buildVer = Date.now();
+        var origFetch = window.fetch;
+        if (origFetch) {
+            window.fetch = function(input, init) {
+                if (typeof input === 'string') {
+                    if (input.indexOf('.pck') !== -1 || input.indexOf('.wasm') !== -1) {
+                        var sep = input.indexOf('?') === -1 ? '?' : '&';
+                        input = input + sep + 'v=' + buildVer;
+                    }
+                } else if (input && input.url && typeof input.url === 'string') {
+                    if (input.url.indexOf('.pck') !== -1 || input.url.indexOf('.wasm') !== -1) {
+                        var sep2 = input.url.indexOf('?') === -1 ? '?' : '&';
+                        input = new Request(input.url + sep2 + 'v=' + buildVer, input);
+                    }
+                }
+                return origFetch.call(this, input, init);
+            };
+        }
     } catch (e) {
-        console.warn('[Kaiser] LiquidGlass CDN load:', e);
+        console.warn('[Kaiser] Fetch cache-buster init:', e);
     }
 
     // -------------------------------------------------------------
