@@ -247,7 +247,30 @@
     // -------------------------------------------------------------
     window._kaiserRoomCode = '';
     window._kaiserCodeUpdated = false;
+    window._kaiserPlayerName = '';
+    window._kaiserNameUpdated = false;
     window._kaiserClipboard = '';
+
+    // Khóa hoàn toàn cuộn màn hình trên mobile (Chống lệch màn hình 100%)
+    function lockKaiserScroll() {
+        if (window.scrollX !== 0 || window.scrollY !== 0) {
+            window.scrollTo(0, 0);
+        }
+        if (document.body && (document.body.scrollLeft !== 0 || document.body.scrollTop !== 0)) {
+            document.body.scrollLeft = 0;
+            document.body.scrollTop = 0;
+        }
+        if (document.documentElement && (document.documentElement.scrollLeft !== 0 || document.documentElement.scrollTop !== 0)) {
+            document.documentElement.scrollLeft = 0;
+            document.documentElement.scrollTop = 0;
+        }
+    }
+    window.addEventListener('scroll', lockKaiserScroll, { passive: false });
+    window.addEventListener('resize', lockKaiserScroll, { passive: true });
+    if (window.visualViewport) {
+        window.visualViewport.addEventListener('resize', lockKaiserScroll, { passive: true });
+        window.visualViewport.addEventListener('scroll', lockKaiserScroll, { passive: true });
+    }
 
     window.addEventListener('paste', function(e) {
         try {
@@ -298,15 +321,213 @@
         return window._kaiserClipboard || '';
     };
 
-    window.kaiserOpenCodeInputModal = function(initialCode) {
-        var res = window.prompt('Nhập hoặc dán mã phòng PvP (4-6 ký tự):', initialCode || '');
-        if (res !== null) {
-            var match = res.trim().match(/[a-zA-Z0-9]{4,6}/);
-            var code = match ? match[0].toUpperCase() : res.trim().slice(0, 6).toUpperCase();
-            window._kaiserRoomCode = code;
-            window._kaiserCodeUpdated = true;
-            return code;
+    // Modal nhập liệu chuẩn mực cho Mobile Web:
+    // Hỗ trợ gõ phím tiếng Việt, xóa lùi (Backspace), dán mã và xóa nhanh 100%
+    // Tuyệt đối không làm lệch vị trí game canvas.
+    window.kaiserOpenInputModal = function(title, initialValue, maxLen, targetType) {
+        var old = document.getElementById('kaiser_input_modal');
+        if (old) old.remove();
+
+        var isCode = (targetType === 'code' || targetType === 'room_code');
+        var maxChars = maxLen || (isCode ? 8 : 16);
+
+        var modal = document.createElement('div');
+        modal.id = 'kaiser_input_modal';
+        modal.style.cssText = [
+            'position: fixed',
+            'top: 0',
+            'left: 0',
+            'width: 100vw',
+            'height: 100vh',
+            'background: rgba(3, 7, 18, 0.88)',
+            'backdrop-filter: blur(8px)',
+            '-webkit-backdrop-filter: blur(8px)',
+            'z-index: 2147483647',
+            'display: flex',
+            'align-items: center',
+            'justify-content: center',
+            'padding: 16px',
+            'box-sizing: border-box',
+            'font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
+        ].join(';');
+
+        var card = document.createElement('div');
+        card.style.cssText = [
+            'background: linear-gradient(145deg, #162035, #0a0f1d)',
+            'border: 1px solid rgba(56, 189, 248, 0.45)',
+            'box-shadow: 0 20px 50px rgba(0, 0, 0, 0.85), 0 0 30px rgba(56, 189, 248, 0.25)',
+            'border-radius: 14px',
+            'width: 100%',
+            'max-width: 440px',
+            'padding: 22px',
+            'box-sizing: border-box',
+            'text-align: center'
+        ].join(';');
+
+        var heading = document.createElement('div');
+        heading.textContent = title || (isCode ? 'NHẬP MÃ PHÒNG' : 'TÊN NGƯỜI CHƠI');
+        heading.style.cssText = 'color: #38bdf8; font-size: 17px; font-weight: 800; letter-spacing: 0.8px; margin-bottom: 16px; text-transform: uppercase;';
+        card.appendChild(heading);
+
+        var inputRow = document.createElement('div');
+        inputRow.style.cssText = 'display: flex; gap: 8px; margin-bottom: 18px; align-items: center; justify-content: center;';
+
+        var input = document.createElement('input');
+        input.type = 'text';
+        input.value = initialValue || '';
+        input.maxLength = maxChars;
+        input.autocomplete = 'off';
+        input.autocorrect = 'off';
+        input.autocapitalize = isCode ? 'characters' : 'words';
+        input.spellcheck = false;
+        // Font size >= 16px ngăn chặn hoàn toàn iOS Safari tự zoom màn hình
+        input.style.cssText = [
+            'flex: 1',
+            'height: 46px',
+            'background: rgba(10, 16, 28, 0.95)',
+            'border: 1.5px solid #38bdf8',
+            'border-radius: 8px',
+            'color: #ffffff',
+            'font-size: 18px',
+            'font-weight: 700',
+            'text-align: center',
+            'letter-spacing: ' + (isCode ? '4px' : '1px'),
+            'outline: none',
+            'padding: 0 10px',
+            'box-sizing: border-box',
+            'text-transform: ' + (isCode ? 'uppercase' : 'none')
+        ].join(';');
+
+        if (isCode) {
+            input.addEventListener('input', function() {
+                input.value = input.value.toUpperCase();
+            });
         }
+
+        var btnClear = document.createElement('button');
+        btnClear.textContent = 'XÓA';
+        btnClear.style.cssText = [
+            'height: 46px',
+            'padding: 0 16px',
+            'background: rgba(239, 68, 68, 0.25)',
+            'border: 1px solid #ef4444',
+            'border-radius: 8px',
+            'color: #fca5a5',
+            'font-size: 14px',
+            'font-weight: 700',
+            'cursor: pointer'
+        ].join(';');
+        btnClear.onclick = function() {
+            input.value = '';
+            input.focus();
+        };
+
+        inputRow.appendChild(input);
+        inputRow.appendChild(btnClear);
+
+        if (isCode) {
+            var btnPaste = document.createElement('button');
+            btnPaste.textContent = 'DÁN';
+            btnPaste.style.cssText = [
+                'height: 46px',
+                'padding: 0 16px',
+                'background: rgba(56, 189, 248, 0.25)',
+                'border: 1px solid #38bdf8',
+                'border-radius: 8px',
+                'color: #7dd3fc',
+                'font-size: 14px',
+                'font-weight: 700',
+                'cursor: pointer'
+            ].join(';');
+            btnPaste.onclick = async function() {
+                var txt = await window.kaiserReadClipboard();
+                if (txt) {
+                    input.value = txt.trim().toUpperCase().slice(0, maxChars);
+                }
+                input.focus();
+            };
+            inputRow.appendChild(btnPaste);
+        }
+        card.appendChild(inputRow);
+
+        var btnRow = document.createElement('div');
+        btnRow.style.cssText = 'display: flex; gap: 12px; justify-content: center;';
+
+        var btnCancel = document.createElement('button');
+        btnCancel.textContent = 'HỦY';
+        btnCancel.style.cssText = [
+            'flex: 1',
+            'height: 42px',
+            'background: rgba(255, 255, 255, 0.12)',
+            'border: 1px solid rgba(255, 255, 255, 0.25)',
+            'border-radius: 8px',
+            'color: #cbd5e1',
+            'font-size: 14px',
+            'font-weight: 700',
+            'cursor: pointer'
+        ].join(';');
+
+        var btnOk = document.createElement('button');
+        btnOk.textContent = 'XÁC NHẬN';
+        btnOk.style.cssText = [
+            'flex: 1',
+            'height: 42px',
+            'background: linear-gradient(135deg, #10b981, #059669)',
+            'border: none',
+            'border-radius: 8px',
+            'color: #ffffff',
+            'font-size: 14px',
+            'font-weight: 800',
+            'cursor: pointer',
+            'box-shadow: 0 4px 14px rgba(16, 185, 129, 0.4)'
+        ].join(';');
+
+        function closeModal() {
+            modal.remove();
+            lockKaiserScroll();
+        }
+
+        function confirmInput() {
+            var finalVal = input.value.trim();
+            if (isCode) {
+                finalVal = finalVal.toUpperCase();
+                window._kaiserRoomCode = finalVal;
+                window._kaiserCodeUpdated = true;
+            } else {
+                if (finalVal.length > 0) {
+                    window._kaiserPlayerName = finalVal;
+                    window._kaiserNameUpdated = true;
+                }
+            }
+            closeModal();
+        }
+
+        btnCancel.onclick = closeModal;
+        btnOk.onclick = confirmInput;
+
+        input.onkeydown = function(e) {
+            if (e.key === 'Enter') {
+                confirmInput();
+            } else if (e.key === 'Escape') {
+                closeModal();
+            }
+        };
+
+        btnRow.appendChild(btnCancel);
+        btnRow.appendChild(btnOk);
+        card.appendChild(btnRow);
+        modal.appendChild(card);
+        document.body.appendChild(modal);
+
+        setTimeout(function() {
+            input.focus();
+            if (input.select) input.select();
+            lockKaiserScroll();
+        }, 80);
+    };
+
+    window.kaiserOpenCodeInputModal = function(initialCode) {
+        window.kaiserOpenInputModal('NHẬP MÃ PHÒNG PVP', initialCode, 8, 'code');
         return '';
     };
 

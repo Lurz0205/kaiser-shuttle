@@ -295,12 +295,23 @@ func _ready() -> void:
 func _process(delta: float) -> void:
 	# Web Mobile text sync & Paste detection
 	if OS.has_feature("web"):
-		var updated = JavaScriptBridge.eval("window._kaiserCodeUpdated === true")
-		if updated:
-			var code = str(JavaScriptBridge.eval("window._kaiserRoomCode || ''"))
+		var code_updated = JavaScriptBridge.eval("window._kaiserCodeUpdated === true")
+		if code_updated:
+			var code = str(JavaScriptBridge.eval("window._kaiserRoomCode || ''")).strip_edges().to_upper()
 			JavaScriptBridge.eval("window._kaiserCodeUpdated = false")
-			if pvp_room_input and not code.is_empty():
-				pvp_room_input.text = code.strip_edges().to_upper()
+			if pvp_room_input:
+				pvp_room_input.text = code
+		var name_updated = JavaScriptBridge.eval("window._kaiserNameUpdated === true")
+		if name_updated:
+			var new_n = str(JavaScriptBridge.eval("window._kaiserPlayerName || ''")).strip_edges()
+			JavaScriptBridge.eval("window._kaiserNameUpdated = false")
+			if not new_n.is_empty():
+				pvp_player_name = new_n
+				_save_player_name(pvp_player_name)
+				if top_name_input:
+					top_name_input.text = pvp_player_name
+				if pvp_name_input:
+					pvp_name_input.text = pvp_player_name
 				
 	# Standee GPU vertex breathing animation update (100% smooth 120 FPS continuous float)
 	if lobby_panel and lobby_panel.visible:
@@ -510,6 +521,34 @@ func _build_ui() -> void:
 	_build_top_bar()
 	top_bar.move_to_front()
 
+func _open_room_input_modal() -> void:
+	if OS.has_feature("web"):
+		var cur_code = pvp_room_input.text.strip_edges() if pvp_room_input else ""
+		JavaScriptBridge.eval("window.kaiserOpenInputModal('NHẬP MÃ PHÒNG (4-6 KÝ TỰ)', '%s', 8, 'code')" % cur_code)
+	elif pvp_room_input:
+		DisplayServer.virtual_keyboard_show(pvp_room_input.text)
+
+func _open_name_input_modal() -> void:
+	if OS.has_feature("web"):
+		JavaScriptBridge.eval("window.kaiserOpenInputModal('ĐỔI TÊN NGƯỜI CHƠI', '%s', 16, 'name')" % pvp_player_name)
+	elif top_name_input:
+		DisplayServer.virtual_keyboard_show(top_name_input.text)
+
+func _paste_room_code() -> void:
+	if OS.has_feature("web"):
+		JavaScriptBridge.eval("""
+			(async function() {
+				var txt = await window.kaiserReadClipboard();
+				if (txt && txt.trim()) {
+					window._kaiserRoomCode = txt.trim().toUpperCase().slice(0, 8);
+					window._kaiserCodeUpdated = true;
+				}
+			})()
+		""")
+	var clip = DisplayServer.clipboard_get().strip_edges().to_upper()
+	if not clip.is_empty() and pvp_room_input:
+		pvp_room_input.text = clip.substr(0, 8)
+
 # ==========================================================
 # 1. TOP BAR COMPONENT (Z-INDEX 100, CLICK-THROUGH PROOF)
 # ==========================================================
@@ -619,10 +658,10 @@ func _build_top_bar() -> void:
 	top_name_input.gui_input.connect(func(ev: InputEvent):
 		if (ev is InputEventMouseButton or ev is InputEventScreenTouch) and ev.is_pressed():
 			top_name_input.grab_focus()
-			DisplayServer.virtual_keyboard_show(top_name_input.text)
+			_open_name_input_modal()
 	)
 	top_name_input.focus_entered.connect(func():
-		DisplayServer.virtual_keyboard_show(top_name_input.text)
+		_open_name_input_modal()
 	)
 	top_name_input.text_changed.connect(func(new_text: String):
 		var clean = new_text.strip_edges()
@@ -1568,10 +1607,10 @@ func _build_pvp_panel() -> void:
 	pvp_name_input.gui_input.connect(func(ev: InputEvent):
 		if (ev is InputEventMouseButton or ev is InputEventScreenTouch) and ev.is_pressed():
 			pvp_name_input.grab_focus()
-			DisplayServer.virtual_keyboard_show(pvp_name_input.text)
+			_open_name_input_modal()
 	)
 	pvp_name_input.focus_entered.connect(func():
-		DisplayServer.virtual_keyboard_show(pvp_name_input.text)
+		_open_name_input_modal()
 	)
 	pvp_name_input.text_changed.connect(func(new_text: String):
 		var clean = new_text.strip_edges()
@@ -1722,10 +1761,10 @@ func _build_pvp_panel() -> void:
 	jv.add_child(j_title)
 	
 	var input_row = HBoxContainer.new()
-	input_row.add_theme_constant_override("separation", 10)
+	input_row.add_theme_constant_override("separation", 6)
 	pvp_room_input = LineEdit.new()
-	pvp_room_input.placeholder_text = "NHẬP 4 KÝ TỰ MÃ PHÒNG"
-	pvp_room_input.custom_minimum_size = Vector2(210, 38)
+	pvp_room_input.placeholder_text = "MÃ PHÒNG (4 KÝ TỰ)"
+	pvp_room_input.custom_minimum_size = Vector2(170, 38)
 	pvp_room_input.max_length = 8
 	pvp_room_input.alignment = HORIZONTAL_ALIGNMENT_CENTER
 	pvp_room_input.focus_mode = Control.FOCUS_ALL
@@ -1733,17 +1772,30 @@ func _build_pvp_panel() -> void:
 	pvp_room_input.gui_input.connect(func(ev: InputEvent):
 		if (ev is InputEventMouseButton or ev is InputEventScreenTouch) and ev.is_pressed():
 			pvp_room_input.grab_focus()
-			DisplayServer.virtual_keyboard_show(pvp_room_input.text)
+			_open_room_input_modal()
 	)
 	pvp_room_input.focus_entered.connect(func():
-		DisplayServer.virtual_keyboard_show(pvp_room_input.text)
+		_open_room_input_modal()
 	)
 	pvp_room_input.focus_exited.connect(func():
 		pvp_room_input.text = pvp_room_input.text.strip_edges().to_upper()
 	)
 	input_row.add_child(pvp_room_input)
 	
-	var btn_join = _create_clean_button("VÀO PHÒNG", Color(0.35, 0.75, 1.0), Vector2(110, 38), 12)
+	var btn_clear_code = _create_clean_button("XÓA", Color(0.95, 0.42, 0.42), Vector2(48, 38), 11)
+	btn_clear_code.pressed.connect(func():
+		if pvp_room_input:
+			pvp_room_input.text = ""
+		if OS.has_feature("web"):
+			JavaScriptBridge.eval("window._kaiserRoomCode = ''")
+	)
+	input_row.add_child(btn_clear_code)
+	
+	var btn_paste_code = _create_clean_button("DÁN", Color(0.35, 0.75, 1.0), Vector2(48, 38), 11)
+	btn_paste_code.pressed.connect(_paste_room_code)
+	input_row.add_child(btn_paste_code)
+	
+	var btn_join = _create_clean_button("VÀO PHÒNG", Color(0.20, 0.85, 0.65), Vector2(96, 38), 12)
 	btn_join.pressed.connect(_on_client_join_room)
 	input_row.add_child(btn_join)
 	jv.add_child(input_row)
@@ -2926,7 +2978,7 @@ func _on_client_join_room() -> void:
 			pvp_status_lbl.modulate = Color(1.0, 0.4, 0.4)
 		if pvp_room_input:
 			pvp_room_input.grab_focus()
-			DisplayServer.virtual_keyboard_show(pvp_room_input.text)
+			_open_room_input_modal()
 		return
 	pvp_current_code = code
 	if net_manager:
@@ -2943,7 +2995,7 @@ func _on_spectate_room() -> void:
 			pvp_status_lbl.modulate = Color(1.0, 0.4, 0.4)
 		if pvp_room_input:
 			pvp_room_input.grab_focus()
-			DisplayServer.virtual_keyboard_show(pvp_room_input.text)
+			_open_room_input_modal()
 		return
 	spectate_room_requested.emit(code)
 	visible = false

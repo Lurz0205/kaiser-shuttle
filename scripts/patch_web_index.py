@@ -31,8 +31,10 @@ def patch_index_html(build_dir, build_hash=None):
     with open(index_path, "r", encoding="utf-8") as f:
         html = f.read()
 
-    # 2. Force experimentalVK: true
-    html = re.sub(r'"experimentalVK"\s*:\s*false', '"experimentalVK":true', html)
+    # 2. Disable experimentalVK (Godot's experimentalVK creates a hidden DOM input that causes
+    # mobile browser viewport scroll/shift and breaks Backspace on Android Gboard keycode 229)
+    html = re.sub(r'"experimentalVK"\s*:\s*true', '"experimentalVK":false', html)
+    html = re.sub(r'"experimentalVK"\s*:\s*false', '"experimentalVK":false', html)
 
     # 3. Add version hash to index.js and pwa_fullscreen.js
     html = re.sub(r'src=["\']index\.js(?:\?v=\d+)?["\']', f'src="index.js?v={build_hash}"', html)
@@ -40,7 +42,30 @@ def patch_index_html(build_dir, build_hash=None):
 
     # 4. Replace CSS in <style> to center the logo and loader perfectly
     style_pattern = r'#status[\s\S]*?#status-notice\s*\{[\s\S]*?\}'
-    new_style = '''#status {
+    new_style = '''html, body {
+	position: fixed !important;
+	top: 0 !important;
+	left: 0 !important;
+	width: 100% !important;
+	height: 100% !important;
+	overflow: hidden !important;
+	margin: 0 !important;
+	padding: 0 !important;
+	touch-action: none !important;
+	-webkit-text-size-adjust: 100% !important;
+}
+
+#canvas {
+	position: fixed !important;
+	top: 0 !important;
+	left: 0 !important;
+	width: 100% !important;
+	height: 100% !important;
+	display: block !important;
+	outline: none !important;
+}
+
+#status {
 	position: absolute;
 	left: 0;
 	top: 0;
