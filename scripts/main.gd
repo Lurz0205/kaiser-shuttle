@@ -3,8 +3,8 @@ extends Node2D
 const RallyTension = preload("res://scripts/mechanics/rally_tension.gd")
 const AIPressureModel = preload("res://scripts/ai/ai_pressure_model.gd")
 
-enum MatchState { SERVE, RALLY, POINT_OVER }
-var current_state: MatchState = MatchState.SERVE
+enum MatchState { LOBBY_IDLE, SERVE, RALLY, POINT_OVER }
+var current_state: MatchState = MatchState.LOBBY_IDLE
 
 # Score
 var score_player: int = 0
@@ -205,6 +205,15 @@ var prev_shuttle_x: float = 0.0
 func _ready() -> void:
 	# Khởi động ẩn ngay toàn bộ HUD trong trận và ưu tiên hiển thị màn hình bắt đầu / sảnh chờ
 	_set_in_game_hud_visible(false)
+	current_state = MatchState.LOBBY_IDLE
+	if player:
+		player.set_physics_process(false)
+	if ai_rival:
+		ai_rival.set_physics_process(false)
+	if shuttlecock:
+		shuttlecock.set_physics_process(false)
+		shuttlecock.visible = false
+		shuttlecock.is_active = false
 	if main_menu:
 		main_menu.visible = true
 		main_menu.switch_state(MainMenuController.MenuState.TITLE)
@@ -491,14 +500,7 @@ func _ready() -> void:
 	btn_back_to_lobby.add_theme_color_override("font_color", Color(0.85, 0.92, 1.0))
 	btn_back_to_lobby.pressed.connect(func():
 		btn_back_to_lobby.release_focus()
-		_set_in_game_hud_visible(false)
-		if is_pvp_active and net_manager:
-			net_manager.disconnect_peer()
-			is_pvp_active = false
-		if main_menu:
-			main_menu.switch_state(MainMenuController.MenuState.LOBBY)
-			main_menu.visible = true
-		_apply_menu_bgm()
+		_return_to_lobby_and_stop_match()
 	)
 	$HUD.add_child(btn_back_to_lobby)
 	btn_back_to_lobby.visible = false
@@ -730,6 +732,77 @@ func _set_in_game_hud_visible(show: bool) -> void:
 		pill_stats.visible = false
 
 
+func _return_to_lobby_and_stop_match() -> void:
+	_set_in_game_hud_visible(false)
+	if is_pvp_active and net_manager:
+		net_manager.disconnect_peer()
+		is_pvp_active = false
+	is_spectator = false
+	
+	# 1. Đặt MatchState về LOBBY_IDLE
+	current_state = MatchState.LOBBY_IDLE
+	is_serve_in_progress = false
+	is_point_transition_active = false
+	is_umpire_speaking = false
+	pvp_landing_pending = false
+	serve_cooldown = 0.0
+	
+	# 2. Dừng hoàn toàn quả cầu
+	if shuttlecock:
+		shuttlecock.velocity = Vector2.ZERO
+		shuttlecock.is_active = false
+		shuttlecock.visible = false
+		shuttlecock.set_physics_process(false)
+		if shuttlecock.has_method("clear_trail"):
+			shuttlecock.clear_trail()
+			
+	# 3. Tạm dừng Player và AI
+	if player:
+		player.velocity = Vector2.ZERO
+		player.global_position = Vector2(380.0, FLOOR_Y)
+		player.can_hit = false
+		player.is_serving_phase = false
+		player.set_physics_process(false)
+		if player.has_method("reset_state"):
+			player.reset_state()
+	if ai_rival:
+		ai_rival.velocity = Vector2.ZERO
+		ai_rival.global_position = Vector2(900.0, FLOOR_Y)
+		ai_rival.can_hit = false
+		ai_rival.set_physics_process(false)
+		if ai_rival.has_method("reset_state"):
+			ai_rival.reset_state()
+			
+	# 4. Dừng toàn bộ âm thanh trận đấu
+	if sfx_smash and sfx_smash.playing: sfx_smash.stop()
+	if sfx_phong and sfx_phong.playing: sfx_phong.stop()
+	if sfx_string and sfx_string.playing: sfx_string.stop()
+	if sfx_squeak and sfx_squeak.playing: sfx_squeak.stop()
+	if sfx_electric and sfx_electric.playing: sfx_electric.stop()
+	if sfx_aoi_block and sfx_aoi_block.playing: sfx_aoi_block.stop()
+	if sfx_aoi_slowmo and sfx_aoi_slowmo.playing: sfx_aoi_slowmo.stop()
+	if sfx_chem and sfx_chem.playing: sfx_chem.stop()
+	if sfx_low_ball_play and sfx_low_ball_play.playing: sfx_low_ball_play.stop()
+	if bgm_lobby and bgm_lobby.playing: bgm_lobby.stop()
+	
+	# 5. Ẩn dialogs & banners
+	if label_banner: label_banner.visible = false
+	if pill_stats: pill_stats.visible = false
+	if match_over_dialog: match_over_dialog.visible = false
+	if settings_panel: settings_panel.visible = false
+	
+	# 6. Đưa Camera về mặc định
+	if camera:
+		camera.position = Vector2(640.0, 360.0)
+		camera.offset = Vector2.ZERO
+	
+	# 7. Trở về Sảnh chờ (Lobby)
+	if main_menu:
+		main_menu.switch_state(MainMenuController.MenuState.LOBBY)
+		main_menu.visible = true
+	_apply_menu_bgm()
+
+
 func _play_sfx_string() -> void:
 	if not sfx_string or sfx_string_streams.is_empty():
 		return
@@ -823,9 +896,12 @@ func _on_menu_start_match(p_id: String, r_id: String, diff: int, target_points: 
 	score_player = 0
 	score_ai = 0
 	current_server = "player"
+	current_state = MatchState.SERVE
 	
 	if shuttlecock:
 		shuttlecock.is_network_client = false
+		shuttlecock.set_physics_process(true)
+		shuttlecock.visible = true
 	
 	if match_over_dialog:
 		match_over_dialog.visible = false
@@ -835,6 +911,7 @@ func _on_menu_start_match(p_id: String, r_id: String, diff: int, target_points: 
 	if virtual_touch_pad:
 		virtual_touch_pad.set_target_player(player)
 	if player:
+		player.set_physics_process(true)
 		player.character_id = p_id
 		match p_id:
 			"nishikawa": player.stats = CharacterStats.create_nishikawa()
@@ -847,6 +924,7 @@ func _on_menu_start_match(p_id: String, r_id: String, diff: int, target_points: 
 			player.stats.reset_torque()
 		
 	if ai_rival:
+		ai_rival.set_physics_process(true)
 		ai_rival.character_id = r_id
 		match r_id:
 			"nishikawa": ai_rival.stats = CharacterStats.create_nishikawa()
@@ -929,9 +1007,12 @@ func _on_menu_start_pvp_match(room_code: String, is_host: bool, local_char: Stri
 	# Xác định quyền giao cầu ban đầu (Authoritative First Serve Coin Toss):
 	var i_serve_first = (is_host and first_server_role == "p1") or (not is_host and first_server_role == "p2")
 	current_server = "player" if i_serve_first else "ai"
+	current_state = MatchState.SERVE
 	
 	if shuttlecock:
 		shuttlecock.is_network_client = not is_host
+		shuttlecock.set_physics_process(true)
+		shuttlecock.visible = true
 	
 	if match_over_dialog:
 		match_over_dialog.visible = false
@@ -940,6 +1021,9 @@ func _on_menu_start_pvp_match(room_code: String, is_host: bool, local_char: Stri
 	_set_in_game_hud_visible(true)
 	if virtual_touch_pad:
 		virtual_touch_pad.set_target_player(player)
+	
+	player.set_physics_process(true)
+	ai_rival.set_physics_process(true)
 	
 	# TRONG PVP: CẢ 2 NGƯỜI CHƠI ĐỀU LUÔN ĐIỀU KHIỂN NHÂN VẬT SÂN TRÁI CỦA MÌNH ($Player)
 	# ĐỐI THỦ LUÔN HIỆN Ở SÂN PHẢI ($AIRival) VÀ BỊ KHÓA HOÀN TOÀN BÀN PHÍM (is_remote_puppet = true)
@@ -1751,6 +1835,9 @@ func _update_difficulty_buttons() -> void:
 
 
 func _process(delta: float) -> void:
+	if current_state == MatchState.LOBBY_IDLE or (main_menu and main_menu.visible):
+		return
+		
 	# Authoritative PvP Landing Grace Timer (Đợi gói cứu cầu muộn do độ trễ mạng từ Guest)
 	if pvp_landing_pending:
 		pvp_landing_grace_timer -= delta
@@ -3304,15 +3391,7 @@ func _on_match_over_play_again() -> void:
 
 
 func _on_match_over_to_menu() -> void:
-	if match_over_dialog:
-		match_over_dialog.visible = false
-	if is_pvp_active and net_manager:
-		net_manager.disconnect_peer()
-		is_pvp_active = false
-	_set_in_game_hud_visible(false)
-	main_menu.switch_state(MainMenuController.MenuState.MATCH_SETUP)
-	main_menu.visible = true
-	_apply_menu_bgm()
+	_return_to_lobby_and_stop_match()
 
 
 var _last_window_size: Vector2 = Vector2.ZERO

@@ -284,7 +284,8 @@ func _update_nav_tab_indicators() -> void:
 			"roster": is_active = (current_state == MenuState.ROSTER)
 			"settings": is_active = (current_state == MenuState.SETTINGS)
 		
-		btn.modulate = Color(1.0, 0.85, 0.3) if is_active else Color(0.75, 0.82, 0.90)
+		btn.add_theme_color_override("font_color", Color(1.0, 0.88, 0.35) if is_active else Color(0.80, 0.86, 0.94))
+		btn.modulate = Color(1.0, 1.0, 1.0, 1.0) if is_active else Color(0.85, 0.90, 0.96, 0.85)
 
 func _create_tex_icon(texture: Texture2D, target_size: Vector2) -> TextureRect:
 	var tr = TextureRect.new()
@@ -390,8 +391,14 @@ func _build_ui() -> void:
 # ==========================================================
 func _build_top_bar() -> void:
 	top_bar = Control.new()
+	top_bar.set_anchors_preset(Control.PRESET_TOP_WIDE)
+	top_bar.anchor_left = 0.0
+	top_bar.anchor_right = 1.0
+	top_bar.offset_left = 0.0
+	top_bar.offset_top = 0.0
+	top_bar.offset_right = 0.0
+	top_bar.offset_bottom = 68.0
 	top_bar.custom_minimum_size = Vector2(1280, 68)
-	top_bar.size = Vector2(1280, 68)
 	top_bar.position = Vector2.ZERO
 	top_bar.z_index = 100
 	top_bar.mouse_filter = Control.MOUSE_FILTER_PASS
@@ -400,23 +407,36 @@ func _build_top_bar() -> void:
 	
 	# Liquid Glass Top Bar Background
 	var bar_bg = ColorRect.new()
-	bar_bg.custom_minimum_size = Vector2(1280, 68)
-	bar_bg.size = Vector2(1280, 68)
+	bar_bg.set_anchors_preset(Control.PRESET_FULL_RECT)
+	bar_bg.anchor_right = 1.0
+	bar_bg.anchor_bottom = 1.0
+	bar_bg.offset_left = 0.0
+	bar_bg.offset_top = 0.0
+	bar_bg.offset_right = 0.0
+	bar_bg.offset_bottom = 0.0
 	bar_bg.color = Color(0.08, 0.11, 0.16, 0.90)
 	bar_bg.mouse_filter = Control.MOUSE_FILTER_PASS
 	top_bar.add_child(bar_bg)
 	
 	var h_line = ColorRect.new()
-	h_line.custom_minimum_size = Vector2(1280, 1.5)
-	h_line.size = Vector2(1280, 1.5)
-	h_line.position = Vector2(0, 66.5)
+	h_line.anchor_left = 0.0
+	h_line.anchor_right = 1.0
+	h_line.offset_left = 0.0
+	h_line.offset_right = 0.0
+	h_line.offset_top = 66.5
+	h_line.offset_bottom = 68.0
 	h_line.color = Color(0.30, 0.45, 0.70, 0.60)
 	h_line.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	top_bar.add_child(h_line)
 	
 	var m = MarginContainer.new()
-	m.custom_minimum_size = Vector2(1280, 68)
-	m.size = Vector2(1280, 68)
+	m.set_anchors_preset(Control.PRESET_FULL_RECT)
+	m.anchor_right = 1.0
+	m.anchor_bottom = 1.0
+	m.offset_left = 0.0
+	m.offset_top = 0.0
+	m.offset_right = 0.0
+	m.offset_bottom = 0.0
 	m.add_theme_constant_override("margin_left", 20)
 	m.add_theme_constant_override("margin_right", 20)
 	m.mouse_filter = Control.MOUSE_FILTER_PASS
@@ -424,7 +444,7 @@ func _build_top_bar() -> void:
 	
 	var row = HBoxContainer.new()
 	row.alignment = BoxContainer.ALIGNMENT_BEGIN
-	row.add_theme_constant_override("separation", 16)
+	row.add_theme_constant_override("separation", 12)
 	row.mouse_filter = Control.MOUSE_FILTER_PASS
 	m.add_child(row)
 	
@@ -452,7 +472,7 @@ func _build_top_bar() -> void:
 	# Direct Real Name Input Field (Nhập tên thật dễ dàng, không bị đơ)
 	top_name_input = LineEdit.new()
 	top_name_input.text = pvp_player_name
-	top_name_input.custom_minimum_size = Vector2(140, 28)
+	top_name_input.custom_minimum_size = Vector2(130, 28)
 	top_name_input.max_length = 16
 	top_name_input.placeholder_text = "Nhập tên..."
 	top_name_input.mouse_filter = Control.MOUSE_FILTER_STOP
@@ -507,7 +527,7 @@ func _build_top_bar() -> void:
 	
 	var lpm = MarginContainer.new()
 	lpm.add_theme_constant_override("margin_left", 8)
-	lpm.add_theme_constant_override("margin_right", 12)
+	lpm.add_theme_constant_override("margin_right", 10)
 	lpm.add_theme_constant_override("margin_top", 4)
 	lpm.add_theme_constant_override("margin_bottom", 4)
 	lock_pill.add_child(lpm)
@@ -515,9 +535,9 @@ func _build_top_bar() -> void:
 	var lph = HBoxContainer.new()
 	lph.add_theme_constant_override("separation", 6)
 	lpm.add_child(lph)
-	lph.add_child(_create_tex_icon(TEX_PADLOCK, Vector2(20, 20)))
+	lph.add_child(_create_tex_icon(TEX_PADLOCK, Vector2(18, 18)))
 	var lp_lbl = Label.new()
-	lp_lbl.text = "TÍNH NĂNG MỞ RỘNG: [ CẤP 10 ]"
+	lp_lbl.text = "MỞ RỘNG: [ CẤP 10 ]"
 	lp_lbl.add_theme_font_size_override("font_size", 11)
 	lp_lbl.modulate = Color(0.70, 0.76, 0.85)
 	lph.add_child(lp_lbl)
@@ -530,7 +550,7 @@ func _build_top_bar() -> void:
 	
 	# Top Navigation Tabs (Click-Through Guaranteed)
 	var tabs_row = HBoxContainer.new()
-	tabs_row.add_theme_constant_override("separation", 8)
+	tabs_row.add_theme_constant_override("separation", 6)
 	tabs_row.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	tabs_row.mouse_filter = Control.MOUSE_FILTER_PASS
 	
@@ -596,19 +616,26 @@ func _create_nav_tab(title: String, tab_id: String, on_click: Callable) -> Butto
 	b.text = title
 	b.focus_mode = Control.FOCUS_NONE
 	b.mouse_filter = Control.MOUSE_FILTER_STOP
-	b.custom_minimum_size = Vector2(104, 38)
-	b.add_theme_font_size_override("font_size", 12)
+	b.custom_minimum_size = Vector2(88, 34)
+	b.add_theme_font_size_override("font_size", 11)
+	b.add_theme_color_override("font_color", Color(0.85, 0.90, 0.98))
 	
 	var sb_normal = StyleBoxFlat.new()
-	sb_normal.bg_color = Color(0.12, 0.15, 0.20, 0.0)
-	sb_normal.corner_radius_top_left = 4
-	sb_normal.corner_radius_top_right = 4
-	sb_normal.corner_radius_bottom_right = 4
-	sb_normal.corner_radius_bottom_left = 4
+	sb_normal.bg_color = Color(0.12, 0.15, 0.20, 0.40)
+	sb_normal.corner_radius_top_left = 6
+	sb_normal.corner_radius_top_right = 6
+	sb_normal.corner_radius_bottom_right = 6
+	sb_normal.corner_radius_bottom_left = 6
+	sb_normal.border_width_left = 1
+	sb_normal.border_width_top = 1
+	sb_normal.border_width_right = 1
+	sb_normal.border_width_bottom = 1
+	sb_normal.border_color = Color(0.30, 0.45, 0.65, 0.35)
 	b.add_theme_stylebox_override("normal", sb_normal)
 	
 	var sb_hover = sb_normal.duplicate()
-	sb_hover.bg_color = Color(0.20, 0.28, 0.40, 0.5)
+	sb_hover.bg_color = Color(0.20, 0.32, 0.48, 0.75)
+	sb_hover.border_color = Color(0.45, 0.75, 1.0, 0.8)
 	b.add_theme_stylebox_override("hover", sb_hover)
 	b.add_theme_stylebox_override("focus", sb_hover)
 	
@@ -621,15 +648,31 @@ func _create_nav_tab(title: String, tab_id: String, on_click: Callable) -> Butto
 # ==========================================================
 func _build_title_panel() -> void:
 	title_panel = Control.new()
+	title_panel.set_anchors_preset(Control.PRESET_FULL_RECT)
+	title_panel.anchor_left = 0.0
+	title_panel.anchor_top = 0.0
+	title_panel.anchor_right = 1.0
+	title_panel.anchor_bottom = 1.0
+	title_panel.offset_left = 0.0
+	title_panel.offset_top = 0.0
+	title_panel.offset_right = 0.0
+	title_panel.offset_bottom = 0.0
 	title_panel.custom_minimum_size = Vector2(1280, 720)
-	title_panel.size = Vector2(1280, 720)
 	title_panel.position = Vector2.ZERO
 	title_panel.mouse_filter = Control.MOUSE_FILTER_PASS
 	add_child(title_panel)
 	
 	var center = VBoxContainer.new()
+	center.set_anchors_preset(Control.PRESET_FULL_RECT)
+	center.anchor_left = 0.0
+	center.anchor_top = 0.0
+	center.anchor_right = 1.0
+	center.anchor_bottom = 1.0
+	center.offset_left = 0.0
+	center.offset_top = 0.0
+	center.offset_right = 0.0
+	center.offset_bottom = 0.0
 	center.custom_minimum_size = Vector2(1280, 720)
-	center.size = Vector2(1280, 720)
 	center.alignment = BoxContainer.ALIGNMENT_CENTER
 	center.add_theme_constant_override("separation", 16)
 	center.mouse_filter = Control.MOUSE_FILTER_PASS
@@ -653,8 +696,11 @@ func _build_title_panel() -> void:
 	sp.custom_minimum_size = Vector2(0, 36)
 	center.add_child(sp)
 	
-	var btn_start_any = _create_clean_button("CHẠM HOẶC NHẤN PHÍM BẤT KỲ ĐỂ VÀO SẢNH", Color(1.0, 0.85, 0.25), Vector2(380, 52), 15)
-	btn_start_any.pressed.connect(func(): switch_state(MenuState.LOBBY))
+	var btn_start_any = _create_clean_button("▶  CHẠM HOẶC NHẤN PHÍM BẤT KỲ ĐỂ VÀO SẢNH", Color(1.0, 0.85, 0.25), Vector2(400, 52), 15)
+	btn_start_any.pressed.connect(func():
+		if Time.get_ticks_msec() < _state_switch_cooldown_until: return
+		switch_state(MenuState.LOBBY)
+	)
 	var b_row = HBoxContainer.new()
 	b_row.alignment = BoxContainer.ALIGNMENT_CENTER
 	b_row.add_child(btn_start_any)
@@ -663,16 +709,25 @@ func _build_title_panel() -> void:
 func _unhandled_input(event: InputEvent) -> void:
 	if current_state == MenuState.TITLE and visible:
 		if (event is InputEventKey and event.pressed) or (event is InputEventScreenTouch and event.pressed) or (event is InputEventMouseButton and event.pressed):
-			switch_state(MenuState.LOBBY)
-			get_viewport().set_input_as_handled()
+			if Time.get_ticks_msec() >= _state_switch_cooldown_until:
+				switch_state(MenuState.LOBBY)
+				get_viewport().set_input_as_handled()
 
 # ==========================================================
 # 3. MAIN LOBBY SCREEN (Hero Standee, Widgets, Primary CTA)
 # ==========================================================
 func _build_lobby_panel() -> void:
 	lobby_panel = Control.new()
+	lobby_panel.set_anchors_preset(Control.PRESET_FULL_RECT)
+	lobby_panel.anchor_left = 0.0
+	lobby_panel.anchor_top = 0.0
+	lobby_panel.anchor_right = 1.0
+	lobby_panel.anchor_bottom = 1.0
+	lobby_panel.offset_left = 0.0
+	lobby_panel.offset_top = 0.0
+	lobby_panel.offset_right = 0.0
+	lobby_panel.offset_bottom = 0.0
 	lobby_panel.custom_minimum_size = Vector2(1280, 720)
-	lobby_panel.size = Vector2(1280, 720)
 	lobby_panel.position = Vector2.ZERO
 	lobby_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	lobby_panel.visible = false
@@ -682,7 +737,7 @@ func _build_lobby_panel() -> void:
 	hero_standee = Control.new()
 	hero_standee.custom_minimum_size = Vector2(400, 480)
 	hero_standee.size = Vector2(400, 480)
-	hero_standee.position = Vector2(440, 105)
+	hero_standee.position = Vector2(440, 95)
 	hero_standee.mouse_filter = Control.MOUSE_FILTER_PASS
 	lobby_panel.add_child(hero_standee)
 	
@@ -768,9 +823,9 @@ func _build_lobby_panel() -> void:
 	lbl_hero_passive.modulate = Color(0.85, 0.90, 0.98, 0.85)
 	lobby_panel.add_child(lbl_hero_passive)
 	
-	# Left Side Widgets (Banner Event & Điểm Danh)
+	# Left Side Widgets (Banner Event & Điểm Danh - đặt tại y=85, hoàn toàn tách biệt khỏi thanh Top Bar y=68)
 	var left_col = VBoxContainer.new()
-	left_col.position = Vector2(30, 105)
+	left_col.position = Vector2(30, 85)
 	left_col.custom_minimum_size = Vector2(280, 500)
 	left_col.add_theme_constant_override("separation", 14)
 	left_col.mouse_filter = Control.MOUSE_FILTER_PASS
@@ -887,6 +942,8 @@ func _update_hero_standee() -> void:
 	if lbl_hero_passive:
 		lbl_hero_passive.text = data["passive"]
 		
+	if not hero_standee:
+		return
 	var big_icon = hero_standee.find_child("HeroBigIcon", true, false) as TextureRect
 	if big_icon and data.has("skill_icon"):
 		big_icon.texture = data["skill_icon"]
@@ -2450,7 +2507,7 @@ func _on_net_peer_connected(is_opponent: bool) -> void:
 			"player_name": pvp_player_name
 		})
 
-func _on_net_peer_disconnected() -> void:
+func _on_net_peer_disconnected(reason: String = "") -> void:
 	pvp_is_connected = false
 	if btn_pvp_start:
 		btn_pvp_start.disabled = true

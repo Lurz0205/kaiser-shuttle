@@ -71,39 +71,41 @@ func _update_layout() -> void:
 	position = Vector2.ZERO
 	
 	# Safe area padding tren khung co dinh 1280x720
-	var pad_bottom: float = 30.0
-	var pad_side: float = 35.0
+	# Dịch nút di chuyển qua bên phải và lên trên 1 chút theo yêu cầu
+	var track_left: float = 75.0 # Dịch qua bên phải (trước là 35)
+	var pad_bottom_track: float = 65.0 # Dịch lên trên 1 chút (trước là 30)
 	
-	# 1. LEFT TRACK: Neo goc duoi ben trai (Fixed 1280x720 canvas)
-	var track_w: float = 280.0
-	var track_h: float = 84.0
-	track_rect = Rect2(pad_side, 720.0 - pad_bottom - track_h, track_w, track_h)
+	# 1. LEFT TRACK: Tăng kích cỡ to rõ hơn, dễ điều khiển
+	var track_w: float = 320.0 # Tăng từ 280 lên 320
+	var track_h: float = 100.0 # Tăng từ 84 lên 100
+	track_rect = Rect2(track_left, 720.0 - pad_bottom_track - track_h, track_w, track_h)
 	knob_center = track_rect.get_center()
 	if not is_dragging_knob:
 		knob_pos = knob_center
-	knob_radius = 38.0
-	max_drag_dist = (track_w * 0.5) - (knob_radius * 0.6)
+	knob_radius = 48.0 # Tăng kích cỡ knob từ 38 lên 48
+	max_drag_dist = (track_w * 0.5) - (knob_radius * 0.55)
 	
-	# 2. RIGHT BUTTONS: Cum phim neo goc duoi ben phai theo chuan 1280x720
-	btn_slide_radius = 48.0
-	btn_j_radius = 48.0
-	btn_k_radius = 48.0
-	btn_l_radius = 62.0
+	# 2. RIGHT BUTTONS: Tăng kích cỡ các nút bấm to rõ hơn
+	btn_slide_radius = 56.0 # Tăng từ 48 lên 56
+	btn_j_radius = 56.0     # Tăng từ 48 lên 56
+	btn_k_radius = 56.0     # Tăng từ 48 lên 56
+	btn_l_radius = 74.0     # Tăng từ 62 lên 74 (Nút Smash/Jump to đại, cực dễ bấm)
 	
-	var rx: float = 1280.0 - pad_side
-	var ry: float = 720.0 - pad_bottom
+	var pad_bottom_btn: float = 48.0 # Nâng nhẹ cụm nút lên trên
+	var rx: float = 1280.0 - 45.0
+	var ry: float = 720.0 - pad_bottom_btn
 	
 	# Button L (Jump & Smash) - Goc phai ngoai cung
 	btn_l_center = Vector2(rx - btn_l_radius, ry - btn_l_radius)
 	
 	# Button K (Clear - Phong cau) - Nam phia tren lech trai
-	btn_k_center = Vector2(rx - btn_l_radius - 88.0, ry - btn_l_radius - 105.0)
+	btn_k_center = Vector2(rx - btn_l_radius - 105.0, ry - btn_l_radius - 128.0)
 	
 	# Button J (Drop - Bo nho) - Nam canh L ve phia ben trai
-	btn_j_center = Vector2(rx - btn_l_radius - 148.0, ry - btn_l_radius)
+	btn_j_center = Vector2(rx - btn_l_radius - 170.0, ry - btn_l_radius)
 	
 	# Button Slide (Cuu cau / Truot san) - Nam ngoai cung ben trai
-	btn_slide_center = Vector2(rx - btn_l_radius - 262.0, ry - btn_l_radius)
+	btn_slide_center = Vector2(rx - btn_l_radius - 300.0, ry - btn_l_radius)
 	
 	queue_redraw()
 
@@ -362,8 +364,8 @@ func _draw_classic_button(center: Vector2, radius: float, title_vi: String, titl
 	# Chữ hiển thị
 	var font = ThemeDB.fallback_font
 	if font:
-		var vi_font_size = 14 if not is_primary else 16
-		var en_font_size = 10 if not is_primary else 11
+		var vi_font_size = 15 if not is_primary else 18
+		var en_font_size = 11 if not is_primary else 13
 		
 		var sz_vi = font.get_string_size(title_vi, HORIZONTAL_ALIGNMENT_CENTER, -1, vi_font_size)
 		var sz_en = font.get_string_size(title_en, HORIZONTAL_ALIGNMENT_CENTER, -1, en_font_size)
