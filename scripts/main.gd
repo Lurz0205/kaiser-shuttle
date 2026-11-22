@@ -1243,9 +1243,22 @@ func _on_spectator_leave() -> void:
 	_apply_menu_bgm()
 
 func _on_network_packet_received(data: Dictionary) -> void:
+	var t = str(data.get("t", data.get("type", "")))
+	if t == "countdown_start" or t == "start_match":
+		if main_menu and main_menu.visible:
+			main_menu.pvp_selected_points = int(data.get("pts", target_match_points))
+			main_menu.pvp_selected_sets = int(data.get("sets", total_match_sets))
+			if data.has("first_server"):
+				main_menu.pvp_first_server = str(data.get("first_server"))
+			if not is_pvp_host:
+				if data.has("p1_char"):
+					main_menu.pvp_opponent_char = str(data.get("p1_char", main_menu.pvp_opponent_char))
+				if data.has("p1_name"):
+					main_menu.pvp_opponent_name = str(data.get("p1_name", main_menu.pvp_opponent_name))
+			main_menu._start_pvp_countdown()
+		return
 	if not is_pvp_active:
 		return
-	var t = str(data.get("t", ""))
 	match t:
 		"opp_sync":
 			if ai_rival:

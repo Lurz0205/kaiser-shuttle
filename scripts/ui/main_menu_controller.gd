@@ -3029,6 +3029,7 @@ func _on_pvp_start_pressed() -> void:
 	pvp_first_server = "p1" if (randi() % 2 == 0) else "p2"
 	if net_manager:
 		net_manager.send_packet({
+			"t": "start_match",
 			"type": "start_match",
 			"first_server": pvp_first_server,
 			"pts": pvp_selected_points,
@@ -3162,8 +3163,19 @@ func _on_net_packet_received(pkt: Dictionary) -> void:
 		pvp_selected_points = int(pkt.get("pts", 11))
 		pvp_selected_sets = int(pkt.get("sets", 1))
 		_update_pvp_controls()
-	elif ptype == "start_match":
+	elif ptype == "countdown_start" or ptype == "start_match":
 		pvp_first_server = str(pkt.get("first_server", "p1"))
 		pvp_selected_points = int(pkt.get("pts", pvp_selected_points))
 		pvp_selected_sets = int(pkt.get("sets", pvp_selected_sets))
+		if pkt.has("p1_char"):
+			if pvp_is_host:
+				var p2c = str(pkt.get("p2_char", "")).strip_edges()
+				if not p2c.is_empty(): pvp_opponent_char = p2c
+				var p2n = str(pkt.get("p2_name", "")).strip_edges()
+				if not p2n.is_empty(): pvp_opponent_name = p2n
+			else:
+				var p1c = str(pkt.get("p1_char", "")).strip_edges()
+				if not p1c.is_empty(): pvp_opponent_char = p1c
+				var p1n = str(pkt.get("p1_name", "")).strip_edges()
+				if not p1n.is_empty(): pvp_opponent_name = p1n
 		_start_pvp_countdown()
