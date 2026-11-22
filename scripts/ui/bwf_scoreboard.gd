@@ -13,6 +13,16 @@ class_name BWFScoreboard
 @onready var score_p2_s2: Label = $BaseTexture/Scores/Score_P2_S2
 @onready var score_p2_s3: Label = $BaseTexture/Scores/Score_P2_S3
 
+@onready var p1_stamina_cap: ColorRect = $Gauges/P1_Gauges/Stamina_BG/Stamina_Cap
+@onready var p1_stamina_fill: ColorRect = $Gauges/P1_Gauges/Stamina_BG/Stamina_Fill
+@onready var p1_accuracy_fill: ColorRect = $Gauges/P1_Gauges/Accuracy_BG/Accuracy_Fill
+@onready var p1_flow_fill: ColorRect = $Gauges/P1_Gauges/Flow_BG/Flow_Fill
+
+@onready var p2_stamina_cap: ColorRect = $Gauges/P2_Gauges/Stamina_BG/Stamina_Cap
+@onready var p2_stamina_fill: ColorRect = $Gauges/P2_Gauges/Stamina_BG/Stamina_Fill
+@onready var p2_accuracy_fill: ColorRect = $Gauges/P2_Gauges/Accuracy_BG/Accuracy_Fill
+@onready var p2_flow_fill: ColorRect = $Gauges/P2_Gauges/Flow_BG/Flow_Fill
+
 const COLOR_NEON_YELLOW = Color(0.89, 1.0, 0.08, 1.0)
 const COLOR_WHITE = Color(1.0, 1.0, 1.0, 1.0)
 const COLOR_FADED = Color(0.48, 0.50, 0.52, 1.0)
@@ -60,6 +70,83 @@ func _ensure_nodes() -> void:
 		score_p2_s1 = get_node_or_null("BaseTexture/Scores/Score_P2_S1")
 		score_p2_s2 = get_node_or_null("BaseTexture/Scores/Score_P2_S2")
 		score_p2_s3 = get_node_or_null("BaseTexture/Scores/Score_P2_S3")
+	if not p1_stamina_fill:
+		p1_stamina_cap = get_node_or_null("Gauges/P1_Gauges/Stamina_BG/Stamina_Cap")
+		p1_stamina_fill = get_node_or_null("Gauges/P1_Gauges/Stamina_BG/Stamina_Fill")
+		p1_accuracy_fill = get_node_or_null("Gauges/P1_Gauges/Accuracy_BG/Accuracy_Fill")
+		p1_flow_fill = get_node_or_null("Gauges/P1_Gauges/Flow_BG/Flow_Fill")
+		p2_stamina_cap = get_node_or_null("Gauges/P2_Gauges/Stamina_BG/Stamina_Cap")
+		p2_stamina_fill = get_node_or_null("Gauges/P2_Gauges/Stamina_BG/Stamina_Fill")
+		p2_accuracy_fill = get_node_or_null("Gauges/P2_Gauges/Accuracy_BG/Accuracy_Fill")
+		p2_flow_fill = get_node_or_null("Gauges/P2_Gauges/Flow_BG/Flow_Fill")
+
+func update_gauges(p1_stats, p2_stats) -> void:
+	_ensure_nodes()
+	var time_val = Time.get_ticks_msec() / 1000.0
+	var pulse = 0.65 + 0.35 * sin(time_val * 14.0)
+	var flow_pulse = 0.75 + 0.25 * sin(time_val * 16.0)
+
+	if p1_stats:
+		if p1_stamina_fill and p1_stamina_cap:
+			var p_cap = clamp(float(p1_stats.max_stamina_cap) / 100.0, 0.0, 1.0)
+			var p_val = clamp(float(p1_stats.stamina) / 100.0, 0.0, 1.0)
+			p1_stamina_cap.size.x = 140.0 * p_cap
+			p1_stamina_fill.size.x = 140.0 * p_val
+			var is_p1_crit = p1_stats.is_stamina_critical() if (p1_stats is Object and p1_stats.has_method("is_stamina_critical")) else (float(p1_stats.stamina) <= 20.0)
+			if is_p1_crit:
+				p1_stamina_fill.color = Color(1.0, 0.18, 0.18, pulse)
+			else:
+				p1_stamina_fill.color = Color(0.2, 0.9, 0.45, 0.95)
+
+		if p1_accuracy_fill:
+			var p_acc = clamp(float(p1_stats.accuracy) / 100.0, 0.0, 1.0)
+			p1_accuracy_fill.size.x = 140.0 * p_acc
+			if float(p1_stats.accuracy) < 25.0:
+				p1_accuracy_fill.color = Color(1.0, 0.25, 0.35, pulse)
+			elif float(p1_stats.accuracy) < 50.0:
+				p1_accuracy_fill.color = Color(1.0, 0.72, 0.20, 0.95)
+			else:
+				p1_accuracy_fill.color = Color(0.20, 0.88, 1.0, 0.95)
+
+		if p1_flow_fill:
+			var p_flow = clamp(float(p1_stats.flow) / 100.0, 0.0, 1.0)
+			p1_flow_fill.size.x = 140.0 * p_flow
+			var can_p1_spec = p1_stats.can_use_special() if (p1_stats is Object and p1_stats.has_method("can_use_special")) else (float(p1_stats.flow) >= 100.0)
+			if can_p1_spec:
+				p1_flow_fill.color = Color(1.0, 0.85, 0.20, flow_pulse)
+			else:
+				p1_flow_fill.color = Color(0.78, 0.28, 0.95, 0.95)
+
+	if p2_stats:
+		if p2_stamina_fill and p2_stamina_cap:
+			var r_cap = clamp(float(p2_stats.max_stamina_cap) / 100.0, 0.0, 1.0)
+			var r_val = clamp(float(p2_stats.stamina) / 100.0, 0.0, 1.0)
+			p2_stamina_cap.size.x = 140.0 * r_cap
+			p2_stamina_fill.size.x = 140.0 * r_val
+			var is_p2_crit = p2_stats.is_stamina_critical() if (p2_stats is Object and p2_stats.has_method("is_stamina_critical")) else (float(p2_stats.stamina) <= 20.0)
+			if is_p2_crit:
+				p2_stamina_fill.color = Color(1.0, 0.18, 0.18, pulse)
+			else:
+				p2_stamina_fill.color = Color(0.2, 0.9, 0.45, 0.95)
+
+		if p2_accuracy_fill:
+			var r_acc = clamp(float(p2_stats.accuracy) / 100.0, 0.0, 1.0)
+			p2_accuracy_fill.size.x = 140.0 * r_acc
+			if float(p2_stats.accuracy) < 25.0:
+				p2_accuracy_fill.color = Color(1.0, 0.25, 0.35, pulse)
+			elif float(p2_stats.accuracy) < 50.0:
+				p2_accuracy_fill.color = Color(1.0, 0.72, 0.20, 0.95)
+			else:
+				p2_accuracy_fill.color = Color(0.20, 0.88, 1.0, 0.95)
+
+		if p2_flow_fill:
+			var r_flow = clamp(float(p2_stats.flow) / 100.0, 0.0, 1.0)
+			p2_flow_fill.size.x = 140.0 * r_flow
+			var can_p2_spec = p2_stats.can_use_special() if (p2_stats is Object and p2_stats.has_method("can_use_special")) else (float(p2_stats.flow) >= 100.0)
+			if can_p2_spec:
+				p2_flow_fill.color = Color(1.0, 0.85, 0.20, flow_pulse)
+			else:
+				p2_flow_fill.color = Color(0.78, 0.28, 0.95, 0.95)
 
 func set_match_mode(total_sets: int) -> void:
 	max_sets = total_sets

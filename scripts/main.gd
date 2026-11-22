@@ -3555,211 +3555,27 @@ func _on_effects_overlay_draw() -> void:
 # ==========================================================
 
 func _setup_hud_stamina_bars() -> void:
-	var hud = get_node_or_null("HUD")
-	if not hud:
+	if not bwf_scoreboard:
 		return
-	
-	# --- PLAYER 1 (Dưới BWFScoreboard cánh trái: left=425, right=565, top=82) ---
-	# 1. Player Stamina Bar
-	stamina_bar_bg_player = ColorRect.new()
-	stamina_bar_bg_player.color = Color(0.08, 0.10, 0.14, 0.85)
-	stamina_bar_bg_player.offset_left = 425.0
-	stamina_bar_bg_player.offset_top = 82.0
-	stamina_bar_bg_player.offset_right = 565.0
-	stamina_bar_bg_player.offset_bottom = 86.5
-	stamina_bar_bg_player.z_index = 100
-	stamina_bar_bg_player.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	hud.add_child(stamina_bar_bg_player)
-	
-	stamina_bar_cap_player = ColorRect.new()
-	stamina_bar_cap_player.color = Color(0.25, 0.30, 0.38, 0.45)
-	stamina_bar_cap_player.position = Vector2.ZERO
-	stamina_bar_cap_player.size = Vector2(140.0, 4.5)
-	stamina_bar_cap_player.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	stamina_bar_bg_player.add_child(stamina_bar_cap_player)
-	
-	stamina_bar_fill_player = ColorRect.new()
-	stamina_bar_fill_player.color = Color(0.2, 0.9, 0.45, 0.95)
-	stamina_bar_fill_player.position = Vector2.ZERO
-	stamina_bar_fill_player.size = Vector2(140.0, 4.5)
-	stamina_bar_fill_player.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	stamina_bar_bg_player.add_child(stamina_bar_fill_player)
-	
-	# 2. Player Accuracy Bar (top=88, bottom=91.5)
-	accuracy_bar_bg_player = ColorRect.new()
-	accuracy_bar_bg_player.color = Color(0.08, 0.10, 0.14, 0.85)
-	accuracy_bar_bg_player.offset_left = 425.0
-	accuracy_bar_bg_player.offset_top = 88.0
-	accuracy_bar_bg_player.offset_right = 565.0
-	accuracy_bar_bg_player.offset_bottom = 91.5
-	accuracy_bar_bg_player.z_index = 100
-	accuracy_bar_bg_player.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	hud.add_child(accuracy_bar_bg_player)
-	
-	accuracy_bar_fill_player = ColorRect.new()
-	accuracy_bar_fill_player.color = Color(0.20, 0.88, 1.0, 0.95)
-	accuracy_bar_fill_player.position = Vector2.ZERO
-	accuracy_bar_fill_player.size = Vector2(140.0, 4.5)
-	accuracy_bar_fill_player.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	accuracy_bar_bg_player.add_child(accuracy_bar_fill_player)
-	
-	# Vạch cảnh báo 50% nguy hiểm đánh hỏng
-	var tick_p = ColorRect.new()
-	tick_p.color = Color(1.0, 1.0, 1.0, 0.4)
-	tick_p.position = Vector2(70.0, -1.0)
-	tick_p.size = Vector2(1.0, 5.5)
-	tick_p.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	accuracy_bar_bg_player.add_child(tick_p)
-	
-	# 3. Player Flow Bar / Nộ Khí Tuyệt Kỹ (top=93.0, bottom=96.5)
-	flow_bar_bg_player = ColorRect.new()
-	flow_bar_bg_player.color = Color(0.08, 0.10, 0.14, 0.85)
-	flow_bar_bg_player.offset_left = 425.0
-	flow_bar_bg_player.offset_top = 93.0
-	flow_bar_bg_player.offset_right = 565.0
-	flow_bar_bg_player.offset_bottom = 96.5
-	flow_bar_bg_player.z_index = 100
-	flow_bar_bg_player.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	hud.add_child(flow_bar_bg_player)
-	
-	flow_bar_fill_player = ColorRect.new()
-	flow_bar_fill_player.color = Color(0.78, 0.28, 0.95, 0.95)
-	flow_bar_fill_player.position = Vector2.ZERO
-	flow_bar_fill_player.size = Vector2(140.0, 3.5)
-	flow_bar_fill_player.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	flow_bar_bg_player.add_child(flow_bar_fill_player)
-	
-	# --- RIVAL AI (Dưới BWFScoreboard cánh phải: left=715, right=855, top=82) ---
-	# 1. AI Stamina Bar
-	stamina_bar_bg_ai = ColorRect.new()
-	stamina_bar_bg_ai.color = Color(0.08, 0.10, 0.14, 0.85)
-	stamina_bar_bg_ai.offset_left = 715.0
-	stamina_bar_bg_ai.offset_top = 82.0
-	stamina_bar_bg_ai.offset_right = 855.0
-	stamina_bar_bg_ai.offset_bottom = 86.5
-	stamina_bar_bg_ai.z_index = 100
-	stamina_bar_bg_ai.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	hud.add_child(stamina_bar_bg_ai)
-	
-	stamina_bar_cap_ai = ColorRect.new()
-	stamina_bar_cap_ai.color = Color(0.25, 0.30, 0.38, 0.45)
-	stamina_bar_cap_ai.position = Vector2.ZERO
-	stamina_bar_cap_ai.size = Vector2(140.0, 4.5)
-	stamina_bar_cap_ai.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	stamina_bar_bg_ai.add_child(stamina_bar_cap_ai)
-	
-	stamina_bar_fill_ai = ColorRect.new()
-	stamina_bar_fill_ai.color = Color(0.2, 0.85, 1.0, 0.95)
-	stamina_bar_fill_ai.position = Vector2.ZERO
-	stamina_bar_fill_ai.size = Vector2(140.0, 4.5)
-	stamina_bar_fill_ai.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	stamina_bar_bg_ai.add_child(stamina_bar_fill_ai)
-	
-	# 2. AI Accuracy Bar (top=88, bottom=91.5)
-	accuracy_bar_bg_ai = ColorRect.new()
-	accuracy_bar_bg_ai.color = Color(0.08, 0.10, 0.14, 0.85)
-	accuracy_bar_bg_ai.offset_left = 715.0
-	accuracy_bar_bg_ai.offset_top = 88.0
-	accuracy_bar_bg_ai.offset_right = 855.0
-	accuracy_bar_bg_ai.offset_bottom = 91.5
-	accuracy_bar_bg_ai.z_index = 100
-	accuracy_bar_bg_ai.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	hud.add_child(accuracy_bar_bg_ai)
-	
-	accuracy_bar_fill_ai = ColorRect.new()
-	accuracy_bar_fill_ai.color = Color(0.95, 0.75, 0.25, 0.95)
-	accuracy_bar_fill_ai.position = Vector2.ZERO
-	accuracy_bar_fill_ai.size = Vector2(140.0, 4.5)
-	accuracy_bar_fill_ai.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	accuracy_bar_bg_ai.add_child(accuracy_bar_fill_ai)
-	
-	var tick_ai = ColorRect.new()
-	tick_ai.color = Color(1.0, 1.0, 1.0, 0.4)
-	tick_ai.position = Vector2(70.0, -1.0)
-	tick_ai.size = Vector2(1.0, 5.5)
-	tick_ai.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	accuracy_bar_bg_ai.add_child(tick_ai)
-	
-	# 3. AI Flow Bar / Nộ Khí Tuyệt Kỹ (top=93.0, bottom=96.5)
-	flow_bar_bg_ai = ColorRect.new()
-	flow_bar_bg_ai.color = Color(0.08, 0.10, 0.14, 0.85)
-	flow_bar_bg_ai.offset_left = 715.0
-	flow_bar_bg_ai.offset_top = 93.0
-	flow_bar_bg_ai.offset_right = 855.0
-	flow_bar_bg_ai.offset_bottom = 96.5
-	flow_bar_bg_ai.z_index = 100
-	flow_bar_bg_ai.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	hud.add_child(flow_bar_bg_ai)
-	
-	flow_bar_fill_ai = ColorRect.new()
-	flow_bar_fill_ai.color = Color(0.78, 0.28, 0.95, 0.95)
-	flow_bar_fill_ai.position = Vector2.ZERO
-	flow_bar_fill_ai.size = Vector2(140.0, 3.5)
-	flow_bar_fill_ai.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	flow_bar_bg_ai.add_child(flow_bar_fill_ai)
+	stamina_bar_bg_player = bwf_scoreboard.get_node_or_null("Gauges/P1_Gauges/Stamina_BG")
+	stamina_bar_cap_player = bwf_scoreboard.get_node_or_null("Gauges/P1_Gauges/Stamina_BG/Stamina_Cap")
+	stamina_bar_fill_player = bwf_scoreboard.get_node_or_null("Gauges/P1_Gauges/Stamina_BG/Stamina_Fill")
+	accuracy_bar_bg_player = bwf_scoreboard.get_node_or_null("Gauges/P1_Gauges/Accuracy_BG")
+	accuracy_bar_fill_player = bwf_scoreboard.get_node_or_null("Gauges/P1_Gauges/Accuracy_BG/Accuracy_Fill")
+	flow_bar_bg_player = bwf_scoreboard.get_node_or_null("Gauges/P1_Gauges/Flow_BG")
+	flow_bar_fill_player = bwf_scoreboard.get_node_or_null("Gauges/P1_Gauges/Flow_BG/Flow_Fill")
+
+	stamina_bar_bg_ai = bwf_scoreboard.get_node_or_null("Gauges/P2_Gauges/Stamina_BG")
+	stamina_bar_cap_ai = bwf_scoreboard.get_node_or_null("Gauges/P2_Gauges/Stamina_BG/Stamina_Cap")
+	stamina_bar_fill_ai = bwf_scoreboard.get_node_or_null("Gauges/P2_Gauges/Stamina_BG/Stamina_Fill")
+	accuracy_bar_bg_ai = bwf_scoreboard.get_node_or_null("Gauges/P2_Gauges/Accuracy_BG")
+	accuracy_bar_fill_ai = bwf_scoreboard.get_node_or_null("Gauges/P2_Gauges/Accuracy_BG/Accuracy_Fill")
+	flow_bar_bg_ai = bwf_scoreboard.get_node_or_null("Gauges/P2_Gauges/Flow_BG")
+	flow_bar_fill_ai = bwf_scoreboard.get_node_or_null("Gauges/P2_Gauges/Flow_BG/Flow_Fill")
 
 
 func _update_hud_stamina_bars() -> void:
-	var time_val = Time.get_ticks_msec() / 1000.0
-	var pulse = 0.65 + 0.35 * sin(time_val * 14.0)
-	var flow_pulse = 0.75 + 0.25 * sin(time_val * 16.0)
-	
-	# Update Player Bars
-	if player and player.stats:
-		if stamina_bar_fill_player and stamina_bar_cap_player:
-			var p_cap = clamp(player.stats.max_stamina_cap / 100.0, 0.0, 1.0)
-			var p_val = clamp(player.stats.stamina / 100.0, 0.0, 1.0)
-			stamina_bar_cap_player.size.x = 140.0 * p_cap
-			stamina_bar_fill_player.size.x = 140.0 * p_val
-			if player.stats.is_stamina_critical():
-				stamina_bar_fill_player.color = Color(1.0, 0.18, 0.18, pulse)
-			else:
-				stamina_bar_fill_player.color = Color(0.2, 0.9, 0.45, 0.95)
-				
-		if accuracy_bar_fill_player:
-			var p_acc = clamp(player.stats.accuracy / 100.0, 0.0, 1.0)
-			accuracy_bar_fill_player.size.x = 140.0 * p_acc
-			if player.stats.accuracy < 25.0:
-				accuracy_bar_fill_player.color = Color(1.0, 0.25, 0.35, pulse)
-			elif player.stats.accuracy < 50.0:
-				accuracy_bar_fill_player.color = Color(1.0, 0.72, 0.20, 0.95)
-			else:
-				accuracy_bar_fill_player.color = Color(0.20, 0.88, 1.0, 0.95)
-				
-		if flow_bar_fill_player:
-			var p_flow = clamp(player.stats.flow / 100.0, 0.0, 1.0)
-			flow_bar_fill_player.size.x = 140.0 * p_flow
-			if player.stats.can_use_special():
-				flow_bar_fill_player.color = Color(1.0, 0.90, 0.25, flow_pulse)
-			else:
-				flow_bar_fill_player.color = Color(0.78, 0.28, 0.95, 0.95)
-			
-	# Update AI Rival Bars
-	if ai_rival and ai_rival.stats:
-		if stamina_bar_fill_ai and stamina_bar_cap_ai:
-			var ai_cap = clamp(ai_rival.stats.max_stamina_cap / 100.0, 0.0, 1.0)
-			var ai_val = clamp(ai_rival.stats.stamina / 100.0, 0.0, 1.0)
-			stamina_bar_cap_ai.size.x = 140.0 * ai_cap
-			stamina_bar_fill_ai.size.x = 140.0 * ai_val
-			if ai_rival.stats.is_stamina_critical():
-				stamina_bar_fill_ai.color = Color(1.0, 0.18, 0.18, pulse)
-			else:
-				stamina_bar_fill_ai.color = Color(0.2, 0.85, 1.0, 0.95)
-				
-		if accuracy_bar_fill_ai:
-			var ai_acc = clamp(ai_rival.stats.accuracy / 100.0, 0.0, 1.0)
-			accuracy_bar_fill_ai.size.x = 140.0 * ai_acc
-			if ai_rival.stats.accuracy < 25.0:
-				accuracy_bar_fill_ai.color = Color(1.0, 0.25, 0.35, pulse)
-			elif ai_rival.stats.accuracy < 50.0:
-				accuracy_bar_fill_ai.color = Color(1.0, 0.72, 0.20, 0.95)
-			else:
-				accuracy_bar_fill_ai.color = Color(0.20, 0.88, 1.0, 0.95)
-				
-		if flow_bar_fill_ai:
-			var ai_flow = clamp(ai_rival.stats.flow / 100.0, 0.0, 1.0)
-			flow_bar_fill_ai.size.x = 140.0 * ai_flow
-			if ai_rival.stats.can_use_special():
-				flow_bar_fill_ai.color = Color(1.0, 0.90, 0.25, flow_pulse)
-			else:
-				flow_bar_fill_ai.color = Color(0.78, 0.28, 0.95, 0.95)
+	if bwf_scoreboard and bwf_scoreboard.has_method("update_gauges"):
+		var p_stats = player.stats if player else null
+		var r_stats = ai_rival.stats if ai_rival else null
+		bwf_scoreboard.update_gauges(p_stats, r_stats)

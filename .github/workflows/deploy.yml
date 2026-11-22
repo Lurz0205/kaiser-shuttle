@@ -53,6 +53,7 @@ jobs:
           sed -i "s/index.pck/index.pck?v=${BUILD_HASH}/g" build/web/index.html
           sed -i "s/\"index.js\"/\"index.js?v=${BUILD_HASH}\"/g" build/web/index.html
           sed -i "s/pwa_fullscreen.js/pwa_fullscreen.js?v=${BUILD_HASH}/g" build/web/index.html
+          sed -i "s/index.wasm/index.wasm?v=${BUILD_HASH}/g" build/web/index.js || true
           echo "Cache buster injected: v=${BUILD_HASH}"
 
       - name: Upload GitHub Pages Artifact
