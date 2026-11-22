@@ -14,11 +14,11 @@ func _run_tests():
     await process_frame
     await process_frame
     
-    # 1. Title Screen & 3D Logo Emblem
+    # 1. Title Screen & Background Art
     menu.switch_state(MainMenuController.MenuState.TITLE)
     assert(menu.title_panel != null and menu.title_panel.visible, "Title panel must be visible in TITLE state")
     assert(menu.global_bg != null and menu.global_bg.texture != null, "Global background must exist with texture")
-    print("✓ 1. Title Screen active with 3D tournament emblem")
+    print("✓ 1. Title Screen active with integrated Kaiser Shuttle artwork")
     
     # 2. Lobby Screen & Top Navigation Tabs
     menu.switch_state(MainMenuController.MenuState.LOBBY)

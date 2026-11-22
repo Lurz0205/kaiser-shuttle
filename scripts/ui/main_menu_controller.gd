@@ -669,7 +669,6 @@ func _create_nav_tab(title: String, tab_id: String, on_click: Callable) -> Butto
 # ==========================================================
 func _build_title_panel() -> void:
 	title_panel = Control.new()
-	title_panel.set_anchors_preset(Control.PRESET_FULL_RECT)
 	title_panel.anchor_left = 0.0
 	title_panel.anchor_top = 0.0
 	title_panel.anchor_right = 1.0
@@ -682,44 +681,21 @@ func _build_title_panel() -> void:
 	title_panel.mouse_filter = Control.MOUSE_FILTER_PASS
 	add_child(title_panel)
 	
-	var center_cont = CenterContainer.new()
-	center_cont.set_anchors_preset(Control.PRESET_FULL_RECT)
-	center_cont.anchor_left = 0.0
-	center_cont.anchor_top = 0.0
-	center_cont.anchor_right = 1.0
-	center_cont.anchor_bottom = 1.0
-	center_cont.offset_left = 0.0
-	center_cont.offset_top = 0.0
-	center_cont.offset_right = 0.0
-	center_cont.offset_bottom = 0.0
-	center_cont.mouse_filter = Control.MOUSE_FILTER_PASS
-	title_panel.add_child(center_cont)
+	# Nút bấm vào sảnh ở phía dưới màn hình (Logo game đã tích hợp trực tiếp trên artwork nền mới)
+	var bottom_box = VBoxContainer.new()
+	bottom_box.alignment = BoxContainer.ALIGNMENT_CENTER
+	bottom_box.anchor_left = 0.5
+	bottom_box.anchor_top = 1.0
+	bottom_box.anchor_right = 0.5
+	bottom_box.anchor_bottom = 1.0
+	bottom_box.offset_left = -260.0
+	bottom_box.offset_top = -105.0
+	bottom_box.offset_right = 260.0
+	bottom_box.offset_bottom = -45.0
+	bottom_box.mouse_filter = Control.MOUSE_FILTER_PASS
+	title_panel.add_child(bottom_box)
 	
-	var center = VBoxContainer.new()
-	center.alignment = BoxContainer.ALIGNMENT_CENTER
-	center.add_theme_constant_override("separation", 16)
-	center.mouse_filter = Control.MOUSE_FILTER_PASS
-	center_cont.add_child(center)
-	
-	# High-Impact 3D Esports Tournament Logo Emblem
-	var logo_icon = _create_tex_icon(TEX_KAISER_LOGO, Vector2(300, 310))
-	var logo_row = HBoxContainer.new()
-	logo_row.alignment = BoxContainer.ALIGNMENT_CENTER
-	logo_row.add_child(logo_icon)
-	center.add_child(logo_row)
-	
-	var lbl_sub = Label.new()
-	lbl_sub.text = "BWF ARCADE BADMINTON • THE SPIKE CROSS EDITION"
-	lbl_sub.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	lbl_sub.add_theme_font_size_override("font_size", 15)
-	lbl_sub.modulate = Color(0.85, 0.90, 1.0, 0.90)
-	center.add_child(lbl_sub)
-	
-	var sp = Control.new()
-	sp.custom_minimum_size = Vector2(0, 36)
-	center.add_child(sp)
-	
-	var btn_start_any = _create_clean_button("▶  CHẠM HOẶC NHẤN PHÍM BẤT KỲ ĐỂ VÀO SẢNH", Color(1.0, 0.85, 0.25), Vector2(400, 52), 15)
+	var btn_start_any = _create_clean_button("▶  CHẠM HOẶC NHẤN PHÍM BẤT KỲ ĐỂ VÀO SẢNH", Color(1.0, 0.85, 0.25), Vector2(460, 50), 15)
 	btn_start_any.pressed.connect(func():
 		if Time.get_ticks_msec() < _state_switch_cooldown_until: return
 		switch_state(MenuState.LOBBY)
@@ -727,7 +703,7 @@ func _build_title_panel() -> void:
 	var b_row = HBoxContainer.new()
 	b_row.alignment = BoxContainer.ALIGNMENT_CENTER
 	b_row.add_child(btn_start_any)
-	center.add_child(b_row)
+	bottom_box.add_child(b_row)
 
 func _unhandled_input(event: InputEvent) -> void:
 	if current_state == MenuState.TITLE and visible:
