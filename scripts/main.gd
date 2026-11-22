@@ -616,10 +616,15 @@ func _set_in_game_hud_visible(show: bool) -> void:
 		bwf_scoreboard.visible = show
 		if show:
 			bwf_scoreboard.show()
-			bwf_scoreboard.set_anchors_preset(Control.PRESET_TOP_LEFT)
+			bwf_scoreboard.anchor_left = 0.0
+			bwf_scoreboard.anchor_top = 0.0
+			bwf_scoreboard.anchor_right = 0.0
+			bwf_scoreboard.anchor_bottom = 0.0
+			bwf_scoreboard.offset_left = 420.0
+			bwf_scoreboard.offset_top = 14.0
+			bwf_scoreboard.offset_right = 860.0
+			bwf_scoreboard.offset_bottom = 78.0
 			bwf_scoreboard.custom_minimum_size = Vector2(440, 64)
-			bwf_scoreboard.size = Vector2(440, 64)
-			bwf_scoreboard.position = Vector2(420.0, 14.0)
 			bwf_scoreboard.z_index = 100
 			bwf_scoreboard.move_to_front()
 			if bwf_scoreboard.has_method("refresh_display"):
@@ -632,9 +637,16 @@ func _set_in_game_hud_visible(show: bool) -> void:
 	if btn_back_to_lobby:
 		btn_back_to_lobby.visible = show
 		if show:
-			btn_back_to_lobby.set_anchors_preset(Control.PRESET_TOP_LEFT)
-			btn_back_to_lobby.position = Vector2(20.0, 16.0)
-			btn_back_to_lobby.size = Vector2(86.0, 32.0)
+			btn_back_to_lobby.show()
+			btn_back_to_lobby.anchor_left = 0.0
+			btn_back_to_lobby.anchor_top = 0.0
+			btn_back_to_lobby.anchor_right = 0.0
+			btn_back_to_lobby.anchor_bottom = 0.0
+			btn_back_to_lobby.offset_left = 20.0
+			btn_back_to_lobby.offset_top = 16.0
+			btn_back_to_lobby.offset_right = 106.0
+			btn_back_to_lobby.offset_bottom = 48.0
+			btn_back_to_lobby.custom_minimum_size = Vector2(86, 32)
 			btn_back_to_lobby.z_index = 100
 			btn_back_to_lobby.move_to_front()
 
@@ -642,9 +654,16 @@ func _set_in_game_hud_visible(show: bool) -> void:
 	if btn_settings:
 		btn_settings.visible = show
 		if show:
-			btn_settings.set_anchors_preset(Control.PRESET_TOP_LEFT)
-			btn_settings.position = Vector2(1088.0, 16.0)
-			btn_settings.size = Vector2(88.0, 32.0)
+			btn_settings.show()
+			btn_settings.anchor_left = 0.0
+			btn_settings.anchor_top = 0.0
+			btn_settings.anchor_right = 0.0
+			btn_settings.anchor_bottom = 0.0
+			btn_settings.offset_left = 1088.0
+			btn_settings.offset_top = 16.0
+			btn_settings.offset_right = 1176.0
+			btn_settings.offset_bottom = 48.0
+			btn_settings.custom_minimum_size = Vector2(88, 32)
 			btn_settings.z_index = 100
 			btn_settings.move_to_front()
 
@@ -652,9 +671,16 @@ func _set_in_game_hud_visible(show: bool) -> void:
 	if btn_fullscreen:
 		btn_fullscreen.visible = show
 		if show:
-			btn_fullscreen.set_anchors_preset(Control.PRESET_TOP_LEFT)
-			btn_fullscreen.position = Vector2(1188.0, 16.0)
-			btn_fullscreen.size = Vector2(76.0, 32.0)
+			btn_fullscreen.show()
+			btn_fullscreen.anchor_left = 0.0
+			btn_fullscreen.anchor_top = 0.0
+			btn_fullscreen.anchor_right = 0.0
+			btn_fullscreen.anchor_bottom = 0.0
+			btn_fullscreen.offset_left = 1188.0
+			btn_fullscreen.offset_top = 16.0
+			btn_fullscreen.offset_right = 1264.0
+			btn_fullscreen.offset_bottom = 48.0
+			btn_fullscreen.custom_minimum_size = Vector2(76, 32)
 			btn_fullscreen.z_index = 100
 			btn_fullscreen.move_to_front()
 
@@ -665,9 +691,17 @@ func _set_in_game_hud_visible(show: bool) -> void:
 	# Bảng chỉ dẫn phím dưới cùng màn hình (Hiển thị cho bàn phím / Desktop / PC Web)
 	if controls_bar:
 		controls_bar.visible = show and not touch_controls_enabled
-		if show:
-			controls_bar.set_anchors_preset(Control.PRESET_TOP_LEFT)
-			controls_bar.position = Vector2(180.0, 686.0)
+		if show and not touch_controls_enabled:
+			controls_bar.show()
+			controls_bar.anchor_left = 0.0
+			controls_bar.anchor_top = 0.0
+			controls_bar.anchor_right = 0.0
+			controls_bar.anchor_bottom = 0.0
+			controls_bar.offset_left = 180.0
+			controls_bar.offset_top = 686.0
+			controls_bar.offset_right = 1100.0
+			controls_bar.offset_bottom = 712.0
+			controls_bar.custom_minimum_size = Vector2(920, 26)
 			controls_bar.z_index = 100
 			controls_bar.move_to_front()
 
@@ -680,6 +714,7 @@ func _set_in_game_hud_visible(show: bool) -> void:
 		if g:
 			g.visible = show
 			if show:
+				g.show()
 				g.z_index = 100
 				g.move_to_front()
 

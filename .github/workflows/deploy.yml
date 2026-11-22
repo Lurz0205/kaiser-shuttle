@@ -47,6 +47,13 @@ jobs:
           cp assets/icons/icon_192.png build/web/icon_192.png
           cp assets/icons/icon_512.png build/web/icon_512.png
           cp assets/icons/icon_maskable.png build/web/icon_maskable.png
+          
+          # Cache-busting: Đảm bảo người chơi vào web luôn tự động tải gói dữ liệu game mới nhất, không bao giờ bị kẹt cache cũ
+          BUILD_HASH=$(date +%s)
+          sed -i "s/index.pck/index.pck?v=${BUILD_HASH}/g" build/web/index.html
+          sed -i "s/\"index.js\"/\"index.js?v=${BUILD_HASH}\"/g" build/web/index.html
+          sed -i "s/pwa_fullscreen.js/pwa_fullscreen.js?v=${BUILD_HASH}/g" build/web/index.html
+          echo "Cache buster injected: v=${BUILD_HASH}"
 
       - name: Upload GitHub Pages Artifact
         uses: actions/upload-pages-artifact@v3
