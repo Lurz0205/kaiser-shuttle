@@ -345,6 +345,7 @@ func _build_ui() -> void:
 	global_bg.custom_minimum_size = Vector2(1280, 720)
 	global_bg.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	global_bg.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+	global_bg.texture_filter = Control.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
 	global_bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(global_bg)
 	
