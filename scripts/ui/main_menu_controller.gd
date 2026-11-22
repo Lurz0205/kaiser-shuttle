@@ -143,7 +143,7 @@ const CHAR_DATA = {
 	"nishikawa": {
 		"name": "NISHIKAWA",
 		"title": "Tia chớp vàng • Lôi Thần",
-		"archetype": "TẤN CÔNG BÙNG NỔ (WS)",
+		"archetype": "TẤN CÔNG TOÀN DIỆN",
 		"rarity": "S+",
 		"stars": 5,
 		"color": Color(1.0, 0.82, 0.22, 1.0),
@@ -160,7 +160,7 @@ const CHAR_DATA = {
 	"fuji": {
 		"name": "FUJI",
 		"title": "Cơn lốc xanh • Phong Ảnh",
-		"archetype": "KỸ THUẬT BIẾN ẢO (SE)",
+		"archetype": "KỸ THUẬT TINH TẾ",
 		"rarity": "S",
 		"stars": 4,
 		"color": Color(0.25, 0.90, 0.60, 1.0),
@@ -177,7 +177,7 @@ const CHAR_DATA = {
 	"wall": {
 		"name": "ISABEL",
 		"title": "Nữ hoàng đấu trường La Mã",
-		"archetype": "BỨC TƯỜNG PHÒNG THỦ (MB)",
+		"archetype": "PHÒNG THỦ KIÊN CỐ",
 		"rarity": "S+",
 		"stars": 5,
 		"color": Color(0.30, 0.75, 1.0, 1.0),
@@ -1000,11 +1000,11 @@ func _build_match_select_panel() -> void:
 	
 	# 1. PVP Card (Studio Dual Racquets Icon)
 	cards_row.add_child(_create_mode_card_tex(
-		"PVP TRỰC TUYẾN",
-		"ONLINE 1V1",
+		"ĐẤU ĐỐI KHÁNG TRỰC TUYẾN",
+		"TRANH HÙNG ĐỈNH CAO",
 		TEX_PVP,
 		Color(0.20, 0.90, 0.80),
-		"Đấu thời gian thực qua WebRTC/WebSocket.\nTạo phòng & Thách đấu bạn bè toàn cầu!",
+		"So tài cầu lông trực tiếp cùng bạn bè và các cao thủ.\nTạo phòng riêng hoặc gia nhập nhanh chóng.",
 		"SẴN SÀNG",
 		false,
 		func():
@@ -1014,11 +1014,11 @@ func _build_match_select_panel() -> void:
 	
 	# 2. AI Rival Card (Studio Gold Trophy Icon)
 	cards_row.add_child(_create_mode_card_tex(
-		"TRANH CÚP AI",
-		"VS RIVAL",
+		"THỬ THÁCH ĐỐI THỦ MÁY",
+		"ĐẤU ĐƠN CỌ XÁT",
 		TEX_TROPHY,
 		Color(1.0, 0.82, 0.25),
-		"Đấu đơn với AI thông minh BWF.\nTùy chỉnh độ khó Dễ - Trung Bình - Khó.",
+		"Tập luyện và tranh tài với các đối thủ máy đa phong cách.\nTùy chỉnh độ khó Dễ, Trung Bình hoặc Đỉnh Cao.",
 		"SẴN SÀNG",
 		false,
 		func():
@@ -1029,10 +1029,10 @@ func _build_match_select_panel() -> void:
 	# 3. Training Card (Studio Gold Padlock Icon)
 	cards_row.add_child(_create_mode_card_tex(
 		"SÂN TẬP LUYỆN",
-		"TRAINING",
+		"TẬP LUYỆN KỸ NĂNG",
 		TEX_PADLOCK,
 		Color(0.40, 0.70, 0.95),
-		"Luyện phát cầu, tập smash chuẩn nhịp,\ntập di chuyển bước lướt trên sân.",
+		"Luyện phát cầu, tập smash chuẩn nhịp\nvà di chuyển linh hoạt trên sân.",
 		"SẮP RA MẮT",
 		true,
 		func(): pass
@@ -1041,10 +1041,10 @@ func _build_match_select_panel() -> void:
 	# 4. Story Mode Card (Studio Gold Padlock Icon)
 	cards_row.add_child(_create_mode_card_tex(
 		"CỐT TRUYỆN THIẾU NIÊN",
-		"STORY CAMPAIGN",
+		"HÀNH TRÌNH VÔ ĐỊCH",
 		TEX_PADLOCK,
 		Color(0.85, 0.50, 1.0),
-		"Hành trình thiếu niên cầu lông từ giải\nphong trào đến đỉnh cao thế giới BWF.",
+		"Hành trình từ giải phong trào đến đỉnh cao thế giới.\nChinh phục các chặng đua kịch tính.",
 		"SẮP RA MẮT",
 		true,
 		func(): pass
@@ -1052,11 +1052,11 @@ func _build_match_select_panel() -> void:
 	
 	# 5. Tournament Cup Card (Studio Gold Padlock Icon)
 	cards_row.add_child(_create_mode_card_tex(
-		"GIẢI ĐẤU TOURNAMENT",
-		"BWF WORLD CUP",
+		"GIẢI ĐẤU VÔ ĐỊCH",
+		"CÚP THẾ GIỚI",
 		TEX_PADLOCK,
 		Color(1.0, 0.55, 0.30),
-		"Vòng bảng & nhánh knock-out 16 tay vợt\nhạt giống tranh cúp vô địch.",
+		"Vòng bảng và loại trực tiếp 16 hạt giống xuất sắc\ntranh cúp vô địch danh giá.",
 		"SẮP RA MẮT",
 		true,
 		func(): pass
@@ -1146,7 +1146,7 @@ func _build_match_setup_panel() -> void:
 	setup_m.add_child(setup_vbox)
 	
 	var setup_title = Label.new()
-	setup_title.text = "THIẾT LẬP TRANH TÀI (VS AI RIVAL)"
+	setup_title.text = "CẤU HÌNH TRANH TÀI"
 	setup_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	setup_title.add_theme_font_size_override("font_size", 18)
 	setup_title.modulate = Color(1.0, 0.85, 0.3)
@@ -1172,20 +1172,20 @@ func _build_match_setup_panel() -> void:
 	setup_vbox.add_child(diff_box)
 	
 	var lbl_diff = Label.new()
-	lbl_diff.text = "ĐỘ KHÓ AI:"
+	lbl_diff.text = "ĐỘ KHÓ:"
 	lbl_diff.add_theme_font_size_override("font_size", 12)
 	lbl_diff.modulate = Color(0.75, 0.82, 0.90)
 	diff_box.add_child(lbl_diff)
 	
-	btn_diff_easy = _create_clean_button("DỄ (EASY)", Color(0.25, 0.85, 0.50), Vector2(110, 32), 11)
+	btn_diff_easy = _create_clean_button("DỄ", Color(0.25, 0.85, 0.50), Vector2(100, 32), 11)
 	btn_diff_easy.pressed.connect(func(): _set_difficulty(0))
 	diff_box.add_child(btn_diff_easy)
 	
-	btn_diff_medium = _create_clean_button("TRUNG BÌNH (MED)", Color(1.0, 0.80, 0.25), Vector2(130, 32), 11)
+	btn_diff_medium = _create_clean_button("TRUNG BÌNH", Color(1.0, 0.80, 0.25), Vector2(120, 32), 11)
 	btn_diff_medium.pressed.connect(func(): _set_difficulty(1))
 	diff_box.add_child(btn_diff_medium)
 	
-	btn_diff_hard = _create_clean_button("KHÓ (HARD)", Color(0.95, 0.35, 0.35), Vector2(110, 32), 11)
+	btn_diff_hard = _create_clean_button("ĐỈNH CAO", Color(0.95, 0.35, 0.35), Vector2(110, 32), 11)
 	btn_diff_hard.pressed.connect(func(): _set_difficulty(2))
 	diff_box.add_child(btn_diff_hard)
 	
@@ -1197,7 +1197,7 @@ func _build_match_setup_panel() -> void:
 	setup_vbox.add_child(pts_box)
 	
 	var lbl_pts = Label.new()
-	lbl_pts.text = "ĐIỂM THẮNG (CÁCH 2 ĐIỂM):"
+	lbl_pts.text = "ĐIỂM THẮNG MỖI SET:"
 	lbl_pts.add_theme_font_size_override("font_size", 12)
 	lbl_pts.modulate = Color(0.75, 0.82, 0.90)
 	pts_box.add_child(lbl_pts)
@@ -1210,7 +1210,7 @@ func _build_match_setup_panel() -> void:
 	btn_pts_15.pressed.connect(func(): _set_target_points(15))
 	pts_box.add_child(btn_pts_15)
 	
-	btn_pts_21 = _create_clean_button("21 ĐIỂM (BWF)", Color(0.95, 0.40, 0.35), Vector2(120, 32), 11)
+	btn_pts_21 = _create_clean_button("21 ĐIỂM TIÊU CHUẨN", Color(0.95, 0.40, 0.35), Vector2(160, 32), 11)
 	btn_pts_21.pressed.connect(func(): _set_target_points(21))
 	pts_box.add_child(btn_pts_21)
 	
@@ -1227,11 +1227,11 @@ func _build_match_setup_panel() -> void:
 	lbl_sets.modulate = Color(0.75, 0.82, 0.90)
 	sets_box.add_child(lbl_sets)
 	
-	btn_sets_1 = _create_clean_button("1 SET (CHẠM ĐIỂM)", Color(0.35, 0.85, 1.0), Vector2(140, 32), 11)
+	btn_sets_1 = _create_clean_button("1 SET THẮNG NHANH", Color(0.35, 0.85, 1.0), Vector2(160, 32), 11)
 	btn_sets_1.pressed.connect(func(): _set_match_sets(1))
 	sets_box.add_child(btn_sets_1)
 	
-	btn_sets_3 = _create_clean_button("3 SET (BEST OF 3)", Color(1.0, 0.85, 0.25), Vector2(150, 32), 11)
+	btn_sets_3 = _create_clean_button("3 SET THẮNG 2", Color(1.0, 0.85, 0.25), Vector2(140, 32), 11)
 	btn_sets_3.pressed.connect(func(): _set_match_sets(3))
 	sets_box.add_child(btn_sets_3)
 	
@@ -1249,7 +1249,7 @@ func _build_match_setup_panel() -> void:
 	action_row.mouse_filter = Control.MOUSE_FILTER_PASS
 	setup_vbox.add_child(action_row)
 	
-	var btn_start_match = _create_clean_button("VÀO SÂN TRANH TÀI (START)", Color(1.0, 0.82, 0.25), Vector2(280, 44), 15)
+	var btn_start_match = _create_clean_button("VÀO SÂN TRANH TÀI", Color(1.0, 0.82, 0.25), Vector2(240, 44), 15)
 	btn_start_match.pressed.connect(_confirm_and_start_match)
 	action_row.add_child(btn_start_match)
 	
@@ -1292,7 +1292,7 @@ func _build_pvp_panel() -> void:
 	header_row.alignment = BoxContainer.ALIGNMENT_BEGIN
 	
 	var lbl_title = Label.new()
-	lbl_title.text = "ONLINE MULTIPLAYER (PVP 1V1)"
+	lbl_title.text = "ĐẤU ĐỐI KHÁNG TRỰC TUYẾN"
 	lbl_title.add_theme_font_size_override("font_size", 20)
 	lbl_title.modulate = Color(0.25, 0.90, 0.85)
 	header_row.add_child(lbl_title)
@@ -1472,11 +1472,20 @@ func _build_pvp_panel() -> void:
 	
 	var btn_copy = _create_clean_button("CHÉP MÃ", Color(0.85, 0.85, 0.85), Vector2(100, 34), 11)
 	btn_copy.pressed.connect(func():
-		if not pvp_current_code.is_empty():
+		if not pvp_current_code.is_empty() and pvp_current_code != "----":
 			if OS.has_feature("web"):
-				JavaScriptBridge.eval("window.kaiserCopy('" + pvp_current_code + "')")
+				JavaScriptBridge.eval("""
+					if (navigator.clipboard && navigator.clipboard.writeText) {
+						navigator.clipboard.writeText('%s').catch(function(){});
+					}
+				""" % pvp_current_code)
 			DisplayServer.clipboard_set(pvp_current_code)
 			btn_copy.text = "ĐÃ CHÉP"
+			var t = get_tree().create_timer(1.8)
+			t.timeout.connect(func():
+				if is_instance_valid(btn_copy):
+					btn_copy.text = "CHÉP MÃ"
+			)
 	)
 	code_row.add_child(btn_copy)
 	hv.add_child(code_row)
@@ -1516,7 +1525,7 @@ func _build_pvp_panel() -> void:
 	input_row.add_child(btn_join)
 	jv.add_child(input_row)
 	
-	var btn_spec = _create_clean_button("KHÁN GIẢ (SPECTATE)", Color(0.70, 0.60, 0.90), Vector2(180, 34), 11)
+	var btn_spec = _create_clean_button("THEO DÕI TRẬN ĐẤU", Color(0.70, 0.60, 0.90), Vector2(180, 34), 11)
 	btn_spec.pressed.connect(_on_spectate_room)
 	jv.add_child(btn_spec)
 	
@@ -1525,7 +1534,7 @@ func _build_pvp_panel() -> void:
 	bot_row.alignment = BoxContainer.ALIGNMENT_CENTER
 	bot_row.add_theme_constant_override("separation", 16)
 	
-	btn_pvp_start = _create_clean_button("BẮT ĐẦU TRANH TÀI (START)", Color(1.0, 0.82, 0.25), Vector2(280, 44), 14)
+	btn_pvp_start = _create_clean_button("BẮT ĐẦU TRANH TÀI", Color(1.0, 0.82, 0.25), Vector2(240, 44), 14)
 	btn_pvp_start.disabled = true
 	btn_pvp_start.pressed.connect(_on_pvp_start_pressed)
 	bot_row.add_child(btn_pvp_start)
@@ -1559,7 +1568,7 @@ func _build_roster_panel() -> void:
 	roster_panel.add_child(back_btn)
 	
 	var title_lbl = Label.new()
-	title_lbl.text = "QUẢN LÝ CẦU THỦ (LOCKER ROOM)"
+	title_lbl.text = "QUẢN LÝ CẦU THỦ"
 	title_lbl.position = Vector2(230, 84)
 	title_lbl.add_theme_font_size_override("font_size", 18)
 	title_lbl.modulate = Color(1.0, 0.85, 0.3)
@@ -1600,9 +1609,9 @@ func _build_roster_panel() -> void:
 		grid.add_child(c_card)
 		
 	# Locked players with studio skill icons
-	grid.add_child(_create_roster_card("gitae", "HAN GITAE", "S+", "BÃO LỬA (MB)", Color(1.0, 0.4, 0.2), TEX_SKILL_FIRE, true))
-	grid.add_child(_create_roster_card("raul", "RAUL", "S+", "BÓNG ĐÊM (WS)", Color(0.8, 0.3, 0.9), TEX_SKILL_VOID, true))
-	grid.add_child(_create_roster_card("sara", "SARA", "S+", "BĂNG GIÁ (WS)", Color(0.3, 0.8, 1.0), TEX_SKILL_FROST, true))
+	grid.add_child(_create_roster_card("gitae", "HAN GITAE", "S+", "BÃO LỬA TIÊN PHONG", Color(1.0, 0.4, 0.2), TEX_SKILL_FIRE, true))
+	grid.add_child(_create_roster_card("raul", "RAUL", "S+", "BÓNG ĐÊM HUYỀN ẢO", Color(0.8, 0.3, 0.9), TEX_SKILL_VOID, true))
+	grid.add_child(_create_roster_card("sara", "SARA", "S+", "BĂNG GIÁ TOÀN NĂNG", Color(0.3, 0.8, 1.0), TEX_SKILL_FROST, true))
 
 func _create_roster_card(cid: String, cname: String, rarity: String, arch: String, col: Color, skill_tex: Texture2D, is_locked: bool) -> PanelContainer:
 	var p = _create_spike_translucent_panel(Vector2(250, 160), 10, Color(col.r, col.g, col.b, 0.50))
@@ -1684,7 +1693,7 @@ func _update_roster_view() -> void:
 	m.add_child(v)
 	
 	var tag = Label.new()
-	tag.text = "CẦU THỦ ĐANG CHỌN (ACTIVE)"
+	tag.text = "CẦU THỦ XUẤT TRẬN"
 	tag.add_theme_font_size_override("font_size", 11)
 	tag.modulate = Color(0.35, 0.85, 1.0)
 	v.add_child(tag)
@@ -1806,14 +1815,14 @@ func _build_quests_panel() -> void:
 	
 	var top_r = HBoxContainer.new()
 	var q_lbl = Label.new()
-	q_lbl.text = "NHIỆM VỤ HÀNG NGÀY (TIẾN TRÌNH: 0 / 1000P)"
+	q_lbl.text = "NHIỆM VỤ HÀNG NGÀY • TIẾN TRÌNH: 0 / 1000P"
 	q_lbl.add_theme_font_size_override("font_size", 16)
 	q_lbl.modulate = Color(1.0, 0.85, 0.3)
 	top_r.add_child(q_lbl)
 	v.add_child(top_r)
 	
 	v.add_child(_create_quest_item("Điểm danh hàng ngày", "+250P", "0/1"))
-	v.add_child(_create_quest_item("Chiến thắng 2 ván đấu ở [PVP Trực Tuyến]", "+250P", "0/2"))
+	v.add_child(_create_quest_item("Chiến thắng 2 ván đấu ở Đấu Đối Kháng Trực Tuyến", "+250P", "0/2"))
 	v.add_child(_create_quest_item("Ghi 3 điểm trực tiếp từ cú SMASH hoàn hảo", "+250P", "0/3"))
 	v.add_child(_create_quest_item("Thực hiện 5 pha cứu cầu trượt sàn thành công", "+250P", "0/5"))
 
@@ -1838,7 +1847,7 @@ func _create_quest_item(title: String, reward: String, prog: String) -> PanelCon
 	m.add_child(h)
 	
 	var t = Label.new()
-	t.text = title + " (" + prog + ")"
+	t.text = title + " • " + prog
 	t.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	t.add_theme_font_size_override("font_size", 13)
 	h.add_child(t)
@@ -1944,15 +1953,15 @@ func _build_settings_audio_tab() -> VBoxContainer:
 	v.mouse_filter = Control.MOUSE_FILTER_PASS
 	
 	var t = Label.new()
-	t.text = "CÀI ĐẶT ÂM THANH (THE SPIKE LEVEL INDICATOR)"
+	t.text = "CÀI ĐẶT ÂM THANH"
 	t.add_theme_font_size_override("font_size", 15)
 	t.modulate = Color(1.0, 0.85, 0.3)
 	v.add_child(t)
 	
-	v.add_child(_create_stepped_volume_row("Âm lượng tổng (Master Volume):", 5, func(val): pass))
+	v.add_child(_create_stepped_volume_row("Âm lượng tổng:", 5, func(val): pass))
 	
 	var bgm_cur_step = int(round(bgm_match_volume * 5.0))
-	v.add_child(_create_stepped_volume_row("Nhạc nền trong trận (Match BGM):", bgm_cur_step, func(step):
+	v.add_child(_create_stepped_volume_row("Nhạc nền trong trận:", bgm_cur_step, func(step):
 		bgm_match_volume = float(step) / 5.0
 		bgm_match_enabled = (step > 0)
 		settings_updated.emit(squeak_enabled, bgm_match_enabled, bgm_match_volume, low_graphics_mode)
@@ -1961,7 +1970,7 @@ func _build_settings_audio_tab() -> VBoxContainer:
 	var sq_row = HBoxContainer.new()
 	sq_row.mouse_filter = Control.MOUSE_FILTER_PASS
 	var sq_lbl = Label.new()
-	sq_lbl.text = "Tiếng rít giày sàn đấu (Shoe Squeak):"
+	sq_lbl.text = "Tiếng rít giày sàn đấu:"
 	sq_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	sq_lbl.add_theme_font_size_override("font_size", 13)
 	sq_row.add_child(sq_lbl)
@@ -1985,7 +1994,7 @@ func _build_settings_gfx_tab() -> VBoxContainer:
 	v.mouse_filter = Control.MOUSE_FILTER_PASS
 	
 	var t = Label.new()
-	t.text = "CÀI ĐẶT ĐỒ HỌA & HIỆU NĂNG"
+	t.text = "CÀI ĐẶT ĐỒ HỌA VÀ HIỆU NĂNG"
 	t.add_theme_font_size_override("font_size", 15)
 	t.modulate = Color(0.35, 0.85, 1.0)
 	v.add_child(t)
@@ -1994,7 +2003,7 @@ func _build_settings_gfx_tab() -> VBoxContainer:
 		var gfx_row = HBoxContainer.new()
 		gfx_row.mouse_filter = Control.MOUSE_FILTER_PASS
 		var lbl_gfx = Label.new()
-		lbl_gfx.text = "Chế độ đồ họa mượt mà (Low GFX Web):"
+		lbl_gfx.text = "Chế độ đồ họa tiết kiệm:"
 		lbl_gfx.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		lbl_gfx.add_theme_font_size_override("font_size", 13)
 		gfx_row.add_child(lbl_gfx)
@@ -2010,7 +2019,7 @@ func _build_settings_gfx_tab() -> VBoxContainer:
 		v.add_child(gfx_row)
 	else:
 		var lbl_pc = Label.new()
-		lbl_pc.text = "Cấu hình PC: Đồ họa ULTRA MAX (Tự động tối ưu 120+ FPS)"
+		lbl_pc.text = "Cấu hình máy: Đồ họa chất lượng cao mượt mà"
 		lbl_pc.add_theme_font_size_override("font_size", 13)
 		lbl_pc.modulate = Color(0.3, 0.9, 0.5)
 		v.add_child(lbl_pc)
@@ -2047,13 +2056,13 @@ func _build_settings_account_tab() -> VBoxContainer:
 	v.add_child(t)
 	
 	var id_lbl = Label.new()
-	id_lbl.text = "UID: KAISER-778902  •  Server: Global WebRTC"
+	id_lbl.text = "UID: KAISER-778902  •  Máy chủ: Châu Á Thái Bình Dương"
 	id_lbl.add_theme_font_size_override("font_size", 12)
 	id_lbl.modulate = Color(0.75, 0.82, 0.90)
 	v.add_child(id_lbl)
 	
 	var ver_lbl = Label.new()
-	ver_lbl.text = "Phiên bản: Kaiser Shuttle v8.3.1 (Spike Liquid Glass Edition)"
+	ver_lbl.text = "Phiên bản: Kaiser Shuttle v8.3.1 - Bản Tiêu Chuẩn"
 	ver_lbl.add_theme_font_size_override("font_size", 12)
 	ver_lbl.modulate = Color(0.65, 0.72, 0.80)
 	v.add_child(ver_lbl)
@@ -2175,13 +2184,13 @@ func _create_character_card(cid: String) -> PanelContainer:
 	b_row.mouse_filter = Control.MOUSE_FILTER_PASS
 	vbox.add_child(b_row)
 	
-	var btn_p = _create_clean_button("CHỌN PLAYER", Color(0.25, 0.85, 0.45), Vector2(0, 30), 11)
+	var btn_p = _create_clean_button("BẠN", Color(0.25, 0.85, 0.45), Vector2(0, 30), 11)
 	btn_p.name = "BtnPlayer"
 	btn_p.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	btn_p.pressed.connect(func(): _select_player(cid))
 	b_row.add_child(btn_p)
 	
-	var btn_r = _create_clean_button("CHỌN AI", Color(0.30, 0.70, 1.0), Vector2(0, 30), 11)
+	var btn_r = _create_clean_button("ĐỐI THỦ", Color(0.30, 0.70, 1.0), Vector2(0, 30), 11)
 	btn_r.name = "BtnRival"
 	btn_r.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	btn_r.pressed.connect(func(): _select_rival(cid))
@@ -2343,20 +2352,20 @@ func _update_setup_cards() -> void:
 		
 		var btn_p = card.find_child("BtnPlayer", true, false) as Button
 		if btn_p:
-			btn_p.text = "[BẠN ĐANG CHỌN]" if is_p else "CHỌN CHO PLAYER"
+			btn_p.text = "ĐANG CHỌN" if is_p else "CHỌN RA SÂN"
 			btn_p.modulate = Color(0.3, 1.8, 0.5) if is_p else Color(1, 1, 1)
 			
 		var btn_r = card.find_child("BtnRival", true, false) as Button
 		if btn_r:
-			btn_r.text = "[AI ĐANG CHỌN]" if is_r else "CHỌN CHO AI"
+			btn_r.text = "ĐỐI THỦ CHỌN" if is_r else "CHỌN ĐỐI THỦ"
 			btn_r.modulate = Color(0.3, 1.3, 2.5) if is_r else Color(1, 1, 1)
 			
 	if label_matchup_summary:
 		var p_name = CHAR_DATA[selected_player_id]["name"]
 		var r_name = CHAR_DATA[selected_rival_id]["name"]
-		var diff_str = "DỄ" if selected_difficulty == 0 else ("TRUNG BÌNH" if selected_difficulty == 1 else "KHÓ")
-		var set_str = "1 SET" if selected_match_sets == 1 else "3 SET (BEST OF 3)"
-		label_matchup_summary.text = "KÈO ĐẤU:  [PLAYER: %s]   VS   [AI: %s]   •   ĐỘ KHÓ: [%s]   •   CHẠM: [%d ĐIỂM]   •   [%s]" % [p_name, r_name, diff_str, selected_target_points, set_str]
+		var diff_str = "DỄ" if selected_difficulty == 0 else ("TRUNG BÌNH" if selected_difficulty == 1 else "ĐỈNH CAO")
+		var set_str = "1 SET THẮNG" if selected_match_sets == 1 else "3 SET THẮNG 2"
+		label_matchup_summary.text = "KÈO ĐẤU:  BẠN: %s   VS   ĐỐI THỦ: %s   •   ĐỘ KHÓ: %s   •   CHẠM: %d ĐIỂM   •   %s" % [p_name, r_name, diff_str, selected_target_points, set_str]
 
 func _confirm_and_start_match() -> void:
 	start_match_requested.emit(selected_player_id, selected_rival_id, selected_difficulty, selected_target_points, selected_match_sets)
@@ -2449,13 +2458,23 @@ func _update_pvp_controls() -> void:
 		pvp_char_desc_lbl.text = "TUYỂN THỦ: [%s] • %s" % [cdata["name"], cdata["skill_desc"]]
 		pvp_char_desc_lbl.modulate = cdata["color"]
 
+func _generate_room_code() -> String:
+	var chars = "23456789ABCDEFGHJKLMNPQRSTUVWXYZ"
+	var code = ""
+	for i in range(4):
+		code += chars[randi() % chars.length()]
+	return code
+
 func _on_host_create_room() -> void:
 	pvp_is_host = true
+	pvp_current_code = _generate_room_code()
+	if pvp_host_code_lbl:
+		pvp_host_code_lbl.text = "MÃ: " + pvp_current_code
+	if pvp_status_lbl:
+		pvp_status_lbl.text = "● ĐANG KẾT NỐI MÁY CHỦ..."
+		pvp_status_lbl.modulate = Color(1.0, 0.85, 0.3)
 	if net_manager:
-		net_manager.create_room()
-		if pvp_status_lbl:
-			pvp_status_lbl.text = "● ĐANG TẠO PHÒNG..."
-			pvp_status_lbl.modulate = Color(1.0, 0.85, 0.3)
+		net_manager.host_room(pvp_current_code, pvp_selected_char, pvp_selected_points, pvp_selected_sets, pvp_player_name)
 
 func _on_client_join_room() -> void:
 	pvp_is_host = false
@@ -2464,9 +2483,9 @@ func _on_client_join_room() -> void:
 		return
 	pvp_current_code = code
 	if net_manager:
-		net_manager.join_room(code)
+		net_manager.join_room(code, pvp_selected_char, pvp_player_name)
 		if pvp_status_lbl:
-			pvp_status_lbl.text = "● ĐANG KẾT NỐI: " + code
+			pvp_status_lbl.text = "● ĐANG VÀO PHÒNG: " + code
 			pvp_status_lbl.modulate = Color(0.35, 0.75, 1.0)
 
 func _on_spectate_room() -> void:
@@ -2499,10 +2518,24 @@ func _start_pvp_countdown() -> void:
 
 func _on_net_status_changed(status: String) -> void:
 	if pvp_status_lbl:
-		pvp_status_lbl.text = "● " + status.to_upper()
+		var st_upper = status.to_upper()
+		if st_upper == "CONNECTING":
+			pvp_status_lbl.text = "● ĐANG KẾT NỐI MÁY CHỦ..."
+			pvp_status_lbl.modulate = Color(1.0, 0.85, 0.3)
+		elif st_upper == "HOSTING":
+			pvp_status_lbl.text = "● PHÒNG MỞ: ĐANG CHỜ ĐỐI THỦ..."
+			pvp_status_lbl.modulate = Color(0.25, 0.90, 0.55)
+		elif st_upper == "CONNECTED":
+			pvp_status_lbl.text = "● ĐÃ KẾT NỐI VỚI ĐỐI THỦ"
+			pvp_status_lbl.modulate = Color(0.20, 0.95, 0.60)
+		else:
+			pvp_status_lbl.text = "● " + st_upper
 
 func _on_net_peer_connected(is_opponent: bool) -> void:
 	pvp_is_connected = true
+	if pvp_status_lbl:
+		pvp_status_lbl.text = "● ĐỐI THỦ ĐÃ VÀO PHÒNG"
+		pvp_status_lbl.modulate = Color(0.20, 0.95, 0.60)
 	if pvp_is_host and btn_pvp_start:
 		btn_pvp_start.disabled = false
 	if net_manager:
@@ -2525,14 +2558,19 @@ func _on_net_ping_updated(ping_ms: int) -> void:
 		pvp_ping_lbl.text = "Ping: %d ms" % ping_ms
 
 func _on_net_packet_received(pkt: Dictionary) -> void:
-	var ptype = str(pkt.get("type", ""))
+	var ptype = str(pkt.get("type", pkt.get("t", "")))
 	if ptype == "room_created":
-		pvp_current_code = str(pkt.get("room_code", ""))
-		if pvp_host_code_lbl:
-			pvp_host_code_lbl.text = "MÃ: " + pvp_current_code
+		var srv_code = str(pkt.get("code", pkt.get("room_code", "")))
+		if not srv_code.is_empty():
+			pvp_current_code = srv_code
+			if pvp_host_code_lbl:
+				pvp_host_code_lbl.text = "MÃ: " + pvp_current_code
+		if pvp_status_lbl:
+			pvp_status_lbl.text = "● PHÒNG MỞ: ĐANG CHỜ ĐỐI THỦ..."
+			pvp_status_lbl.modulate = Color(0.25, 0.90, 0.55)
 	elif ptype == "char_pick":
 		pvp_opponent_char = str(pkt.get("char", "wall"))
-		pvp_opponent_name = str(pkt.get("player_name", "PLAYER 2"))
+		pvp_opponent_name = str(pkt.get("player_name", "ĐỐI THỦ"))
 	elif ptype == "match_config":
 		pvp_selected_points = int(pkt.get("pts", 11))
 		pvp_selected_sets = int(pkt.get("sets", 1))

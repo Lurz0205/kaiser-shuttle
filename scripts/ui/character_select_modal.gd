@@ -363,18 +363,18 @@ func _update_card_styles() -> void:
 		# Update button states
 		var btn_p = card.find_child("BtnPlayer", true, false) as Button
 		if btn_p:
-			btn_p.text = "[BẠN ĐANG CHỌN]" if is_p else "CHỌN CHO PLAYER"
+			btn_p.text = "ĐANG CHỌN" if is_p else "CHỌN RA SÂN"
 			btn_p.modulate = Color(0.4, 2.0, 0.6) if is_p else Color(1, 1, 1)
 			
 		var btn_r = card.find_child("BtnRival", true, false) as Button
 		if btn_r:
-			btn_r.text = "[AI ĐANG CHỌN]" if is_r else "CHỌN CHO AI"
+			btn_r.text = "ĐỐI THỦ CHỌN" if is_r else "CHỌN ĐỐI THỦ"
 			btn_r.modulate = Color(0.4, 1.5, 3.0) if is_r else Color(1, 1, 1)
 			
 	if label_matchup:
 		var p_name = CHAR_DATA[selected_player_id]["name"]
 		var r_name = CHAR_DATA[selected_rival_id]["name"]
-		label_matchup.text = "KÈO ĐẤU:  [PLAYER: %s]   VS   [AI RIVAL: %s]" % [p_name, r_name]
+		label_matchup.text = "KÈO ĐẤU:  BẠN: %s   VS   ĐỐI THỦ: %s" % [p_name, r_name]
 
 func _confirm_selection() -> void:
 	characters_confirmed.emit(selected_player_id, selected_rival_id)

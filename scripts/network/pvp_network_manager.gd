@@ -73,7 +73,7 @@ func _physics_process(delta: float) -> void:
 			if connection_timeout_timer > 8.0:
 				connection_timeout_timer = 0.0
 				disconnect_peer()
-				peer_disconnected.emit("Hết thời gian kết nối server (%s)" % server_url)
+				peer_disconnected.emit("Hết thời gian kết nối máy chủ thi đấu")
 
 		WebSocketPeer.STATE_OPEN:
 			connection_timeout_timer = 0.0
@@ -134,7 +134,7 @@ func _physics_process(delta: float) -> void:
 				is_active = false
 				last_status = "disconnected"
 				connection_status_changed.emit("disconnected")
-				peer_disconnected.emit("Server đã ngắt kết nối (Mã: %d, Lý do: %s)" % [code, reason])
+				peer_disconnected.emit("Mất kết nối với máy chủ thi đấu")
 
 func _handle_server_packet(data: Dictionary) -> void:
 	var t = str(data.get("t", ""))
@@ -149,6 +149,7 @@ func _handle_server_packet(data: Dictionary) -> void:
 			current_room = str(data.get("code", current_room))
 			last_status = "hosting"
 			connection_status_changed.emit("hosting")
+			packet_received.emit(data)
 
 		"room_joined":
 			current_room = str(data.get("code", current_room))
@@ -175,7 +176,7 @@ func _handle_server_packet(data: Dictionary) -> void:
 			peer_disconnected.emit("Đối thủ đã thoát khỏi phòng.")
 
 		"error":
-			var msg = str(data.get("msg", "Lỗi mạng server"))
+			var msg = str(data.get("msg", "Lỗi kết nối máy chủ"))
 			peer_disconnected.emit(msg)
 
 		_:
@@ -196,7 +197,19 @@ func host_room(code: String, char_id: String = "nishikawa", pts: int = 11, sets:
 	pending_sets = sets
 	connection_timeout_timer = 0.0
 
-	_connect_if_needed()
+	if ws.get_ready_state() == WebSocketPeer.STATE_OPEN:
+		pending_action = ""
+		var pkt = {
+			"t": "create_room",
+			"code": current_room,
+			"char": pending_char,
+			"name": pending_name,
+			"pts": pending_pts,
+			"sets": pending_sets
+		}
+		send_packet(pkt)
+	else:
+		_connect_if_needed()
 
 func join_room(code: String, char_id: String = "wall", player_name: String = "PLAYER") -> void:
 	is_active = true
@@ -208,7 +221,17 @@ func join_room(code: String, char_id: String = "wall", player_name: String = "PL
 	pending_name = player_name.strip_edges().to_upper() if not player_name.strip_edges().is_empty() else "PLAYER"
 	connection_timeout_timer = 0.0
 
-	_connect_if_needed()
+	if ws.get_ready_state() == WebSocketPeer.STATE_OPEN:
+		pending_action = ""
+		var pkt = {
+			"t": "join_room",
+			"code": current_room,
+			"char": pending_char,
+			"name": pending_name
+		}
+		send_packet(pkt)
+	else:
+		_connect_if_needed()
 
 func join_spectator(code: String) -> void:
 	is_active = true
@@ -218,7 +241,15 @@ func join_spectator(code: String) -> void:
 	pending_action = "spectate"
 	connection_timeout_timer = 0.0
 
-	_connect_if_needed()
+	if ws.get_ready_state() == WebSocketPeer.STATE_OPEN:
+		pending_action = ""
+		var pkt = {
+			"t": "join_spectator",
+			"code": current_room
+		}
+		send_packet(pkt)
+	else:
+		_connect_if_needed()
 
 func _connect_if_needed() -> void:
 	var state = ws.get_ready_state()
@@ -234,7 +265,7 @@ func _connect_if_needed() -> void:
 		is_active = false
 		last_status = "error"
 		connection_status_changed.emit("error")
-		peer_disconnected.emit("Không thể mở kết nối tới " + server_url)
+		peer_disconnected.emit("Không thể kết nối tới máy chủ thi đấu")
 
 func start_match(pts: int, sets: int, first_server: String = "") -> void:
 	var pkt = {
