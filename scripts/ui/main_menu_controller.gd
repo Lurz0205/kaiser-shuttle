@@ -23,6 +23,7 @@ const TEX_PADLOCK = preload("res://assets/icons/icon_padlock_gold.png")
 const TEX_COIN = preload("res://assets/icons/icon_coin_gold.png")
 const TEX_AVATAR = preload("res://assets/icons/icon_avatar_pro.png")
 const TEX_PVP = preload("res://assets/icons/icon_duel_pvp.png")
+const TEX_VS_AI = preload("res://assets/icons/icon_vs_ai.png")
 const TEX_TROPHY = preload("res://assets/icons/icon_trophy_gold.png")
 const TEX_GEAR = preload("res://assets/icons/icon_gear_silver.png")
 
@@ -336,6 +337,7 @@ func _create_tex_icon(texture: Texture2D, target_size: Vector2) -> TextureRect:
 	tr.size = target_size
 	tr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	tr.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	tr.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
 	tr.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	return tr
 
@@ -1086,7 +1088,7 @@ func _build_match_select_panel() -> void:
 	cards_row.mouse_filter = Control.MOUSE_FILTER_PASS
 	scroll.add_child(cards_row)
 	
-	# 1. PVP Card (Studio Dual Racquets Icon)
+	# 1. PVP Card (Studio ICON PVP)
 	cards_row.add_child(_create_mode_card_tex(
 		"ĐẤU ĐỐI KHÁNG TRỰC TUYẾN",
 		"TRANH HÙNG ĐỈNH CAO",
@@ -1100,11 +1102,11 @@ func _build_match_select_panel() -> void:
 			switch_state(MenuState.PVP_LOBBY)
 	))
 	
-	# 2. AI Rival Card (Studio Gold Trophy Icon)
+	# 2. AI Rival Card (Studio VS AI)
 	cards_row.add_child(_create_mode_card_tex(
 		"THỬ THÁCH ĐỐI THỦ MÁY",
 		"ĐẤU ĐƠN CỌ XÁT",
-		TEX_TROPHY,
+		TEX_VS_AI,
 		Color(1.0, 0.82, 0.25),
 		"Tập luyện và tranh tài với các đối thủ máy đa phong cách.\nTùy chỉnh độ khó Dễ, Trung Bình hoặc Đỉnh Cao.",
 		"SẴN SÀNG",
@@ -1181,7 +1183,8 @@ func _create_mode_card_tex(title: String, tag: String, tex: Texture2D, col: Colo
 	
 	var ic_stage = CenterContainer.new()
 	ic_stage.custom_minimum_size = Vector2(210, 180)
-	var icon = _create_tex_icon(tex, Vector2(84, 84))
+	var ic_size = Vector2(120, 120) if not is_locked else Vector2(84, 84)
+	var icon = _create_tex_icon(tex, ic_size)
 	ic_stage.add_child(icon)
 	v.add_child(ic_stage)
 	

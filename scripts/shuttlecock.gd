@@ -75,7 +75,7 @@ const TEX_TRAIL_MIRAGE: Texture2D = preload("res://assets/images/trails/trail_mi
 
 # Visual Trail & Ground Shadow
 var trail_points: Array[Vector2] = []
-const MAX_TRAIL: int = 26
+const MAX_TRAIL: int = 18
 var low_graphics_mode: bool = false
 
 var is_perfect: bool = false
@@ -114,14 +114,14 @@ func _ready() -> void:
 		trail.top_level = true
 		trail.clear_points()
 		var curve = Curve.new()
-		curve.add_point(Vector2(0.0, 1.0))
-		curve.add_point(Vector2(0.35, 0.85))
-		curve.add_point(Vector2(1.0, 0.08))
+		curve.add_point(Vector2(0.0, 0.55))
+		curve.add_point(Vector2(0.25, 0.85))
+		curve.add_point(Vector2(1.0, 0.05))
 		trail.width_curve = curve
-		trail.width = 22.0
+		trail.width = 18.0
 		trail.texture_mode = Line2D.LINE_TEXTURE_STRETCH
 		trail.joint_mode = Line2D.LINE_JOINT_ROUND
-		trail.begin_cap_mode = Line2D.LINE_CAP_ROUND
+		trail.begin_cap_mode = Line2D.LINE_CAP_NONE
 		trail.end_cap_mode = Line2D.LINE_CAP_ROUND
 		trail.antialiased = not OS.has_feature("web")
 		trail.texture = TEX_TRAIL_SPEED
@@ -573,31 +573,33 @@ func _update_trail_styling() -> void:
 	trail.visible = true
 	trail.clear_points()
 	trail.texture_mode = Line2D.LINE_TEXTURE_STRETCH
+	trail.begin_cap_mode = Line2D.LINE_CAP_NONE
+	trail.end_cap_mode = Line2D.LINE_CAP_ROUND
 	
 	if is_boom_smash or tension_level == 2:
 		trail.texture = TEX_TRAIL_LIGHTNING
 		trail.default_color = Color(1.2, 1.1, 0.9, 1.0)
-		trail.width = 42.0
+		trail.width = 34.0
 	elif is_tsubame_gaeshi:
 		trail.texture = TEX_TRAIL_EMERALD
 		trail.default_color = Color(1.0, 1.2, 1.0, 1.0)
-		trail.width = 36.0
+		trail.width = 30.0
 	elif is_mirage_counter:
 		trail.texture = TEX_TRAIL_MIRAGE
 		trail.default_color = Color(1.0, 1.2, 1.3, 1.0)
-		trail.width = 34.0
+		trail.width = 28.0
 	elif is_weak_return:
 		trail.texture = TEX_TRAIL_SPEED
 		trail.default_color = Color(1.0, 1.0, 1.0, 0.95)
-		trail.width = 24.0
+		trail.width = 20.0
 	elif is_smash:
 		trail.texture = TEX_TRAIL_LIGHTNING
 		trail.default_color = Color(1.2, 0.9, 0.6, 0.95)
-		trail.width = 32.0
+		trail.width = 26.0
 	else:
 		trail.texture = TEX_TRAIL_SPEED
 		trail.default_color = Color(1.0, 1.0, 1.0, 0.85)
-		trail.width = 22.0
+		trail.width = 18.0
 
 
 func _update_trail() -> void:
@@ -609,7 +611,12 @@ func _update_trail() -> void:
 		trail_points.clear()
 		return
 	trail.visible = true
-	trail_points.push_front(global_position)
+	var forward_dir = Vector2.RIGHT.rotated(rotation)
+	if velocity.length_squared() > 10.0:
+		forward_dir = velocity.normalized()
+	# Dịch điểm bắt đầu của đường cầu lui về phía sau (lông/đuôi cầu), tuyệt đối không để chườm ra trước đầu cầu
+	var trail_origin = global_position - forward_dir * 18.0
+	trail_points.push_front(trail_origin)
 	if trail_points.size() > MAX_TRAIL:
 		trail_points.pop_back()
 	
