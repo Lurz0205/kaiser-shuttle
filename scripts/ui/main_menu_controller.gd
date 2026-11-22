@@ -243,6 +243,10 @@ func switch_state(new_state: MenuState) -> void:
 		else:
 			global_bg.texture = TEX_LOBBY_BG
 	
+	if global_tint:
+		# Màn hình Title và Sảnh chờ chính giữ 100% độ sáng, sắc nét nguyên bản, không bị phủ màng mờ
+		global_tint.visible = (new_state in [MenuState.ROSTER, MenuState.SHOP, MenuState.SETTINGS, MenuState.QUESTS, MenuState.MATCH_SETUP, MenuState.PVP_LOBBY])
+	
 	# Visibility map
 	if title_panel: title_panel.visible = (new_state == MenuState.TITLE)
 	if lobby_panel: lobby_panel.visible = (new_state == MenuState.LOBBY)
@@ -358,6 +362,7 @@ func _build_ui() -> void:
 	global_tint.custom_minimum_size = Vector2(1280, 720)
 	global_tint.color = Color(0.02, 0.05, 0.10, 0.25)
 	global_tint.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	global_tint.visible = false
 	add_child(global_tint)
 	
 	# ----------------------------------------------------
