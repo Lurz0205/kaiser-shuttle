@@ -596,6 +596,7 @@ func _set_in_game_hud_visible(show: bool) -> void:
 		btn_back_to_lobby.visible = show
 		if show:
 			btn_back_to_lobby.show()
+			btn_back_to_lobby.mouse_filter = Control.MOUSE_FILTER_STOP
 			btn_back_to_lobby.anchor_left = 0.0
 			btn_back_to_lobby.anchor_top = 0.0
 			btn_back_to_lobby.anchor_right = 0.0
@@ -605,7 +606,7 @@ func _set_in_game_hud_visible(show: bool) -> void:
 			btn_back_to_lobby.offset_right = 106.0
 			btn_back_to_lobby.offset_bottom = 48.0
 			btn_back_to_lobby.custom_minimum_size = Vector2(86, 32)
-			btn_back_to_lobby.z_index = 100
+			btn_back_to_lobby.z_index = 150
 			btn_back_to_lobby.move_to_front()
 
 	# Nút CÀI ĐẶT (Góc trên bên phải, tách biệt không đè nút Fullscreen)
@@ -613,6 +614,7 @@ func _set_in_game_hud_visible(show: bool) -> void:
 		btn_settings.visible = show
 		if show:
 			btn_settings.show()
+			btn_settings.mouse_filter = Control.MOUSE_FILTER_STOP
 			btn_settings.anchor_left = 0.0
 			btn_settings.anchor_top = 0.0
 			btn_settings.anchor_right = 0.0
@@ -622,7 +624,7 @@ func _set_in_game_hud_visible(show: bool) -> void:
 			btn_settings.offset_right = 1176.0
 			btn_settings.offset_bottom = 48.0
 			btn_settings.custom_minimum_size = Vector2(88, 32)
-			btn_settings.z_index = 100
+			btn_settings.z_index = 150
 			btn_settings.move_to_front()
 
 	# Nút TOÀN MÀN HÌNH (Góc trên bên phải ngoài cùng)
@@ -630,6 +632,7 @@ func _set_in_game_hud_visible(show: bool) -> void:
 		btn_fullscreen.visible = show
 		if show:
 			btn_fullscreen.show()
+			btn_fullscreen.mouse_filter = Control.MOUSE_FILTER_STOP
 			btn_fullscreen.anchor_left = 0.0
 			btn_fullscreen.anchor_top = 0.0
 			btn_fullscreen.anchor_right = 0.0
@@ -639,7 +642,7 @@ func _set_in_game_hud_visible(show: bool) -> void:
 			btn_fullscreen.offset_right = 1264.0
 			btn_fullscreen.offset_bottom = 48.0
 			btn_fullscreen.custom_minimum_size = Vector2(76, 32)
-			btn_fullscreen.z_index = 100
+			btn_fullscreen.z_index = 150
 			btn_fullscreen.move_to_front()
 
 	if btn_char_select:
