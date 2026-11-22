@@ -56,6 +56,10 @@ var _last_viewport_size: Vector2 = Vector2.ZERO
 func _ready() -> void:
 	z_index = 150
 	mouse_filter = MOUSE_FILTER_IGNORE
+	anchor_left = 0.0
+	anchor_top = 0.0
+	anchor_right = 0.0
+	anchor_bottom = 0.0
 	custom_minimum_size = Vector2(1280, 720)
 	size = Vector2(1280, 720)
 	position = Vector2.ZERO
@@ -66,6 +70,10 @@ func set_target_player(p: BadmintonPlayer) -> void:
 	player = p
 
 func _update_layout() -> void:
+	anchor_left = 0.0
+	anchor_top = 0.0
+	anchor_right = 0.0
+	anchor_bottom = 0.0
 	custom_minimum_size = Vector2(1280, 720)
 	size = Vector2(1280, 720)
 	position = Vector2.ZERO
