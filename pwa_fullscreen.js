@@ -310,5 +310,22 @@
         return '';
     };
 
+    // -------------------------------------------------------------
+    // AudioContext Auto-Unlock (Phát nhạc ngay khi tương tác hoặc load xong)
+    // -------------------------------------------------------------
+    function unlockKaiserAudio() {
+        try {
+            var AudioCtx = window.AudioContext || window.webkitAudioContext;
+            if (AudioCtx) {
+                if (window._kaiserAudioCtx && window._kaiserAudioCtx.state === 'suspended') {
+                    window._kaiserAudioCtx.resume().catch(function() {});
+                }
+            }
+        } catch(e) {}
+    }
+    window.addEventListener('pointerdown', unlockKaiserAudio, { passive: true });
+    window.addEventListener('touchstart', unlockKaiserAudio, { passive: true });
+    window.addEventListener('keydown', unlockKaiserAudio, { passive: true });
+
     console.log('[Kaiser] High-Performance Web Runner initialized. Native RAF Active.');
 })();

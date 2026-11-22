@@ -24,7 +24,12 @@ boot_splash/bg_color=Color(0.027, 0.047, 0.086, 1)
 
 [audio]
 
+buses/default_bus_layout="res://default_bus_layout.tres"
 general/output_latency.web=50
+
+[autoload]
+
+AudioManager="*res://scripts/core/audio_manager.gd"
 
 [display]
 

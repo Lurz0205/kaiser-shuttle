@@ -133,6 +133,56 @@ var lbl_hero_name: Label
 var lbl_hero_rarity: Label
 var lbl_hero_passive: Label
 
+# Mini Music Player & Vinyl Disc Widgets
+var mini_player_panel: Control = null
+var vinyl_disc_ctrl: VinylDiscControl = null
+var mini_player_title_lbl: Label = null
+var mini_player_artist_lbl: Label = null
+var mini_player_btn_play: Button = null
+
+class VinylDiscControl extends Control:
+	var rotation_angle: float = 0.0
+	var is_spinning: bool = false
+	
+	func _ready() -> void:
+		custom_minimum_size = Vector2(48, 48)
+		mouse_filter = Control.MOUSE_FILTER_IGNORE
+	
+	func _process(delta: float) -> void:
+		if is_spinning:
+			rotation_angle = wrapf(rotation_angle + delta * 2.8, 0.0, TAU)
+			queue_redraw()
+	
+	func set_spinning(spinning: bool) -> void:
+		is_spinning = spinning
+		queue_redraw()
+		
+	func _draw() -> void:
+		var center = size * 0.5
+		var radius = min(size.x, size.y) * 0.46
+		
+		# Outer vinyl edge
+		draw_circle(center, radius, Color(0.08, 0.08, 0.10, 1.0))
+		draw_arc(center, radius, 0.0, TAU, 36, Color(0.24, 0.27, 0.32, 0.9), 1.2, true)
+		
+		# Micro-groove rings
+		draw_arc(center, radius * 0.82, 0.0, TAU, 32, Color(0.18, 0.20, 0.25, 0.7), 1.0, true)
+		draw_arc(center, radius * 0.68, 0.0, TAU, 32, Color(0.16, 0.18, 0.23, 0.7), 1.0, true)
+		draw_arc(center, radius * 0.54, 0.0, TAU, 32, Color(0.20, 0.22, 0.27, 0.7), 1.0, true)
+		
+		# Center record label
+		draw_circle(center, radius * 0.38, Color(1.0, 0.82, 0.25, 0.95))
+		draw_arc(center, radius * 0.38, 0.0, TAU, 24, Color(0.85, 0.65, 0.15, 1.0), 1.0, true)
+		
+		# Spindle hole
+		draw_circle(center, radius * 0.12, Color(0.04, 0.04, 0.05, 1.0))
+		
+		# Spinning sheen reflection lines
+		var v1 = Vector2.from_angle(rotation_angle) * (radius * 0.90)
+		var v2 = Vector2.from_angle(rotation_angle + PI) * (radius * 0.90)
+		draw_line(center + v1 * 0.42, center + v1, Color(1.0, 1.0, 1.0, 0.22), 2.0, true)
+		draw_line(center + v2 * 0.42, center + v2, Color(1.0, 1.0, 1.0, 0.22), 2.0, true)
+
 # Setup UI nodes
 var card_nodes: Dictionary = {}
 var label_matchup_summary: Label
@@ -237,6 +287,9 @@ func _ready() -> void:
 		""")
 	
 	_build_ui()
+	var am = _get_audio()
+	if am:
+		am.ensure_music_playing()
 	switch_state(MenuState.TITLE)
 
 func _process(delta: float) -> void:
@@ -255,6 +308,15 @@ func _process(delta: float) -> void:
 		if _hero_standee_material:
 			_hero_standee_material.set_shader_parameter("breath_time", _standee_breath_timer)
 				
+	# PVP Host start button dynamic verification & synchronization
+	if pvp_panel and pvp_panel.visible:
+		if pvp_is_host and pvp_is_connected and not pvp_is_counting_down:
+			if btn_pvp_start and btn_pvp_start.disabled:
+				btn_pvp_start.disabled = false
+		elif not pvp_is_counting_down and (not pvp_is_host or not pvp_is_connected):
+			if btn_pvp_start and not btn_pvp_start.disabled:
+				btn_pvp_start.disabled = true
+
 	if pvp_is_counting_down:
 		pvp_countdown_timer -= delta
 		if pvp_countdown_timer > 0.0:
@@ -748,6 +810,9 @@ func _build_title_panel() -> void:
 	var btn_start_any = _create_clean_button("▶  CHẠM HOẶC NHẤN PHÍM BẤT KỲ ĐỂ VÀO SẢNH", Color(1.0, 0.85, 0.25), Vector2(460, 50), 15)
 	btn_start_any.pressed.connect(func():
 		if Time.get_ticks_msec() < _state_switch_cooldown_until: return
+		var am = _get_audio()
+		if am:
+			am.ensure_music_playing()
 		switch_state(MenuState.LOBBY)
 	)
 	var b_row = HBoxContainer.new()
@@ -759,6 +824,9 @@ func _unhandled_input(event: InputEvent) -> void:
 	if current_state == MenuState.TITLE and visible:
 		if (event is InputEventKey and event.pressed) or (event is InputEventScreenTouch and event.pressed) or (event is InputEventMouseButton and event.pressed):
 			if Time.get_ticks_msec() >= _state_switch_cooldown_until:
+				var am = _get_audio()
+				if am:
+					am.ensure_music_playing()
 				switch_state(MenuState.LOBBY)
 				get_viewport().set_input_as_handled()
 
@@ -919,6 +987,10 @@ void vertex() {
 	
 	var daily_card = _create_widget_card("ĐIỂM DANH HÀNG NGÀY", "Chuỗi điểm danh: 6 ngày\nNhận 500 Vàng + Quà BWF!", Color(0.30, 0.92, 0.65))
 	left_col.add_child(daily_card)
+	
+	# Mini Music Player with Rotating Vinyl Disc (Góc dưới bên trái sảnh chờ)
+	mini_player_panel = _build_mini_player()
+	lobby_panel.add_child(mini_player_panel)
 	
 	# Bottom Right Call to Action: [ CHIÊU MỘ ] & [ TRẬN ĐẤU ] (Dịch chuyển xuống dưới sát thanh đáy)
 	var cta_box = VBoxContainer.new()
@@ -2071,6 +2143,137 @@ func _build_settings_panel() -> void:
 	p_gfx.visible = false
 	p_acc.visible = false
 
+# ==========================================================
+# MINI MUSIC PLAYER (Vinyl Disc & Track Controller)
+# ==========================================================
+func _get_audio() -> Node:
+	if has_node("/root/AudioManager"):
+		return get_node("/root/AudioManager")
+	return null
+
+func _build_mini_player() -> Control:
+	var p = PanelContainer.new()
+	p.name = "MiniMusicPlayer"
+	p.custom_minimum_size = Vector2(280, 64)
+	p.position = Vector2(30, 618)
+	p.mouse_filter = Control.MOUSE_FILTER_PASS
+	
+	var sb = StyleBoxFlat.new()
+	sb.bg_color = Color(0.08, 0.11, 0.16, 0.92)
+	sb.border_width_left = 1
+	sb.border_width_top = 1
+	sb.border_width_right = 1
+	sb.border_width_bottom = 1
+	sb.border_color = Color(1.0, 0.82, 0.25, 0.40)
+	sb.corner_radius_top_left = 8
+	sb.corner_radius_top_right = 8
+	sb.corner_radius_bottom_right = 8
+	sb.corner_radius_bottom_left = 8
+	p.add_theme_stylebox_override("panel", sb)
+	
+	var margin = MarginContainer.new()
+	margin.add_theme_constant_override("margin_left", 8)
+	margin.add_theme_constant_override("margin_top", 6)
+	margin.add_theme_constant_override("margin_right", 8)
+	margin.add_theme_constant_override("margin_bottom", 6)
+	margin.mouse_filter = Control.MOUSE_FILTER_PASS
+	p.add_child(margin)
+	
+	var row = HBoxContainer.new()
+	row.alignment = BoxContainer.ALIGNMENT_BEGIN
+	row.add_theme_constant_override("separation", 10)
+	row.mouse_filter = Control.MOUSE_FILTER_PASS
+	margin.add_child(row)
+	
+	vinyl_disc_ctrl = VinylDiscControl.new()
+	vinyl_disc_ctrl.custom_minimum_size = Vector2(48, 48)
+	row.add_child(vinyl_disc_ctrl)
+	
+	var info_vbox = VBoxContainer.new()
+	info_vbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	info_vbox.alignment = BoxContainer.ALIGNMENT_CENTER
+	info_vbox.add_theme_constant_override("separation", 2)
+	info_vbox.mouse_filter = Control.MOUSE_FILTER_PASS
+	row.add_child(info_vbox)
+	
+	mini_player_title_lbl = Label.new()
+	mini_player_title_lbl.text = "Tokyo 2020: Badminton"
+	mini_player_title_lbl.add_theme_font_size_override("font_size", 11)
+	mini_player_title_lbl.modulate = Color(1.0, 0.85, 0.30)
+	mini_player_title_lbl.clip_text = true
+	info_vbox.add_child(mini_player_title_lbl)
+	
+	mini_player_artist_lbl = Label.new()
+	mini_player_artist_lbl.text = "Sonic Olympic Games OST"
+	mini_player_artist_lbl.add_theme_font_size_override("font_size", 9)
+	mini_player_artist_lbl.modulate = Color(0.70, 0.78, 0.90)
+	mini_player_artist_lbl.clip_text = true
+	info_vbox.add_child(mini_player_artist_lbl)
+	
+	var ctrl_row = HBoxContainer.new()
+	ctrl_row.add_theme_constant_override("separation", 6)
+	ctrl_row.mouse_filter = Control.MOUSE_FILTER_PASS
+	info_vbox.add_child(ctrl_row)
+	
+	var btn_prev = _create_clean_button("‹", Color(0.7, 0.75, 0.85), Vector2(24, 20), 10)
+	btn_prev.pressed.connect(func():
+		var am = _get_audio()
+		if am:
+			am.prev_track()
+	)
+	ctrl_row.add_child(btn_prev)
+	
+	mini_player_btn_play = _create_clean_button("❚❚", Color(1.0, 0.82, 0.25), Vector2(30, 20), 10)
+	mini_player_btn_play.pressed.connect(func():
+		var am = _get_audio()
+		if am:
+			am.toggle_play_pause()
+	)
+	ctrl_row.add_child(mini_player_btn_play)
+	
+	var btn_next = _create_clean_button("›", Color(0.7, 0.75, 0.85), Vector2(24, 20), 10)
+	btn_next.pressed.connect(func():
+		var am = _get_audio()
+		if am:
+			am.next_track()
+	)
+	ctrl_row.add_child(btn_next)
+	
+	# Connect to AudioManager signals
+	var am = _get_audio()
+	if am:
+		am.track_changed.connect(_on_audio_track_changed)
+		am.playback_state_changed.connect(_on_audio_playback_state_changed)
+		_update_mini_player_ui()
+		
+	return p
+
+func _on_audio_track_changed(_idx: int, track_info: Dictionary) -> void:
+	if mini_player_title_lbl:
+		mini_player_title_lbl.text = str(track_info.get("title", ""))
+	if mini_player_artist_lbl:
+		mini_player_artist_lbl.text = str(track_info.get("artist", ""))
+
+func _on_audio_playback_state_changed(playing: bool) -> void:
+	if mini_player_btn_play:
+		mini_player_btn_play.text = "❚❚" if playing else "▶"
+	if vinyl_disc_ctrl:
+		vinyl_disc_ctrl.set_spinning(playing)
+
+func _update_mini_player_ui() -> void:
+	var am = _get_audio()
+	if not am: return
+	var cur_idx = am.current_track_idx
+	if cur_idx >= 0 and cur_idx < am.PLAYLIST.size():
+		var t = am.PLAYLIST[cur_idx]
+		if mini_player_title_lbl: mini_player_title_lbl.text = str(t.get("title", ""))
+		if mini_player_artist_lbl: mini_player_artist_lbl.text = str(t.get("artist", ""))
+	var is_act = (am.is_playing and am.bgm_player and am.bgm_player.playing)
+	if mini_player_btn_play:
+		mini_player_btn_play.text = "❚❚" if is_act else "▶"
+	if vinyl_disc_ctrl:
+		vinyl_disc_ctrl.set_spinning(is_act)
+
 func _build_settings_audio_tab() -> VBoxContainer:
 	var v = VBoxContainer.new()
 	v.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -2083,15 +2286,54 @@ func _build_settings_audio_tab() -> VBoxContainer:
 	t.modulate = Color(1.0, 0.85, 0.3)
 	v.add_child(t)
 	
-	v.add_child(_create_stepped_volume_row("Âm lượng tổng:", 5, func(val): pass))
-	
-	var bgm_cur_step = int(round(bgm_match_volume * 5.0))
-	v.add_child(_create_stepped_volume_row("Nhạc nền trong trận:", bgm_cur_step, func(step):
-		bgm_match_volume = float(step) / 5.0
-		bgm_match_enabled = (step > 0)
-		settings_updated.emit(squeak_enabled, bgm_match_enabled, bgm_match_volume, low_graphics_mode)
+	var am = _get_audio()
+	# 1. Âm lượng hệ thống (Master)
+	var cur_master = am.master_step if am else 5
+	v.add_child(_create_stepped_volume_row("Âm lượng hệ thống (Toàn bộ game):", cur_master, func(step):
+		var cur_am = _get_audio()
+		if cur_am:
+			cur_am.set_master_step(step)
 	))
 	
+	# 2. Nhạc nền (Music - sảnh + trận đấu)
+	var cur_music = am.music_step if am else 4
+	v.add_child(_create_stepped_volume_row("Nhạc nền (Sảnh & Trận đấu):", cur_music, func(step):
+		var cur_am = _get_audio()
+		if cur_am:
+			cur_am.set_music_step(step)
+	))
+	
+	# 3. Hiệu ứng âm thanh (SFX)
+	var cur_sfx = am.sfx_step if am else 5
+	v.add_child(_create_stepped_volume_row("Hiệu ứng âm thanh (Đập cầu, rít giày...):", cur_sfx, func(step):
+		var cur_am = _get_audio()
+		if cur_am:
+			cur_am.set_sfx_step(step)
+	))
+	
+	# 4. Tùy chọn Tắt nhạc nền trong trận đấu
+	var match_bgm_row = HBoxContainer.new()
+	match_bgm_row.mouse_filter = Control.MOUSE_FILTER_PASS
+	var match_bgm_lbl = Label.new()
+	match_bgm_lbl.text = "Nhạc nền trong trận đấu:"
+	match_bgm_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	match_bgm_lbl.add_theme_font_size_override("font_size", 13)
+	match_bgm_row.add_child(match_bgm_lbl)
+	
+	var is_match_bgm = am.bgm_match_enabled if am else true
+	var btn_match_bgm = _create_clean_button("BẬT" if is_match_bgm else "TẮT", Color(0.3, 0.9, 0.4) if is_match_bgm else Color(0.7, 0.7, 0.7), Vector2(90, 32), 12)
+	btn_match_bgm.pressed.connect(func():
+		var cur_am = _get_audio()
+		if cur_am:
+			var new_val = not cur_am.bgm_match_enabled
+			cur_am.set_bgm_match_enabled(new_val)
+			btn_match_bgm.text = "BẬT" if new_val else "TẮT"
+			btn_match_bgm.modulate = Color(0.3, 0.9, 0.4) if new_val else Color(0.7, 0.7, 0.7)
+	)
+	match_bgm_row.add_child(btn_match_bgm)
+	v.add_child(match_bgm_row)
+	
+	# 5. Tiếng rít giày sàn đấu
 	var sq_row = HBoxContainer.new()
 	sq_row.mouse_filter = Control.MOUSE_FILTER_PASS
 	var sq_lbl = Label.new()
@@ -2100,12 +2342,18 @@ func _build_settings_audio_tab() -> VBoxContainer:
 	sq_lbl.add_theme_font_size_override("font_size", 13)
 	sq_row.add_child(sq_lbl)
 	
-	var btn_sq = _create_clean_button("BẬT", Color(0.3, 0.9, 0.4), Vector2(90, 32), 12)
+	var is_sq = am.squeak_enabled if am else squeak_enabled
+	var btn_sq = _create_clean_button("BẬT" if is_sq else "TẮT", Color(0.3, 0.9, 0.4) if is_sq else Color(0.7, 0.7, 0.7), Vector2(90, 32), 12)
 	btn_sq.pressed.connect(func():
 		squeak_enabled = not squeak_enabled
+		var cur_am = _get_audio()
+		if cur_am:
+			cur_am.squeak_enabled = squeak_enabled
 		btn_sq.text = "BẬT" if squeak_enabled else "TẮT"
 		btn_sq.modulate = Color(0.3, 0.9, 0.4) if squeak_enabled else Color(0.7, 0.7, 0.7)
-		settings_updated.emit(squeak_enabled, bgm_match_enabled, bgm_match_volume, low_graphics_mode)
+		var bgm_en = cur_am.bgm_match_enabled if cur_am else true
+		var bgm_vol = cur_am.step_to_linear(cur_am.music_step) if cur_am else 1.0
+		settings_updated.emit(squeak_enabled, bgm_en, bgm_vol, low_graphics_mode)
 	)
 	sq_row.add_child(btn_sq)
 	v.add_child(sq_row)
@@ -2408,6 +2656,12 @@ func _create_clean_button(text: String, col: Color, min_size: Vector2, font_size
 	sb_pressed.bg_color = Color(0.20, 0.28, 0.40, 1.0)
 	b.add_theme_stylebox_override("pressed", sb_pressed)
 	
+	var sb_disabled = sb_normal.duplicate()
+	sb_disabled.bg_color = Color(0.08, 0.10, 0.14, 0.6)
+	sb_disabled.border_color = Color(0.3, 0.35, 0.45, 0.4)
+	b.add_theme_stylebox_override("disabled", sb_disabled)
+	b.add_theme_color_override("font_disabled_color", Color(0.45, 0.50, 0.60, 0.7))
+	
 	return b
 
 # ==========================================================
@@ -2699,8 +2953,10 @@ func _on_net_status_changed(status: String) -> void:
 		else:
 			pvp_status_lbl.text = "● " + st_upper
 
-func _on_net_peer_connected(is_opponent: bool = true, _room_code: String = "") -> void:
+func _on_net_peer_connected(is_host_arg: bool = true, _room_code: String = "") -> void:
 	pvp_is_connected = true
+	if is_host_arg:
+		pvp_is_host = true
 	if pvp_is_host and btn_pvp_start:
 		btn_pvp_start.disabled = false
 	if not pvp_opponent_name.is_empty() and pvp_opponent_name != "PLAYER 2" and pvp_opponent_name != "ĐỐI THỦ":

@@ -332,7 +332,7 @@ func _ready() -> void:
 		(amb_stream as AudioStreamWAV).loop_mode = AudioStreamWAV.LOOP_FORWARD
 	amb_player.stream = amb_stream
 	amb_player.volume_db = -14.0
-	amb_player.bus = "Master"
+	amb_player.bus = "SFX"
 	add_child(amb_player)
 	amb_player.play()
 	
@@ -553,12 +553,10 @@ func _ready() -> void:
 	# Khử toàn bộ keyboard/space focus trên mọi nút bấm
 	_strip_keyboard_focus($HUD)
 		
-	# Phát nhạc nền sảnh chờ BWF Li-Ning
-	if bgm_lobby:
-		if bgm_lobby.stream is AudioStreamOggVorbis:
-			(bgm_lobby.stream as AudioStreamOggVorbis).loop = true
-		bgm_lobby.volume_db = -3.0
-		bgm_lobby.play()
+	# Khởi động phát nhạc từ AudioManager
+	var am = _get_audio()
+	if am:
+		am.ensure_music_playing()
 		
 	# Mở Main Menu ngay khi vào game và ẩn toàn bộ in-game HUD
 	_set_in_game_hud_visible(false)
@@ -1764,37 +1762,22 @@ func _update_settings_ui() -> void:
 		floor_refl.visible = (not low_graphics_mode) and (not OS.has_feature("web"))
 
 
-func _apply_match_bgm(restart_from_beginning: bool = false) -> void:
-	if not bgm_lobby:
-		return
-	if bgm_match_enabled:
-		var target_db = linear_to_db(clamp(bgm_match_volume, 0.001, 1.0))
-		bgm_lobby.volume_db = target_db
-		if restart_from_beginning or not bgm_lobby.playing:
-			bgm_lobby.play(0.0)
-		else:
-			var tw = create_tween()
-			tw.tween_property(bgm_lobby, "volume_db", target_db, 0.5)
-	else:
-		if bgm_lobby.playing:
-			var tw = create_tween()
-			tw.tween_property(bgm_lobby, "volume_db", -40.0, 0.5)
-			tw.finished.connect(func():
-				if bgm_lobby and not bgm_match_enabled:
-					bgm_lobby.stop()
-			)
+func _get_audio() -> Node:
+	if has_node("/root/AudioManager"):
+		return get_node("/root/AudioManager")
+	return null
+
+
+func _apply_match_bgm(_restart_from_beginning: bool = false) -> void:
+	var am = _get_audio()
+	if am:
+		am.on_enter_match()
 
 
 func _apply_menu_bgm() -> void:
-	if not bgm_lobby:
-		return
-	var target_db = -3.0
-	if not bgm_lobby.playing:
-		bgm_lobby.volume_db = target_db
-		bgm_lobby.play()
-	else:
-		var tw = create_tween()
-		tw.tween_property(bgm_lobby, "volume_db", target_db, 0.5)
+	var am = _get_audio()
+	if am:
+		am.on_leave_match()
 
 
 func _update_difficulty_buttons() -> void:

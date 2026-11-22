@@ -554,43 +554,54 @@ script = ExtResource("19_main_menu")
 [node name="SFXSmash" type="AudioStreamPlayer" parent="Audio"]
 stream = ExtResource("5_smash")
 volume_db = 4.5
+bus = &"SFX"
 
 [node name="SFXPong" type="AudioStreamPlayer" parent="Audio"]
 stream = ExtResource("6_phong")
 volume_db = 5.5
+bus = &"SFX"
 
 [node name="SFXSqueak" type="AudioStreamPlayer" parent="Audio"]
 stream = ExtResource("7_squeak")
 volume_db = 2.0
+bus = &"SFX"
 
 [node name="SFXElectric" type="AudioStreamPlayer" parent="Audio"]
 stream = ExtResource("10_electric")
 volume_db = 3.5
+bus = &"SFX"
 
 [node name="SFXIsabelBlock" type="AudioStreamPlayer" parent="Audio"]
 stream = ExtResource("11_isabel_block")
 volume_db = 5.0
+bus = &"SFX"
 
 [node name="SFXString" type="AudioStreamPlayer" parent="Audio"]
 stream = ExtResource("12_string")
 volume_db = 4.5
+bus = &"SFX"
 
 [node name="SFXFujiWind" type="AudioStreamPlayer" parent="Audio"]
 stream = ExtResource("13_fuji_wind")
 volume_db = 4.0
+bus = &"SFX"
 
 [node name="SFXChem" type="AudioStreamPlayer" parent="Audio"]
 stream = ExtResource("14_chem_cau")
 volume_db = 6.8
+bus = &"SFX"
 
 [node name="SFXIsabelSlowmo" type="AudioStreamPlayer" parent="Audio"]
 stream = ExtResource("15_isabel_slowmo")
 volume_db = 4.0
+bus = &"SFX"
 
 [node name="SFXLowBallPlay" type="AudioStreamPlayer" parent="Audio"]
 stream = ExtResource("16_low_ball_play")
 volume_db = 5.0
+bus = &"SFX"
 
 [node name="BGMLobby" type="AudioStreamPlayer" parent="Audio"]
 stream = ExtResource("17_lobby_theme")
 volume_db = -3.0
+bus = &"Music"
