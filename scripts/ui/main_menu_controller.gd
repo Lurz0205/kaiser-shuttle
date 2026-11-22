@@ -524,30 +524,51 @@ func _build_ui() -> void:
 func _open_room_input_modal() -> void:
 	if OS.has_feature("web"):
 		var cur_code = pvp_room_input.text.strip_edges() if pvp_room_input else ""
-		JavaScriptBridge.eval("window.kaiserOpenInputModal('NHẬP MÃ PHÒNG (4-6 KÝ TỰ)', '%s', 8, 'code')" % cur_code)
+		var res = JavaScriptBridge.eval("window.prompt('NHẬP MÃ PHÒNG PVP (4-6 KÝ TỰ):', '%s')" % cur_code)
+		if res != null and str(res) != "null":
+			var clean = str(res).strip_edges().to_upper()
+			if not clean.is_empty():
+				if pvp_room_input:
+					pvp_room_input.text = clean.substr(0, 8)
+				pvp_current_code = clean.substr(0, 8)
+				JavaScriptBridge.eval("window._kaiserRoomCode = '%s'" % pvp_current_code)
 	elif pvp_room_input:
 		DisplayServer.virtual_keyboard_show(pvp_room_input.text)
 
 func _open_name_input_modal() -> void:
 	if OS.has_feature("web"):
-		JavaScriptBridge.eval("window.kaiserOpenInputModal('ĐỔI TÊN NGƯỜI CHƠI', '%s', 16, 'name')" % pvp_player_name)
+		var res = JavaScriptBridge.eval("window.prompt('NHẬP TÊN NGƯỜI CHƠI (Tối đa 16 ký tự):', '%s')" % pvp_player_name)
+		if res != null and str(res) != "null":
+			var clean = str(res).strip_edges()
+			if not clean.is_empty():
+				pvp_player_name = clean.substr(0, 16)
+				_save_player_name(pvp_player_name)
+				if top_name_input:
+					top_name_input.text = pvp_player_name
+				if pvp_name_input:
+					pvp_name_input.text = pvp_player_name
+				JavaScriptBridge.eval("window._kaiserPlayerName = '%s'" % pvp_player_name)
 	elif top_name_input:
 		DisplayServer.virtual_keyboard_show(top_name_input.text)
 
 func _paste_room_code() -> void:
 	if OS.has_feature("web"):
-		JavaScriptBridge.eval("""
-			(async function() {
-				var txt = await window.kaiserReadClipboard();
-				if (txt && txt.trim()) {
-					window._kaiserRoomCode = txt.trim().toUpperCase().slice(0, 8);
-					window._kaiserCodeUpdated = true;
-				}
+		var clip = str(JavaScriptBridge.eval("""
+			(function() {
+				var res = window.prompt('DÁN HOẶC NHẬP MÃ PHÒNG (4-6 KÝ TỰ):', '');
+				return res || '';
 			})()
-		""")
-	var clip = DisplayServer.clipboard_get().strip_edges().to_upper()
-	if not clip.is_empty() and pvp_room_input:
-		pvp_room_input.text = clip.substr(0, 8)
+		""")).strip_edges().to_upper()
+		if not clip.is_empty() and clip != "NULL":
+			if pvp_room_input:
+				pvp_room_input.text = clip.substr(0, 8)
+			pvp_current_code = clip.substr(0, 8)
+			JavaScriptBridge.eval("window._kaiserRoomCode = '%s'" % pvp_current_code)
+			return
+	var clip_sys = DisplayServer.clipboard_get().strip_edges().to_upper()
+	if not clip_sys.is_empty() and pvp_room_input:
+		pvp_room_input.text = clip_sys.substr(0, 8)
+		pvp_current_code = clip_sys.substr(0, 8)
 
 # ==========================================================
 # 1. TOP BAR COMPONENT (Z-INDEX 100, CLICK-THROUGH PROOF)

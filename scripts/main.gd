@@ -139,6 +139,21 @@ var pvp_net_sync_timer: float = 0.0
 const PVP_NET_TICK_RATE: float = 30.0 # 30 Hz fixed network tick rate for optimal WebSocket TCP throughput
 const PVP_NET_SYNC_INTERVAL: float = 1.0 / PVP_NET_TICK_RATE # ~0.0333s
 
+func _get_p1_display_name() -> String:
+	if not pvp_local_player_name.strip_edges().is_empty():
+		return pvp_local_player_name.strip_edges().to_upper()
+	return "PLAYER"
+
+func _get_p2_display_name() -> String:
+	if is_pvp_active:
+		if not pvp_opponent_player_name.strip_edges().is_empty():
+			return pvp_opponent_player_name.strip_edges().to_upper()
+		return "ĐỐI THỦ"
+	else:
+		if ai_rival and ai_rival.stats and not ai_rival.stats.character_name.is_empty():
+			return "AI " + ai_rival.stats.character_name.to_upper()
+		return "RIVAL AI"
+
 @onready var btn_settings: Button = $HUD/BtnSettings
 @onready var settings_panel: PanelContainer = $HUD/SettingsPanel
 @onready var btn_close_settings: Button = $HUD/SettingsPanel/VBox/Header/BtnClose
@@ -845,6 +860,9 @@ func _toggle_character_select() -> void:
 
 
 func _on_menu_start_match(p_id: String, r_id: String, diff: int, target_points: int = 11, match_sets: int = 1) -> void:
+	is_pvp_active = false
+	if main_menu and not main_menu.pvp_player_name.is_empty():
+		pvp_local_player_name = main_menu.pvp_player_name.strip_edges().to_upper()
 	target_match_points = target_points
 	total_match_sets = match_sets
 	current_set_index = 0
@@ -1403,9 +1421,9 @@ func _on_network_packet_received(data: Dictionary) -> void:
 				)
 			_update_scoreboard()
 			if winner == "player":
-				_show_banner("ĐIỂM CHO BẠN! - " + reason, Color(0.2, 1.0, 0.4), true, 1.5)
+				_show_banner("ĐIỂM CHO %s! - %s" % [_get_p1_display_name(), reason], Color(0.2, 1.0, 0.4), true, 1.5)
 			else:
-				_show_banner("ĐIỂM ĐỐI THỦ! - " + reason, Color(1.0, 0.4, 0.4), true, 1.5)
+				_show_banner("ĐIỂM CHO %s! - %s" % [_get_p2_display_name(), reason], Color(1.0, 0.4, 0.4), true, 1.5)
 				
 			get_tree().create_timer(1.8).timeout.connect(func():
 				if is_pvp_active:
@@ -1414,7 +1432,7 @@ func _on_network_packet_received(data: Dictionary) -> void:
 
 		"match_over_update":
 			var winner = str(data.get("winner", "ai"))
-			var champ = "BẠN" if winner == "player" else "ĐỐI THỦ"
+			var champ = _get_p1_display_name() if winner == "player" else _get_p2_display_name()
 			_show_match_over_dialog(champ)
 
 		"countdown_start":
@@ -2956,25 +2974,25 @@ func _confirm_shuttlecock_landed(pos: Vector2, p_is_serve: bool = false) -> void
 				_show_landing_callout(pos, "FAULT", "CHƯA QUA VẠCH")
 			elif pos.x > RIGHT_OUT_X:
 				point_winner = "ai"
-				reason = "GIAO CẦU NGOÀI BIÊN! ĐIỂM CHO RIVAL AI"
+				reason = "GIAO CẦU NGOÀI BIÊN! ĐIỂM CHO %s" % _get_p2_display_name()
 				_show_landing_callout(pos, "OUT", "NGOÀI SÂN")
 			else:
 				point_winner = "player"
-				reason = "ACE! ĐIỂM GIAO CẦU CHO PLAYER!"
+				reason = "ACE! ĐIỂM GIAO CẦU CHO %s!" % _get_p1_display_name()
 				_show_landing_callout(pos, "IN", "+1 POINT")
 		else:
 			# AI phát cầu: phải qua vạch SHORT_SERVICE_LEFT (495px) và không ra ngoài
 			if pos.x > SHORT_SERVICE_LEFT:
 				point_winner = "player"
-				reason = "GIAO CẦU CHƯA QUA VẠCH! ĐIỂM CHO PLAYER"
+				reason = "GIAO CẦU CHƯA QUA VẠCH! ĐIỂM CHO %s" % _get_p1_display_name()
 				_show_landing_callout(pos, "FAULT", "CHƯA QUA VẠCH")
 			elif pos.x < LEFT_OUT_X:
 				point_winner = "player"
-				reason = "GIAO CẦU NGOÀI BIÊN! ĐIỂM CHO PLAYER"
+				reason = "GIAO CẦU NGOÀI BIÊN! ĐIỂM CHO %s" % _get_p1_display_name()
 				_show_landing_callout(pos, "OUT", "NGOÀI SÂN")
 			else:
 				point_winner = "ai"
-				reason = "ACE! ĐIỂM GIAO CẦU CHO RIVAL AI!"
+				reason = "ACE! ĐIỂM GIAO CẦU CHO %s!" % _get_p2_display_name()
 				_show_landing_callout(pos, "IN", "+1 POINT")
 		
 		_award_point(point_winner, reason)
@@ -2985,27 +3003,27 @@ func _confirm_shuttlecock_landed(pos: Vector2, p_is_serve: bool = false) -> void
 		_show_landing_callout(pos, "FAULT", "CHƯA QUA LƯỚI")
 		if shuttlecock and shuttlecock.last_hitter == "player":
 			point_winner = "ai"
-			reason = "CẦU KHÔNG QUA LƯỚI! ĐIỂM CHO RIVAL AI"
+			reason = "CẦU KHÔNG QUA LƯỚI! ĐIỂM CHO %s" % _get_p2_display_name()
 		else:
 			point_winner = "player"
-			reason = "CẦU KHÔNG QUA LƯỚI! ĐIỂM CHO PLAYER"
+			reason = "CẦU KHÔNG QUA LƯỚI! ĐIỂM CHO %s" % _get_p1_display_name()
 	elif pos.x < LEFT_OUT_X or pos.x > RIGHT_OUT_X:
 		_show_landing_callout(pos, "OUT", "NGOÀI SÂN")
 		if shuttlecock and shuttlecock.last_hitter == "player":
 			point_winner = "ai"
-			reason = "NGOÀI BIÊN! ĐIỂM CHO RIVAL AI"
+			reason = "NGOÀI BIÊN! ĐIỂM CHO %s" % _get_p2_display_name()
 		else:
 			point_winner = "player"
-			reason = "NGOÀI BIÊN! ĐIỂM CHO PLAYER"
+			reason = "NGOÀI BIÊN! ĐIỂM CHO %s" % _get_p1_display_name()
 	else:
 		# In court
 		_show_landing_callout(pos, "IN", "+1 POINT")
 		if pos.x < NET_X:
 			point_winner = "ai"
-			reason = "ĐIỂM CHO RIVAL AI!"
+			reason = "ĐIỂM CHO %s!" % _get_p2_display_name()
 		else:
 			point_winner = "player"
-			reason = "ĐIỂM CHO PLAYER!"
+			reason = "ĐIỂM CHO %s!" % _get_p1_display_name()
 	
 	_award_point(point_winner, reason)
 
@@ -3032,7 +3050,7 @@ func _on_shuttlecock_hit_net() -> void:
 		current_state = MatchState.POINT_OVER
 		is_point_transition_active = true
 		var winner = "ai" if current_server == "player" else "player"
-		_award_point(winner, "GIAO CẦU MẮC LƯỚI! ĐIỂM CHO %s" % ("RIVAL" if winner == "ai" else "PLAYER"))
+		_award_point(winner, "GIAO CẦU MẮC LƯỚI! ĐIỂM CHO %s" % (_get_p2_display_name() if winner == "ai" else _get_p1_display_name()))
 		return
 	
 	get_tree().create_timer(0.35).timeout.connect(func():
@@ -3043,7 +3061,7 @@ func _on_shuttlecock_hit_net() -> void:
 				current_state = MatchState.POINT_OVER
 				is_point_transition_active = true
 				var winner = "ai" if hitter == "player" else "player"
-				_award_point(winner, "LỖI LƯỚI! ĐIỂM CHO %s" % ("RIVAL AI" if winner == "ai" else "PLAYER"))
+				_award_point(winner, "LỖI LƯỚI! ĐIỂM CHO %s" % (_get_p2_display_name() if winner == "ai" else _get_p1_display_name()))
 	)
 
 
@@ -3099,9 +3117,7 @@ func _award_point(winner: String, reason: String) -> void:
 				is_match_over = true
 				
 		if is_match_over:
-			var champ = "BẠN" if sets_won_player > sets_won_ai else "ĐỐI THỦ"
-			if not is_pvp_active:
-				champ = "PLAYER" if sets_won_player > sets_won_ai else "RIVAL AI"
+			var champ = _get_p1_display_name() if sets_won_player > sets_won_ai else _get_p2_display_name()
 			if is_pvp_active and net_manager:
 				net_manager.send_packet({
 					"t": "score",
@@ -3300,7 +3316,7 @@ func _show_match_over_dialog(champ: String) -> void:
 	
 	if lbl_title:
 		lbl_title.text = "[ %s CHIẾN THẮNG TRẬN ĐẤU! ]" % champ
-		lbl_title.modulate = Color(0.35, 2.0, 0.6) if champ == "PLAYER" else Color(2.0, 0.45, 0.45)
+		lbl_title.modulate = Color(0.35, 2.0, 0.6) if (champ == _get_p1_display_name()) else Color(2.0, 0.45, 0.45)
 	if lbl_score_res:
 		if total_match_sets == 1:
 			lbl_score_res.text = "%d   -   %d" % [score_player, score_ai]
