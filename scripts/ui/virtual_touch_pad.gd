@@ -72,17 +72,17 @@ func _update_layout() -> void:
 	
 	# Safe area padding tren khung co dinh 1280x720
 	# Dịch nút di chuyển qua bên phải và lên trên 1 chút theo yêu cầu
-	var track_left: float = 75.0 # Dịch qua bên phải (trước là 35)
-	var pad_bottom_track: float = 65.0 # Dịch lên trên 1 chút (trước là 30)
+	var track_left: float = 110.0 # Dịch tiếp qua bên phải (từ 75 lên 110)
+	var pad_bottom_track: float = 88.0 # Dịch tiếp lên trên (từ 65 lên 88)
 	
-	# 1. LEFT TRACK: Tăng kích cỡ to rõ hơn, dễ điều khiển
-	var track_w: float = 320.0 # Tăng từ 280 lên 320
-	var track_h: float = 100.0 # Tăng từ 84 lên 100
+	# 1. LEFT TRACK: Tăng kích cỡ to hơn nữa, dễ thao tác
+	var track_w: float = 350.0 # Tăng từ 320 lên 350
+	var track_h: float = 112.0 # Tăng từ 100 lên 112
 	track_rect = Rect2(track_left, 720.0 - pad_bottom_track - track_h, track_w, track_h)
 	knob_center = track_rect.get_center()
 	if not is_dragging_knob:
 		knob_pos = knob_center
-	knob_radius = 48.0 # Tăng kích cỡ knob từ 38 lên 48
+	knob_radius = 54.0 # Tăng kích cỡ knob từ 48 lên 54
 	max_drag_dist = (track_w * 0.5) - (knob_radius * 0.55)
 	
 	# 2. RIGHT BUTTONS: Tăng kích cỡ các nút bấm to rõ hơn

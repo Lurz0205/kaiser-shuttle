@@ -1,7 +1,7 @@
 extends SceneTree
 
 func _init():
-    _run_tests()
+    await _run_tests()
 
 func _run_tests():
     print("==================================================")
@@ -11,7 +11,8 @@ func _run_tests():
     var MainMenuController = load("res://scripts/ui/main_menu_controller.gd")
     var menu = MainMenuController.new()
     root.add_child(menu)
-    menu._ready()
+    await process_frame
+    await process_frame
     
     # 1. Title Screen & 3D Logo Emblem
     menu.switch_state(MainMenuController.MenuState.TITLE)
@@ -33,7 +34,8 @@ func _run_tests():
     # 3. Main scene & In-game BWF Scoreboard
     var main = load("res://scenes/Main.tscn").instantiate()
     root.add_child(main)
-    main._ready()
+    await process_frame
+    await process_frame
     
     main._on_menu_start_match("nishikawa", "wall", 1, 11, 1)
     
@@ -93,8 +95,8 @@ func _run_tests():
     # 10. Virtual Touch Pad enlarged & repositioned layout
     var vpad = main.virtual_touch_pad
     vpad._update_layout()
-    assert(vpad.track_rect.position.x == 75.0, "Track shifted right to x=75")
-    assert(vpad.knob_radius == 48.0, "Knob enlarged to radius=48")
+    assert(vpad.track_rect.position.x == 110.0, "Track shifted right to x=110")
+    assert(vpad.knob_radius == 54.0, "Knob enlarged to radius=54")
     assert(vpad.btn_l_radius == 74.0, "Smash/Jump button enlarged to radius=74")
     assert(vpad.btn_j_radius == 56.0, "Drop button enlarged to radius=56")
     print("✓ 10. Virtual Touchpad size enlarged and position shifted right & up verified")

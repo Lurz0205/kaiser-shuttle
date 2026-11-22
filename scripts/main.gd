@@ -164,6 +164,7 @@ var touch_controls_enabled: bool = false
 var btn_touch_toggle: Button = null
 var btn_fullscreen: Button = null
 var btn_back_to_lobby: Button = null
+var match_hud_container: Control = null
 var low_graphics_mode: bool = false
 var btn_low_gfx_toggle: Button = null
 var prev_key_r: bool = false
@@ -474,6 +475,37 @@ func _ready() -> void:
 		is_mobile = true
 	touch_controls_enabled = is_mobile
 	
+	# Dedicated in-game HUD Root Container (Đảm bảo WebGL và CanvasLayer luôn khớp 100% khung hình 1280x720)
+	if not match_hud_container:
+		match_hud_container = Control.new()
+		match_hud_container.name = "MatchHUDContainer"
+		match_hud_container.set_anchors_preset(Control.PRESET_FULL_RECT)
+		match_hud_container.anchor_left = 0.0
+		match_hud_container.anchor_top = 0.0
+		match_hud_container.anchor_right = 1.0
+		match_hud_container.anchor_bottom = 1.0
+		match_hud_container.offset_left = 0.0
+		match_hud_container.offset_top = 0.0
+		match_hud_container.offset_right = 0.0
+		match_hud_container.offset_bottom = 0.0
+		match_hud_container.custom_minimum_size = Vector2(1280, 720)
+		match_hud_container.size = Vector2(1280, 720)
+		match_hud_container.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		match_hud_container.z_index = 80
+		$HUD.add_child(match_hud_container)
+
+	# Reparent match HUD nodes into match_hud_container
+	if bwf_scoreboard and bwf_scoreboard.get_parent() != match_hud_container:
+		bwf_scoreboard.reparent(match_hud_container)
+	if btn_settings and btn_settings.get_parent() != match_hud_container:
+		btn_settings.reparent(match_hud_container)
+	if controls_bar and controls_bar.get_parent() != match_hud_container:
+		controls_bar.reparent(match_hud_container)
+	if settings_panel and settings_panel.get_parent() != match_hud_container:
+		settings_panel.reparent(match_hud_container)
+	if pill_stats and pill_stats.get_parent() != match_hud_container:
+		pill_stats.reparent(match_hud_container)
+
 	# Nút Quay Lại Sảnh ở góc trên bên trái màn hình trong trận (Không quay lại bằng phím ESC)
 	btn_back_to_lobby = Button.new()
 	btn_back_to_lobby.focus_mode = Control.FOCUS_NONE
@@ -502,7 +534,7 @@ func _ready() -> void:
 		btn_back_to_lobby.release_focus()
 		_return_to_lobby_and_stop_match()
 	)
-	$HUD.add_child(btn_back_to_lobby)
+	match_hud_container.add_child(btn_back_to_lobby)
 	btn_back_to_lobby.visible = false
 	
 	# Nút Toàn Màn Hình (Fullscreen) ở góc trên bên phải màn hình (Căn chỉnh tuyệt đối, không đè nút Cài đặt)
@@ -533,7 +565,7 @@ func _ready() -> void:
 		btn_fullscreen.release_focus()
 		_toggle_fullscreen()
 	)
-	$HUD.add_child(btn_fullscreen)
+	match_hud_container.add_child(btn_fullscreen)
 	btn_fullscreen.visible = false
 	
 	_update_settings_ui()
@@ -613,6 +645,12 @@ func _ready() -> void:
 func _set_in_game_hud_visible(show: bool) -> void:
 	if main_menu and show:
 		main_menu.visible = false
+		
+	if match_hud_container:
+		match_hud_container.visible = show
+		if show:
+			match_hud_container.show()
+			match_hud_container.move_to_front()
 		
 	if bwf_scoreboard:
 		bwf_scoreboard.visible = show
@@ -3588,7 +3626,7 @@ func _on_effects_overlay_draw() -> void:
 # ==========================================================
 
 func _setup_hud_stamina_bars() -> void:
-	var hud = get_node_or_null("HUD")
+	var hud = match_hud_container if match_hud_container else get_node_or_null("HUD")
 	if not hud:
 		return
 	

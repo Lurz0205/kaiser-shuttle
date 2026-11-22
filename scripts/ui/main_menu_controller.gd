@@ -324,8 +324,16 @@ func _build_ui() -> void:
 	# ----------------------------------------------------
 	global_bg = TextureRect.new()
 	global_bg.texture = TEX_LOBBY_BG
+	global_bg.set_anchors_preset(Control.PRESET_FULL_RECT)
+	global_bg.anchor_left = 0.0
+	global_bg.anchor_top = 0.0
+	global_bg.anchor_right = 1.0
+	global_bg.anchor_bottom = 1.0
+	global_bg.offset_left = 0.0
+	global_bg.offset_top = 0.0
+	global_bg.offset_right = 0.0
+	global_bg.offset_bottom = 0.0
 	global_bg.custom_minimum_size = Vector2(1280, 720)
-	global_bg.size = Vector2(1280, 720)
 	global_bg.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	global_bg.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
 	global_bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -333,8 +341,16 @@ func _build_ui() -> void:
 	
 	# Light Vignette để làm nổi bật bối cảnh sân đấu phía sau (The Spike Translucent Style)
 	global_tint = ColorRect.new()
+	global_tint.set_anchors_preset(Control.PRESET_FULL_RECT)
+	global_tint.anchor_left = 0.0
+	global_tint.anchor_top = 0.0
+	global_tint.anchor_right = 1.0
+	global_tint.anchor_bottom = 1.0
+	global_tint.offset_left = 0.0
+	global_tint.offset_top = 0.0
+	global_tint.offset_right = 0.0
+	global_tint.offset_bottom = 0.0
 	global_tint.custom_minimum_size = Vector2(1280, 720)
-	global_tint.size = Vector2(1280, 720)
 	global_tint.color = Color(0.02, 0.05, 0.10, 0.25)
 	global_tint.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(global_tint)
@@ -658,25 +674,27 @@ func _build_title_panel() -> void:
 	title_panel.offset_right = 0.0
 	title_panel.offset_bottom = 0.0
 	title_panel.custom_minimum_size = Vector2(1280, 720)
-	title_panel.position = Vector2.ZERO
 	title_panel.mouse_filter = Control.MOUSE_FILTER_PASS
 	add_child(title_panel)
 	
+	var center_cont = CenterContainer.new()
+	center_cont.set_anchors_preset(Control.PRESET_FULL_RECT)
+	center_cont.anchor_left = 0.0
+	center_cont.anchor_top = 0.0
+	center_cont.anchor_right = 1.0
+	center_cont.anchor_bottom = 1.0
+	center_cont.offset_left = 0.0
+	center_cont.offset_top = 0.0
+	center_cont.offset_right = 0.0
+	center_cont.offset_bottom = 0.0
+	center_cont.mouse_filter = Control.MOUSE_FILTER_PASS
+	title_panel.add_child(center_cont)
+	
 	var center = VBoxContainer.new()
-	center.set_anchors_preset(Control.PRESET_FULL_RECT)
-	center.anchor_left = 0.0
-	center.anchor_top = 0.0
-	center.anchor_right = 1.0
-	center.anchor_bottom = 1.0
-	center.offset_left = 0.0
-	center.offset_top = 0.0
-	center.offset_right = 0.0
-	center.offset_bottom = 0.0
-	center.custom_minimum_size = Vector2(1280, 720)
 	center.alignment = BoxContainer.ALIGNMENT_CENTER
 	center.add_theme_constant_override("separation", 16)
 	center.mouse_filter = Control.MOUSE_FILTER_PASS
-	title_panel.add_child(center)
+	center_cont.add_child(center)
 	
 	# High-Impact 3D Esports Tournament Logo Emblem
 	var logo_icon = _create_tex_icon(TEX_KAISER_LOGO, Vector2(300, 310))
@@ -813,21 +831,21 @@ func _build_lobby_panel() -> void:
 	ch_row.add_child(btn_change_hero)
 	hv.add_child(ch_row)
 	
-	# Hero Passive banner under feet
+	# Hero Passive banner under feet (Đẩy sát đáy màn hình theo yêu cầu)
 	lbl_hero_passive = Label.new()
 	lbl_hero_passive.text = CHAR_DATA["nishikawa"]["passive"]
-	lbl_hero_passive.custom_minimum_size = Vector2(800, 32)
-	lbl_hero_passive.position = Vector2(240, 645)
+	lbl_hero_passive.custom_minimum_size = Vector2(800, 24)
+	lbl_hero_passive.position = Vector2(240, 692)
 	lbl_hero_passive.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	lbl_hero_passive.add_theme_font_size_override("font_size", 11)
 	lbl_hero_passive.modulate = Color(0.85, 0.90, 0.98, 0.85)
 	lobby_panel.add_child(lbl_hero_passive)
 	
-	# Left Side Widgets (Banner Event & Điểm Danh - đặt tại y=85, hoàn toàn tách biệt khỏi thanh Top Bar y=68)
+	# Left Side Widgets (Banner Event & Điểm Danh - đặt tại y=96, hoàn toàn tách biệt khỏi thanh Top Bar y=68)
 	var left_col = VBoxContainer.new()
-	left_col.position = Vector2(30, 85)
+	left_col.position = Vector2(30, 96)
 	left_col.custom_minimum_size = Vector2(280, 500)
-	left_col.add_theme_constant_override("separation", 14)
+	left_col.add_theme_constant_override("separation", 12)
 	left_col.mouse_filter = Control.MOUSE_FILTER_PASS
 	lobby_panel.add_child(left_col)
 	
@@ -837,11 +855,11 @@ func _build_lobby_panel() -> void:
 	var daily_card = _create_widget_card("ĐIỂM DANH HÀNG NGÀY", "Chuỗi điểm danh: 6 ngày\nNhận 500 Vàng + Quà BWF!", Color(0.30, 0.92, 0.65))
 	left_col.add_child(daily_card)
 	
-	# Bottom Right Call to Action: [ TRẬN ĐẤU ] (The Spike Giant Button with Studio Shuttlecock)
+	# Bottom Right Call to Action: [ CHIÊU MỘ ] & [ TRẬN ĐẤU ] (Dịch chuyển xuống dưới sát thanh đáy)
 	var cta_box = VBoxContainer.new()
-	cta_box.position = Vector2(920, 510)
-	cta_box.custom_minimum_size = Vector2(330, 160)
-	cta_box.add_theme_constant_override("separation", 10)
+	cta_box.position = Vector2(920, 555)
+	cta_box.custom_minimum_size = Vector2(330, 130)
+	cta_box.add_theme_constant_override("separation", 8)
 	cta_box.mouse_filter = Control.MOUSE_FILTER_PASS
 	lobby_panel.add_child(cta_box)
 	
@@ -905,7 +923,7 @@ func _build_lobby_panel() -> void:
 	cta_box.add_child(btn_row)
 
 func _create_widget_card(title: String, body: String, col: Color) -> PanelContainer:
-	var p = _create_spike_translucent_panel(Vector2(280, 110), 10, Color(col.r, col.g, col.b, 0.45))
+	var p = _create_spike_translucent_panel(Vector2(280, 100), 10, Color(col.r, col.g, col.b, 0.45))
 	
 	var m = MarginContainer.new()
 	m.add_theme_constant_override("margin_left", 14)

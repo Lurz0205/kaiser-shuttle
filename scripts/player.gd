@@ -123,6 +123,7 @@ var pending_special_shot: String = ""
 var pending_special_from: Vector2 = Vector2.ZERO
 var pending_special_err: float = 0.0
 var pending_special_is_perfect: bool = false
+var show_debug_hitboxes: bool = false # Tắt vẽ hitbox vector để tối ưu FPS và làm sạch giao diện thi đấu
 var pending_special_is_jump_smash: bool = false
 
 # Backward compatibility alias
@@ -2333,8 +2334,8 @@ func _draw() -> void:
 	if not OS.has_feature("web"):
 		draw_ellipse_shape(Vector2(0, 0), 32.0, 12.0, Color(0.05, 0.08, 0.12, 0.45))
 	
-	# 2. HÌNH HỘP VUÔNG VẮN HITBOX & VÙNG PERFECT RÕ RÀNG (CHỈ VẼ CHO NGƯỜI CHƠI)
-	if not is_ai and not is_remote_puppet:
+	# 2. HÌNH HỘP VUÔNG VẮN HITBOX & VÙNG PERFECT RÕ RÀNG (CHỈ VẼ CHO NGƯỜI CHƠI KHI BẬT DEBUG)
+	if show_debug_hitboxes and not is_ai and not is_remote_puppet:
 		var use_aa = not OS.has_feature("web")
 		var ob_in = in_range and hit_status["zone"] == "overhead"
 		var ob_rect = get_overhead_box_local()
