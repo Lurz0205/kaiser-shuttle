@@ -382,6 +382,35 @@ grow_horizontal = 0
 theme_override_styles/normal = SubResource("StyleBoxFlat_settings_btn")
 text = "ĐỔI TƯỚNG"
 
+[node name="BtnBackToLobby" type="Button" parent="HUD"]
+visible = false
+anchors_preset = 0
+anchor_left = 0.0
+anchor_top = 0.0
+anchor_right = 0.0
+anchor_bottom = 0.0
+offset_left = 20.0
+offset_top = 16.0
+offset_right = 106.0
+offset_bottom = 48.0
+theme_override_styles/normal = SubResource("StyleBoxFlat_settings_btn")
+text = "‹ SẢNH"
+
+[node name="BtnFullscreen" type="Button" parent="HUD"]
+visible = false
+anchors_preset = 1
+anchor_left = 1.0
+anchor_top = 0.0
+anchor_right = 1.0
+anchor_bottom = 0.0
+offset_left = -90.0
+offset_top = 16.0
+offset_right = -16.0
+offset_bottom = 48.0
+grow_horizontal = 0
+theme_override_styles/normal = SubResource("StyleBoxFlat_settings_btn")
+text = "⛶ FULL"
+
 [node name="BtnSettings" type="Button" parent="HUD"]
 visible = false
 anchors_preset = 1

@@ -162,8 +162,8 @@ const VirtualTouchPadClass = preload("res://scripts/ui/virtual_touch_pad.gd")
 var virtual_touch_pad: Control = null
 var touch_controls_enabled: bool = false
 var btn_touch_toggle: Button = null
-var btn_fullscreen: Button = null
-var btn_back_to_lobby: Button = null
+@onready var btn_fullscreen: Button = $HUD/BtnFullscreen
+@onready var btn_back_to_lobby: Button = $HUD/BtnBackToLobby
 var low_graphics_mode: bool = false
 var btn_low_gfx_toggle: Button = null
 var prev_key_r: bool = false
@@ -488,11 +488,13 @@ func _ready() -> void:
 	if OS.has_feature("android") or OS.has_feature("ios") or OS.has_feature("web_android") or OS.has_feature("web_ios"):
 		is_mobile = true
 	elif OS.has_feature("web"):
-		var js_mobile = JavaScriptBridge.eval("""(function() {
-			var ua = navigator.userAgent || '';
-			var isRealMobile = /Android|iPhone|iPad|iPod/i.test(ua) && !(/Windows NT|Macintosh|Linux x86/i.test(ua));
-			return isRealMobile;
-		})()""")
+		var js_mobile = null
+		if ClassDB.class_exists("JavaScriptBridge"):
+			js_mobile = JavaScriptBridge.eval("""(function() {
+				var ua = navigator.userAgent || '';
+				var isRealMobile = /Android|iPhone|iPad|iPod/i.test(ua) && !(/Windows NT|Macintosh|Linux x86/i.test(ua));
+				return isRealMobile;
+			})()""")
 		if js_mobile == true or str(js_mobile).to_lower() == "true":
 			is_mobile = true
 	elif DisplayServer.is_touchscreen_available() and not (OS.has_feature("windows") or OS.has_feature("macos") or OS.has_feature("linux")):
@@ -500,66 +502,22 @@ func _ready() -> void:
 	touch_controls_enabled = is_mobile
 	
 	# Nút Quay Lại Sảnh ở góc trên bên trái màn hình trong trận (Không quay lại bằng phím ESC)
-	btn_back_to_lobby = Button.new()
-	btn_back_to_lobby.focus_mode = Control.FOCUS_NONE
-	btn_back_to_lobby.name = "BtnBackToLobby"
-	btn_back_to_lobby.text = "‹ SẢNH"
-	btn_back_to_lobby.custom_minimum_size = Vector2(86, 32)
-	btn_back_to_lobby.size = Vector2(86, 32)
-	btn_back_to_lobby.position = Vector2(20.0, 16.0)
-	btn_back_to_lobby.tooltip_text = "Quay lại Sảnh chờ (Lobby)"
-	btn_back_to_lobby.z_index = 100
-	
-	var back_sb = StyleBoxFlat.new()
-	back_sb.bg_color = Color(0.08, 0.12, 0.20, 0.90)
-	back_sb.border_width_left = 1
-	back_sb.border_width_top = 1
-	back_sb.border_width_right = 1
-	back_sb.border_width_bottom = 1
-	back_sb.border_color = Color(0.35, 0.70, 0.95, 0.75)
-	back_sb.corner_radius_top_left = 6
-	back_sb.corner_radius_top_right = 6
-	back_sb.corner_radius_bottom_right = 6
-	back_sb.corner_radius_bottom_left = 6
-	btn_back_to_lobby.add_theme_stylebox_override("normal", back_sb)
-	btn_back_to_lobby.add_theme_color_override("font_color", Color(0.85, 0.92, 1.0))
-	btn_back_to_lobby.pressed.connect(func():
-		btn_back_to_lobby.release_focus()
-		_return_to_lobby_and_stop_match()
-	)
-	$HUD.add_child(btn_back_to_lobby)
-	btn_back_to_lobby.visible = false
+	if btn_back_to_lobby:
+		btn_back_to_lobby.focus_mode = Control.FOCUS_NONE
+		btn_back_to_lobby.pressed.connect(func():
+			btn_back_to_lobby.release_focus()
+			_return_to_lobby_and_stop_match()
+		)
+		btn_back_to_lobby.visible = false
 	
 	# Nút Toàn Màn Hình (Fullscreen) ở góc trên bên phải màn hình (Căn chỉnh tuyệt đối, không đè nút Cài đặt)
-	btn_fullscreen = Button.new()
-	btn_fullscreen.focus_mode = Control.FOCUS_NONE
-	btn_fullscreen.name = "BtnFullscreen"
-	btn_fullscreen.text = "⛶ FULL"
-	btn_fullscreen.custom_minimum_size = Vector2(76, 32)
-	btn_fullscreen.size = Vector2(76, 32)
-	btn_fullscreen.position = Vector2(1188.0, 16.0)
-	btn_fullscreen.tooltip_text = "Bật / Tắt Toàn màn hình (Fullscreen)"
-	btn_fullscreen.z_index = 100
-	
-	var fs_sb = StyleBoxFlat.new()
-	fs_sb.bg_color = Color(0.06, 0.12, 0.20, 0.88)
-	fs_sb.border_width_left = 1
-	fs_sb.border_width_top = 1
-	fs_sb.border_width_right = 1
-	fs_sb.border_width_bottom = 1
-	fs_sb.border_color = Color(0.25, 0.85, 1.0, 0.65)
-	fs_sb.corner_radius_top_left = 6
-	fs_sb.corner_radius_top_right = 6
-	fs_sb.corner_radius_bottom_right = 6
-	fs_sb.corner_radius_bottom_left = 6
-	btn_fullscreen.add_theme_stylebox_override("normal", fs_sb)
-	btn_fullscreen.add_theme_color_override("font_color", Color(0.35, 0.90, 1.0))
-	btn_fullscreen.pressed.connect(func():
-		btn_fullscreen.release_focus()
-		_toggle_fullscreen()
-	)
-	$HUD.add_child(btn_fullscreen)
-	btn_fullscreen.visible = false
+	if btn_fullscreen:
+		btn_fullscreen.focus_mode = Control.FOCUS_NONE
+		btn_fullscreen.pressed.connect(func():
+			btn_fullscreen.release_focus()
+			_toggle_fullscreen()
+		)
+		btn_fullscreen.visible = false
 	
 	_update_settings_ui()
 	_setup_hud_stamina_bars()
