@@ -470,12 +470,23 @@ wss.on('connection', (ws) => {
                 break;
             }
 
-            // Direct Peer Relays: Character Init & Special Skill Recoil Sync
+            // Direct Peer Relays: Character Init, Pick, Config & Special Skill Recoil Sync
+            case 'char_pick':
+            case 'match_config':
             case 'init':
             case 'init_ack':
             case 'skill_recoil': {
                 const room = rooms[ws.roomCode];
                 if (!room) return;
+                if (type === 'char_pick') {
+                    if (ws.playerRole === 'p1') {
+                        if (data.char) room.p1_char = data.char;
+                        if (data.player_name) room.p1_name = data.player_name;
+                    } else if (ws.playerRole === 'p2') {
+                        if (data.char) room.p2_char = data.char;
+                        if (data.player_name) room.p2_name = data.player_name;
+                    }
+                }
                 const isP1 = (ws.playerRole === 'p1');
                 const target = isP1 ? room.p2 : room.p1;
                 if (target && target.readyState === WebSocket.OPEN) {
