@@ -123,8 +123,97 @@ var pending_special_shot: String = ""
 var pending_special_from: Vector2 = Vector2.ZERO
 var pending_special_err: float = 0.0
 var pending_special_is_perfect: bool = false
-var show_debug_hitboxes: bool = false # Tắt vẽ hitbox vector để tối ưu FPS và làm sạch giao diện thi đấu
+var show_debug_hitboxes: bool = true # Khung hộp hitbox luôn hiển thị cho người chơi để canh nhịp đập cầu
 var pending_special_is_jump_smash: bool = false
+
+# GPU-Accelerated Scalable Hitbox StyleBoxes (Thay thế toàn bộ vector lines, co dãn 100%, 0 lag CPU)
+static var sb_overhead_idle: StyleBoxFlat = null
+static var sb_overhead_active: StyleBoxFlat = null
+static var sb_sweetspot_idle: StyleBoxFlat = null
+static var sb_sweetspot_hot: StyleBoxFlat = null
+static var sb_underhand_idle: StyleBoxFlat = null
+static var sb_underhand_active: StyleBoxFlat = null
+static var sb_underhand_sw_idle: StyleBoxFlat = null
+static var sb_underhand_sw_hot: StyleBoxFlat = null
+static var sb_dive_idle: StyleBoxFlat = null
+static var sb_dive_active: StyleBoxFlat = null
+static var sb_dive_sw_idle: StyleBoxFlat = null
+static var sb_dive_sw_hot: StyleBoxFlat = null
+
+static func _init_hitbox_styleboxes() -> void:
+	if sb_overhead_idle != null:
+		return
+	sb_overhead_idle = StyleBoxFlat.new()
+	sb_overhead_idle.bg_color = Color(0.2, 0.9, 0.4, 0.03)
+	sb_overhead_idle.border_color = Color(0.2, 0.9, 0.4, 0.28)
+	sb_overhead_idle.set_border_width_all(1)
+	sb_overhead_idle.set_corner_radius_all(3)
+	
+	sb_overhead_active = StyleBoxFlat.new()
+	sb_overhead_active.bg_color = Color(1.0, 0.9, 0.2, 0.10)
+	sb_overhead_active.border_color = Color(1.0, 0.9, 0.2, 0.75)
+	sb_overhead_active.set_border_width_all(2)
+	sb_overhead_active.set_corner_radius_all(3)
+	
+	sb_sweetspot_idle = StyleBoxFlat.new()
+	sb_sweetspot_idle.bg_color = Color(1.0, 0.85, 0.2, 0.08)
+	sb_sweetspot_idle.border_color = Color(1.0, 0.85, 0.2, 0.60)
+	sb_sweetspot_idle.set_border_width_all(1)
+	sb_sweetspot_idle.set_corner_radius_all(2)
+	
+	sb_sweetspot_hot = StyleBoxFlat.new()
+	sb_sweetspot_hot.bg_color = Color(1.0, 0.85, 0.2, 0.38)
+	sb_sweetspot_hot.border_color = Color(1.0, 0.95, 0.45, 1.0)
+	sb_sweetspot_hot.set_border_width_all(2)
+	sb_sweetspot_hot.set_corner_radius_all(2)
+	
+	sb_underhand_idle = StyleBoxFlat.new()
+	sb_underhand_idle.bg_color = Color(0.2, 0.85, 1.0, 0.03)
+	sb_underhand_idle.border_color = Color(0.2, 0.85, 1.0, 0.25)
+	sb_underhand_idle.set_border_width_all(1)
+	sb_underhand_idle.set_corner_radius_all(3)
+	
+	sb_underhand_active = StyleBoxFlat.new()
+	sb_underhand_active.bg_color = Color(0.2, 1.0, 1.0, 0.10)
+	sb_underhand_active.border_color = Color(0.2, 1.0, 1.0, 0.75)
+	sb_underhand_active.set_border_width_all(2)
+	sb_underhand_active.set_corner_radius_all(3)
+	
+	sb_underhand_sw_idle = StyleBoxFlat.new()
+	sb_underhand_sw_idle.bg_color = Color(0.2, 0.9, 1.0, 0.08)
+	sb_underhand_sw_idle.border_color = Color(0.2, 0.9, 1.0, 0.55)
+	sb_underhand_sw_idle.set_border_width_all(1)
+	sb_underhand_sw_idle.set_corner_radius_all(2)
+	
+	sb_underhand_sw_hot = StyleBoxFlat.new()
+	sb_underhand_sw_hot.bg_color = Color(0.2, 0.9, 1.0, 0.38)
+	sb_underhand_sw_hot.border_color = Color(0.4, 1.0, 1.0, 1.0)
+	sb_underhand_sw_hot.set_border_width_all(2)
+	sb_underhand_sw_hot.set_corner_radius_all(2)
+	
+	sb_dive_idle = StyleBoxFlat.new()
+	sb_dive_idle.bg_color = Color(0.2, 0.85, 1.0, 0.06)
+	sb_dive_idle.border_color = Color(0.2, 0.85, 1.0, 0.45)
+	sb_dive_idle.set_border_width_all(1)
+	sb_dive_idle.set_corner_radius_all(3)
+	
+	sb_dive_active = StyleBoxFlat.new()
+	sb_dive_active.bg_color = Color(0.2, 1.0, 1.0, 0.22)
+	sb_dive_active.border_color = Color(0.2, 1.0, 1.0, 0.92)
+	sb_dive_active.set_border_width_all(2)
+	sb_dive_active.set_corner_radius_all(3)
+	
+	sb_dive_sw_idle = StyleBoxFlat.new()
+	sb_dive_sw_idle.bg_color = Color(1.0, 0.85, 0.2, 0.15)
+	sb_dive_sw_idle.border_color = Color(1.0, 0.85, 0.2, 0.75)
+	sb_dive_sw_idle.set_border_width_all(2)
+	sb_dive_sw_idle.set_corner_radius_all(2)
+	
+	sb_dive_sw_hot = StyleBoxFlat.new()
+	sb_dive_sw_hot.bg_color = Color(1.0, 0.85, 0.2, 0.45)
+	sb_dive_sw_hot.border_color = Color(1.0, 0.95, 0.45, 1.0)
+	sb_dive_sw_hot.set_border_width_all(3)
+	sb_dive_sw_hot.set_corner_radius_all(2)
 
 # Backward compatibility alias
 var pending_smash_target: Vector2 = Vector2.ZERO
@@ -2334,68 +2423,36 @@ func _draw() -> void:
 	if not OS.has_feature("web"):
 		draw_ellipse_shape(Vector2(0, 0), 32.0, 12.0, Color(0.05, 0.08, 0.12, 0.45))
 	
-	# 2. HÌNH HỘP VUÔNG VẮN HITBOX & VÙNG PERFECT RÕ RÀNG (CHỈ VẼ CHO NGƯỜI CHƠI KHI BẬT DEBUG)
+	# 2. KHUNG HỘP HITBOX & VÙNG PERFECT RÕ RÀNG (GPU StyleBoxes co dãn linh hoạt, 0% CPU lag)
 	if show_debug_hitboxes and not is_ai and not is_remote_puppet:
-		var use_aa = not OS.has_feature("web")
+		_init_hitbox_styleboxes()
 		var ob_in = in_range and hit_status["zone"] == "overhead"
 		var ob_rect = get_overhead_box_local()
-		var ob_col = Color(1.0, 0.9, 0.2, 0.65) if ob_in else Color(0.2, 0.9, 0.4, 0.22)
-		var ob_fill = Color(1.0, 0.9, 0.2, 0.08) if ob_in else Color(0.2, 0.9, 0.4, 0.02)
-		draw_rect(ob_rect, ob_fill)
-		draw_rect(ob_rect, ob_col, false, 1.2 if not ob_in else 1.8)
+		draw_style_box(sb_overhead_active if ob_in else sb_overhead_idle, ob_rect)
 		
 		# VÙNG ĐIỂM NGỌT PERFECT (HOÀN HẢO TRÊN CAO)
 		var sw_rect = get_overhead_perfect_box_local()
 		var sw_is_hot = ob_in and is_perfect
-		var sw_col = Color(3.8, 2.8, 0.4, 1.0) if sw_is_hot else Color(1.0, 0.85, 0.2, 0.55)
-		var sw_fill = Color(1.0, 0.85, 0.2, 0.35) if sw_is_hot else Color(1.0, 0.85, 0.2, 0.06)
-		draw_rect(sw_rect, sw_fill)
-		draw_rect(sw_rect, sw_col, false, 2.5 if sw_is_hot else 1.5)
-		
-		var b_len = min(12.0, sw_rect.size.x * 0.25)
-		var sw_x = sw_rect.position.x
-		var sw_y = sw_rect.position.y
-		var sw_w = sw_rect.size.x
-		var sw_h = sw_rect.size.y
-		draw_line(Vector2(sw_x, sw_y), Vector2(sw_x + b_len, sw_y), sw_col, 2.5, use_aa)
-		draw_line(Vector2(sw_x, sw_y), Vector2(sw_x, sw_y + b_len), sw_col, 2.5, use_aa)
-		draw_line(Vector2(sw_x + sw_w, sw_y), Vector2(sw_x + sw_w - b_len, sw_y), sw_col, 2.5, use_aa)
-		draw_line(Vector2(sw_x + sw_w, sw_y), Vector2(sw_x + sw_w, sw_y + b_len), sw_col, 2.5, use_aa)
-		draw_line(Vector2(sw_x, sw_y + sw_h), Vector2(sw_x + b_len, sw_y + sw_h), sw_col, 2.5, use_aa)
-		draw_line(Vector2(sw_x, sw_y + sw_h), Vector2(sw_x, sw_y + sw_h - b_len), sw_col, 2.5, use_aa)
-		draw_line(Vector2(sw_x + sw_w, sw_y + sw_h), Vector2(sw_x + sw_w - b_len, sw_y + sw_h), sw_col, 2.5, use_aa)
-		draw_line(Vector2(sw_x + sw_w, sw_y + sw_h), Vector2(sw_x + sw_w, sw_y + sw_h - b_len), sw_col, 2.5, use_aa)
+		draw_style_box(sb_sweetspot_hot if sw_is_hot else sb_sweetspot_idle, sw_rect)
 		
 		if not is_in_air:
 			var ub_in = in_range and hit_status["zone"] == "underhand"
 			var ub_rect = get_underhand_box_local()
-			var ub_col = Color(0.2, 1.0, 1.0, 0.65) if ub_in else Color(0.2, 0.85, 1.0, 0.20)
-			var ub_fill = Color(0.2, 1.0, 1.0, 0.08) if ub_in else Color(0.2, 0.85, 1.0, 0.02)
-			draw_rect(ub_rect, ub_fill)
-			draw_rect(ub_rect, ub_col, false, 1.2 if not ub_in else 1.8)
+			draw_style_box(sb_underhand_active if ub_in else sb_underhand_idle, ub_rect)
 			
 			var ub_sw_rect = get_underhand_perfect_box_local()
 			var ub_is_hot = ub_in and is_perfect
-			var ub_sw_col = Color(0.3, 3.0, 2.5, 1.0) if ub_is_hot else Color(0.2, 0.9, 1.0, 0.50)
-			var ub_sw_fill = Color(0.2, 0.9, 1.0, 0.35) if ub_is_hot else Color(0.2, 0.9, 1.0, 0.06)
-			draw_rect(ub_sw_rect, ub_sw_fill)
-			draw_rect(ub_sw_rect, ub_sw_col, false, 2.5 if ub_is_hot else 1.5)
+			draw_style_box(sb_underhand_sw_hot if ub_is_hot else sb_underhand_sw_idle, ub_sw_rect)
 		
 		# HITBOX CỨU CẦU KHI BAY NGƯỜI (DIVE RESCUE HITBOX):
 		if is_diving:
 			var db_in = in_range and hit_status["zone"] == "dive"
 			var db_rect = get_dive_rescue_box_local()
-			var db_col = Color(0.2, 1.0, 1.0, 0.90) if db_in else Color(0.2, 0.85, 1.0, 0.45)
-			var db_fill = Color(0.2, 1.0, 1.0, 0.20) if db_in else Color(0.2, 0.85, 1.0, 0.06)
-			draw_rect(db_rect, db_fill)
-			draw_rect(db_rect, db_col, false, 2.2 if db_in else 1.5)
+			draw_style_box(sb_dive_active if db_in else sb_dive_idle, db_rect)
 			
 			var db_sw_rect = get_dive_rescue_perfect_box_local()
 			var db_is_hot = db_in and is_perfect
-			var db_sw_col = Color(3.8, 2.8, 0.4, 1.0) if db_is_hot else Color(1.0, 0.85, 0.2, 0.70)
-			var db_sw_fill = Color(1.0, 0.85, 0.2, 0.40) if db_is_hot else Color(1.0, 0.85, 0.2, 0.12)
-			draw_rect(db_sw_rect, db_sw_fill)
-			draw_rect(db_sw_rect, db_sw_col, false, 2.8 if db_is_hot else 1.8)
+			draw_style_box(sb_dive_sw_hot if db_is_hot else sb_dive_sw_idle, db_sw_rect)
 	
 	# ==========================================================
 	# 3. NHÂN VẬT KHỐI HÌNH HỌC VÀ KHỚP XOAY (ARTICULATED MANNEQUIN)

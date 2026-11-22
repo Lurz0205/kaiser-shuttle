@@ -204,6 +204,7 @@ script = ExtResource("1_script")
 environment = ExtResource("2_env")
 
 [node name="Camera2D" type="Camera2D" parent="."]
+process_callback = 0
 position = Vector2(640, 360)
 
 [node name="NetCollision" type="StaticBody2D" parent="."]

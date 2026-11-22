@@ -194,10 +194,9 @@ const CHAR_DATA = {
 }
 
 func _ready() -> void:
-	custom_minimum_size = Vector2(1280, 720)
-	size = Vector2(1280, 720)
-	position = Vector2.ZERO
 	set_anchors_preset(Control.PRESET_FULL_RECT)
+	custom_minimum_size = Vector2(1280, 720)
+	position = Vector2.ZERO
 	
 	low_graphics_mode = false
 		
@@ -835,15 +834,15 @@ func _build_lobby_panel() -> void:
 	lbl_hero_passive = Label.new()
 	lbl_hero_passive.text = CHAR_DATA["nishikawa"]["passive"]
 	lbl_hero_passive.custom_minimum_size = Vector2(800, 24)
-	lbl_hero_passive.position = Vector2(240, 692)
+	lbl_hero_passive.position = Vector2(240, 694)
 	lbl_hero_passive.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	lbl_hero_passive.add_theme_font_size_override("font_size", 11)
 	lbl_hero_passive.modulate = Color(0.85, 0.90, 0.98, 0.85)
 	lobby_panel.add_child(lbl_hero_passive)
 	
-	# Left Side Widgets (Banner Event & Điểm Danh - đặt tại y=96, hoàn toàn tách biệt khỏi thanh Top Bar y=68)
+	# Left Side Widgets (Banner Event & Điểm Danh - đặt tại y=105, hoàn toàn tách biệt khỏi thanh Top Bar y=68)
 	var left_col = VBoxContainer.new()
-	left_col.position = Vector2(30, 96)
+	left_col.position = Vector2(30, 105)
 	left_col.custom_minimum_size = Vector2(280, 500)
 	left_col.add_theme_constant_override("separation", 12)
 	left_col.mouse_filter = Control.MOUSE_FILTER_PASS
@@ -857,7 +856,7 @@ func _build_lobby_panel() -> void:
 	
 	# Bottom Right Call to Action: [ CHIÊU MỘ ] & [ TRẬN ĐẤU ] (Dịch chuyển xuống dưới sát thanh đáy)
 	var cta_box = VBoxContainer.new()
-	cta_box.position = Vector2(920, 555)
+	cta_box.position = Vector2(920, 560)
 	cta_box.custom_minimum_size = Vector2(330, 130)
 	cta_box.add_theme_constant_override("separation", 8)
 	cta_box.mouse_filter = Control.MOUSE_FILTER_PASS
