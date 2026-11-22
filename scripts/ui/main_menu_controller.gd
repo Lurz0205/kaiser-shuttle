@@ -198,7 +198,7 @@ var btn_sets_3: Button
 const CHAR_DATA = {
 	"nishikawa": {
 		"name": "NISHIKAWA",
-		"title": "Tia chớp vàng • Lôi Thần",
+		"title": "Tia chớp vàng - Lôi Thần",
 		"archetype": "TẤN CÔNG TOÀN DIỆN",
 		"rarity": "S+",
 		"stars": 5,
@@ -216,7 +216,7 @@ const CHAR_DATA = {
 	},
 	"fuji": {
 		"name": "FUJI",
-		"title": "Cơn lốc xanh • Phong Ảnh",
+		"title": "Cơn lốc xanh - Phong Ảnh",
 		"archetype": "KỸ THUẬT TINH TẾ",
 		"rarity": "S",
 		"stars": 4,
@@ -807,28 +807,66 @@ func _build_title_panel() -> void:
 	bottom_box.mouse_filter = Control.MOUSE_FILTER_PASS
 	title_panel.add_child(bottom_box)
 	
-	var btn_start_any = _create_clean_button("▶  CHẠM HOẶC NHẤN PHÍM BẤT KỲ ĐỂ VÀO SẢNH", Color(1.0, 0.85, 0.25), Vector2(460, 50), 15)
+	var btn_start_any = _create_clean_button("CHẠM HOẶC CLICK ĐỂ VÀO GAME", Color(1.0, 0.85, 0.25), Vector2(460, 50), 14)
 	btn_start_any.pressed.connect(func():
-		if Time.get_ticks_msec() < _state_switch_cooldown_until: return
-		var am = _get_audio()
-		if am:
-			am.ensure_music_playing()
-		switch_state(MenuState.LOBBY)
+		_trigger_title_enter_game()
 	)
 	var b_row = HBoxContainer.new()
 	b_row.alignment = BoxContainer.ALIGNMENT_CENTER
 	b_row.add_child(btn_start_any)
 	bottom_box.add_child(b_row)
 
+var _is_title_transitioning: bool = false
+var flash_overlay: ColorRect = null
+
+func _trigger_title_enter_game() -> void:
+	if _is_title_transitioning:
+		return
+	if Time.get_ticks_msec() < _state_switch_cooldown_until:
+		return
+	_is_title_transitioning = true
+	
+	# Mở khóa âm thanh tức thì
+	var am = _get_audio()
+	if am:
+		am.ensure_music_playing()
+		
+	# Tạo hoặc tái sử dụng lớp phủ Flash trắng toàn màn hình
+	if not flash_overlay:
+		flash_overlay = ColorRect.new()
+		flash_overlay.color = Color(1.0, 1.0, 1.0, 1.0)
+		flash_overlay.set_anchors_preset(Control.PRESET_FULL_RECT)
+		flash_overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		flash_overlay.z_index = 300
+		flash_overlay.modulate.a = 0.0
+		add_child(flash_overlay)
+	
+	flash_overlay.visible = true
+	flash_overlay.modulate.a = 0.0
+	
+	# Hiệu ứng nháy flash trắng tầm 2s kèm theo fade-in / fade-out mượt mà vào lobby
+	var tw = create_tween()
+	# 1. Chớp lóe flash sáng cực nhanh (0.35s lên 100% trắng xóa)
+	tw.tween_property(flash_overlay, "modulate:a", 1.0, 0.35).set_trans(Tween.TRANS_EXPO).set_ease(Tween.EASE_OUT)
+	# 2. Giữ màn hình trắng sáng trong 0.25s
+	tw.tween_interval(0.25)
+	# 3. Khi màn hình đang trắng xóa, chuyển cảnh sang LOBBY
+	tw.tween_callback(func():
+		switch_state(MenuState.LOBBY)
+	)
+	# 4. Fade-out dịu dần từ trắng về 0.0 trong 1.40s để lộ sảnh chờ BWF (Tổng thời gian ~2.0s)
+	tw.tween_property(flash_overlay, "modulate:a", 0.0, 1.40).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	tw.tween_callback(func():
+		flash_overlay.visible = false
+		_is_title_transitioning = false
+	)
+
 func _unhandled_input(event: InputEvent) -> void:
 	if current_state == MenuState.TITLE and visible:
-		if (event is InputEventKey and event.pressed) or (event is InputEventScreenTouch and event.pressed) or (event is InputEventMouseButton and event.pressed):
-			if Time.get_ticks_msec() >= _state_switch_cooldown_until:
-				var am = _get_audio()
-				if am:
-					am.ensure_music_playing()
-				switch_state(MenuState.LOBBY)
-				get_viewport().set_input_as_handled()
+		# CHỈ cho phép chạm màn hình (Mobile tap) hoặc click chuột trái (PC click), KHÔNG cho phép bấm phím bừa bãi
+		if (event is InputEventScreenTouch and event.pressed) or (event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT and event.pressed):
+			_trigger_title_enter_game()
+			get_viewport().set_input_as_handled()
 
 # ==========================================================
 # 3. MAIN LOBBY SCREEN (Hero Standee, Widgets, Primary CTA)
@@ -1009,7 +1047,7 @@ void vertex() {
 	sb_ms.corner_radius_bottom_left = 6
 	mode_summary.add_theme_stylebox_override("panel", sb_ms)
 	var ms_lbl = Label.new()
-	ms_lbl.text = "  Cốt Truyện: Vòng Loại BWF  •  Chương 1 - 6"
+	ms_lbl.text = "  Cốt Truyện: Vòng Loại BWF  -  Chương 1 - 6"
 	ms_lbl.add_theme_font_size_override("font_size", 11)
 	ms_lbl.modulate = Color(0.80, 0.85, 0.92)
 	mode_summary.add_child(ms_lbl)
@@ -1134,7 +1172,7 @@ func _build_match_select_panel() -> void:
 	match_select_panel.visible = false
 	add_child(match_select_panel)
 	
-	var back_btn = _create_clean_button("‹  QUAY LẠI TRANG CHỦ", Color(0.75, 0.82, 0.92), Vector2(180, 36), 12)
+	var back_btn = _create_clean_button("<  QUAY LẠI TRANG CHỦ", Color(0.75, 0.82, 0.92), Vector2(180, 36), 12)
 	back_btn.position = Vector2(30, 80)
 	back_btn.pressed.connect(func(): switch_state(MenuState.LOBBY))
 	match_select_panel.add_child(back_btn)
@@ -1465,7 +1503,7 @@ func _build_pvp_panel() -> void:
 	header_row.add_child(header_spacer)
 	
 	pvp_status_lbl = Label.new()
-	pvp_status_lbl.text = "● SẴN SÀNG"
+	pvp_status_lbl.text = "SẴN SÀNG"
 	pvp_status_lbl.add_theme_font_size_override("font_size", 12)
 	pvp_status_lbl.modulate = Color(0.20, 0.85, 0.50)
 	header_row.add_child(pvp_status_lbl)
@@ -1724,7 +1762,7 @@ func _build_pvp_panel() -> void:
 	btn_pvp_start.pressed.connect(_on_pvp_start_pressed)
 	bot_row.add_child(btn_pvp_start)
 	
-	var btn_back_match = _create_clean_button("‹ QUAY LẠI", Color(0.65, 0.70, 0.80), Vector2(110, 44), 12)
+	var btn_back_match = _create_clean_button("< QUAY LẠI", Color(0.65, 0.70, 0.80), Vector2(110, 44), 12)
 	btn_back_match.pressed.connect(func(): switch_state(MenuState.MATCH_SELECT))
 	bot_row.add_child(btn_back_match)
 	vbox.add_child(bot_row)
@@ -1747,7 +1785,7 @@ func _build_roster_panel() -> void:
 	roster_panel.visible = false
 	add_child(roster_panel)
 	
-	var back_btn = _create_clean_button("‹  QUAY LẠI TRANG CHỦ", Color(0.75, 0.82, 0.92), Vector2(180, 36), 12)
+	var back_btn = _create_clean_button("<  QUAY LẠI TRANG CHỦ", Color(0.75, 0.82, 0.92), Vector2(180, 36), 12)
 	back_btn.position = Vector2(30, 80)
 	back_btn.pressed.connect(func(): switch_state(MenuState.LOBBY))
 	roster_panel.add_child(back_btn)
@@ -1957,7 +1995,7 @@ func _build_shop_panel() -> void:
 	shop_panel.visible = false
 	add_child(shop_panel)
 	
-	var back_btn = _create_clean_button("‹  QUAY LẠI TRANG CHỦ", Color(0.75, 0.82, 0.92), Vector2(180, 36), 12)
+	var back_btn = _create_clean_button("<  QUAY LẠI TRANG CHỦ", Color(0.75, 0.82, 0.92), Vector2(180, 36), 12)
 	back_btn.position = Vector2(30, 80)
 	back_btn.pressed.connect(func(): switch_state(MenuState.LOBBY))
 	shop_panel.add_child(back_btn)
@@ -1987,7 +2025,7 @@ func _build_quests_panel() -> void:
 	quests_panel.visible = false
 	add_child(quests_panel)
 	
-	var back_btn = _create_clean_button("‹  QUAY LẠI TRANG CHỦ", Color(0.75, 0.82, 0.92), Vector2(180, 36), 12)
+	var back_btn = _create_clean_button("<  QUAY LẠI TRANG CHỦ", Color(0.75, 0.82, 0.92), Vector2(180, 36), 12)
 	back_btn.position = Vector2(30, 80)
 	back_btn.pressed.connect(func(): switch_state(MenuState.LOBBY))
 	quests_panel.add_child(back_btn)
@@ -2012,7 +2050,7 @@ func _build_quests_panel() -> void:
 	
 	var top_r = HBoxContainer.new()
 	var q_lbl = Label.new()
-	q_lbl.text = "NHIỆM VỤ HÀNG NGÀY • TIẾN TRÌNH: 0 / 1000P"
+	q_lbl.text = "NHIỆM VỤ HÀNG NGÀY - TIẾN TRÌNH: 0 / 1000P"
 	q_lbl.add_theme_font_size_override("font_size", 16)
 	q_lbl.modulate = Color(1.0, 0.85, 0.3)
 	top_r.add_child(q_lbl)
@@ -2044,7 +2082,7 @@ func _create_quest_item(title: String, reward: String, prog: String) -> PanelCon
 	m.add_child(h)
 	
 	var t = Label.new()
-	t.text = title + " • " + prog
+	t.text = title + " - " + prog
 	t.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	t.add_theme_font_size_override("font_size", 13)
 	h.add_child(t)
@@ -2072,7 +2110,7 @@ func _build_settings_panel() -> void:
 	settings_panel.visible = false
 	add_child(settings_panel)
 	
-	var back_btn = _create_clean_button("‹  QUAY LẠI TRANG CHỦ", Color(0.75, 0.82, 0.92), Vector2(180, 36), 12)
+	var back_btn = _create_clean_button("<  QUAY LẠI TRANG CHỦ", Color(0.75, 0.82, 0.92), Vector2(180, 36), 12)
 	back_btn.position = Vector2(30, 80)
 	back_btn.pressed.connect(func(): switch_state(MenuState.LOBBY))
 	settings_panel.add_child(back_btn)
@@ -2215,7 +2253,7 @@ func _build_mini_player() -> Control:
 	ctrl_row.mouse_filter = Control.MOUSE_FILTER_PASS
 	info_vbox.add_child(ctrl_row)
 	
-	var btn_prev = _create_clean_button("‹", Color(0.7, 0.75, 0.85), Vector2(24, 20), 10)
+	var btn_prev = _create_clean_button("<", Color(0.7, 0.75, 0.85), Vector2(24, 20), 10)
 	btn_prev.pressed.connect(func():
 		var am = _get_audio()
 		if am:
@@ -2223,7 +2261,7 @@ func _build_mini_player() -> Control:
 	)
 	ctrl_row.add_child(btn_prev)
 	
-	mini_player_btn_play = _create_clean_button("❚❚", Color(1.0, 0.82, 0.25), Vector2(30, 20), 10)
+	mini_player_btn_play = _create_clean_button("||", Color(1.0, 0.82, 0.25), Vector2(30, 20), 10)
 	mini_player_btn_play.pressed.connect(func():
 		var am = _get_audio()
 		if am:
@@ -2231,7 +2269,7 @@ func _build_mini_player() -> Control:
 	)
 	ctrl_row.add_child(mini_player_btn_play)
 	
-	var btn_next = _create_clean_button("›", Color(0.7, 0.75, 0.85), Vector2(24, 20), 10)
+	var btn_next = _create_clean_button(">", Color(0.7, 0.75, 0.85), Vector2(24, 20), 10)
 	btn_next.pressed.connect(func():
 		var am = _get_audio()
 		if am:
@@ -2256,7 +2294,7 @@ func _on_audio_track_changed(_idx: int, track_info: Dictionary) -> void:
 
 func _on_audio_playback_state_changed(playing: bool) -> void:
 	if mini_player_btn_play:
-		mini_player_btn_play.text = "❚❚" if playing else "▶"
+		mini_player_btn_play.text = "||" if playing else ">"
 	if vinyl_disc_ctrl:
 		vinyl_disc_ctrl.set_spinning(playing)
 
@@ -2270,7 +2308,7 @@ func _update_mini_player_ui() -> void:
 		if mini_player_artist_lbl: mini_player_artist_lbl.text = str(t.get("artist", ""))
 	var is_act = (am.is_playing and am.bgm_player and am.bgm_player.playing)
 	if mini_player_btn_play:
-		mini_player_btn_play.text = "❚❚" if is_act else "▶"
+		mini_player_btn_play.text = "||" if is_act else ">"
 	if vinyl_disc_ctrl:
 		vinyl_disc_ctrl.set_spinning(is_act)
 
@@ -2429,7 +2467,7 @@ func _build_settings_account_tab() -> VBoxContainer:
 	v.add_child(t)
 	
 	var id_lbl = Label.new()
-	id_lbl.text = "UID: KAISER-778902  •  Máy chủ: Châu Á Thái Bình Dương"
+	id_lbl.text = "UID: KAISER-778902  -  Máy chủ: Châu Á Thái Bình Dương"
 	id_lbl.add_theme_font_size_override("font_size", 12)
 	id_lbl.modulate = Color(0.75, 0.82, 0.90)
 	v.add_child(id_lbl)
@@ -2461,7 +2499,7 @@ func _create_stepped_volume_row(label_text: String, init_step: int, on_step_chan
 	var cur_val = [init_step]
 	var blocks: Array[ColorRect] = []
 	
-	var btn_left = _create_clean_button("‹", Color(1.0, 0.85, 0.3), Vector2(28, 28), 14)
+	var btn_left = _create_clean_button("-", Color(1.0, 0.85, 0.3), Vector2(28, 28), 14)
 	controls_box.add_child(btn_left)
 	
 	for i in range(5):
@@ -2473,7 +2511,7 @@ func _create_stepped_volume_row(label_text: String, init_step: int, on_step_chan
 		controls_box.add_child(b)
 		blocks.append(b)
 		
-	var btn_right = _create_clean_button("›", Color(1.0, 0.85, 0.3), Vector2(28, 28), 14)
+	var btn_right = _create_clean_button("+", Color(1.0, 0.85, 0.3), Vector2(28, 28), 14)
 	controls_box.add_child(btn_right)
 	
 	var update_visuals = func():
@@ -2768,7 +2806,7 @@ func _update_setup_cards() -> void:
 		var r_name = CHAR_DATA[selected_rival_id]["name"]
 		var diff_str = "DỄ" if selected_difficulty == 0 else ("TRUNG BÌNH" if selected_difficulty == 1 else "ĐỈNH CAO")
 		var set_str = "1 SET THẮNG" if selected_match_sets == 1 else "3 SET THẮNG 2"
-		label_matchup_summary.text = "KÈO ĐẤU:  BẠN: %s   VS   ĐỐI THỦ: %s   •   ĐỘ KHÓ: %s   •   CHẠM: %d ĐIỂM   •   %s" % [p_name, r_name, diff_str, selected_target_points, set_str]
+		label_matchup_summary.text = "KÈO ĐẤU:  BẠN: %s   VS   ĐỐI THỦ: %s   -   ĐỘ KHÓ: %s   -   CHẠM: %d ĐIỂM   -   %s" % [p_name, r_name, diff_str, selected_target_points, set_str]
 
 func _confirm_and_start_match() -> void:
 	start_match_requested.emit(selected_player_id, selected_rival_id, selected_difficulty, selected_target_points, selected_match_sets)
@@ -2858,7 +2896,7 @@ func _update_pvp_controls() -> void:
 		
 	if pvp_char_desc_lbl:
 		var cdata = CHAR_DATA[pvp_selected_char]
-		pvp_char_desc_lbl.text = "TUYỂN THỦ: %s • %s" % [cdata["name"], cdata["skill_desc"]]
+		pvp_char_desc_lbl.text = "TUYỂN THỦ: %s - %s" % [cdata["name"], cdata["skill_desc"]]
 		pvp_char_desc_lbl.modulate = cdata["color"]
 
 func _generate_room_code() -> String:
@@ -2874,7 +2912,7 @@ func _on_host_create_room() -> void:
 	if pvp_host_code_lbl:
 		pvp_host_code_lbl.text = "MÃ: " + pvp_current_code
 	if pvp_status_lbl:
-		pvp_status_lbl.text = "● ĐANG KẾT NỐI MÁY CHỦ..."
+		pvp_status_lbl.text = "ĐANG KẾT NỐI MÁY CHỦ..."
 		pvp_status_lbl.modulate = Color(1.0, 0.85, 0.3)
 	if net_manager:
 		net_manager.host_room(pvp_current_code, pvp_selected_char, pvp_selected_points, pvp_selected_sets, pvp_player_name)
@@ -2884,7 +2922,7 @@ func _on_client_join_room() -> void:
 	var code = pvp_room_input.text.strip_edges().to_upper() if pvp_room_input else ""
 	if code.is_empty():
 		if pvp_status_lbl:
-			pvp_status_lbl.text = "● VUI LÒNG NHẬP MÃ PHÒNG VÀO Ô TRÊN"
+			pvp_status_lbl.text = "VUI LÒNG NHẬP MÃ PHÒNG VÀO Ô TRÊN"
 			pvp_status_lbl.modulate = Color(1.0, 0.4, 0.4)
 		if pvp_room_input:
 			pvp_room_input.grab_focus()
@@ -2894,14 +2932,14 @@ func _on_client_join_room() -> void:
 	if net_manager:
 		net_manager.join_room(code, pvp_selected_char, pvp_player_name)
 		if pvp_status_lbl:
-			pvp_status_lbl.text = "● ĐANG VÀO PHÒNG: " + code
+			pvp_status_lbl.text = "ĐANG VÀO PHÒNG: " + code
 			pvp_status_lbl.modulate = Color(0.35, 0.75, 1.0)
 
 func _on_spectate_room() -> void:
 	var code = pvp_room_input.text.strip_edges().to_upper() if pvp_room_input else ""
 	if code.is_empty():
 		if pvp_status_lbl:
-			pvp_status_lbl.text = "● VUI LÒNG NHẬP MÃ PHÒNG ĐỂ THEO DÕI"
+			pvp_status_lbl.text = "VUI LÒNG NHẬP MÃ PHÒNG ĐỂ THEO DÕI"
 			pvp_status_lbl.modulate = Color(1.0, 0.4, 0.4)
 		if pvp_room_input:
 			pvp_room_input.grab_focus()
@@ -2936,22 +2974,22 @@ func _on_net_status_changed(status: String) -> void:
 	if pvp_status_lbl:
 		var st_upper = status.to_upper()
 		if st_upper == "CONNECTING":
-			pvp_status_lbl.text = "● ĐANG KẾT NỐI MÁY CHỦ..."
+			pvp_status_lbl.text = "ĐANG KẾT NỐI MÁY CHỦ..."
 			pvp_status_lbl.modulate = Color(1.0, 0.85, 0.3)
 		elif st_upper == "HOSTING":
-			pvp_status_lbl.text = "● PHÒNG MỞ: ĐANG CHỜ ĐỐI THỦ..."
+			pvp_status_lbl.text = "PHÒNG MỞ: ĐANG CHỜ ĐỐI THỦ..."
 			pvp_status_lbl.modulate = Color(0.25, 0.90, 0.55)
 		elif st_upper == "CONNECTED":
 			pvp_is_connected = true
 			if pvp_is_host and btn_pvp_start:
 				btn_pvp_start.disabled = false
 			if not pvp_opponent_name.is_empty() and pvp_opponent_name != "PLAYER 2" and pvp_opponent_name != "ĐỐI THỦ":
-				pvp_status_lbl.text = "● ĐÃ KẾT NỐI VỚI " + pvp_opponent_name
+				pvp_status_lbl.text = "ĐÃ KẾT NỐI VỚI " + pvp_opponent_name
 			else:
-				pvp_status_lbl.text = "● ĐÃ KẾT NỐI VỚI ĐỐI THỦ"
+				pvp_status_lbl.text = "ĐÃ KẾT NỐI VỚI ĐỐI THỦ"
 			pvp_status_lbl.modulate = Color(0.20, 0.95, 0.60)
 		else:
-			pvp_status_lbl.text = "● " + st_upper
+			pvp_status_lbl.text = st_upper
 
 func _on_net_peer_connected(is_host_arg: bool = true, _room_code: String = "") -> void:
 	pvp_is_connected = true
@@ -2961,10 +2999,10 @@ func _on_net_peer_connected(is_host_arg: bool = true, _room_code: String = "") -
 		btn_pvp_start.disabled = false
 	if not pvp_opponent_name.is_empty() and pvp_opponent_name != "PLAYER 2" and pvp_opponent_name != "ĐỐI THỦ":
 		if pvp_status_lbl:
-			pvp_status_lbl.text = "● ĐÃ KẾT NỐI VỚI " + pvp_opponent_name
+			pvp_status_lbl.text = "ĐÃ KẾT NỐI VỚI " + pvp_opponent_name
 			pvp_status_lbl.modulate = Color(0.20, 0.95, 0.60)
 	elif pvp_status_lbl:
-		pvp_status_lbl.text = "● ĐÃ KẾT NỐI VỚI ĐỐI THỦ"
+		pvp_status_lbl.text = "ĐÃ KẾT NỐI VỚI ĐỐI THỦ"
 		pvp_status_lbl.modulate = Color(0.20, 0.95, 0.60)
 	if net_manager:
 		net_manager.send_packet({
@@ -2979,7 +3017,7 @@ func _on_net_peer_disconnected(reason: String = "") -> void:
 	if btn_pvp_start:
 		btn_pvp_start.disabled = true
 	if pvp_status_lbl:
-		pvp_status_lbl.text = "● ĐỐI THỦ MẤT KẾT NỐI"
+		pvp_status_lbl.text = "ĐỐI THỦ MẤT KẾT NỐI"
 		pvp_status_lbl.modulate = Color(0.95, 0.35, 0.35)
 
 func _on_net_ping_updated(ping_ms: int) -> void:
@@ -2995,7 +3033,7 @@ func _on_net_packet_received(pkt: Dictionary) -> void:
 			if pvp_host_code_lbl:
 				pvp_host_code_lbl.text = "MÃ: " + pvp_current_code
 		if pvp_status_lbl:
-			pvp_status_lbl.text = "● PHÒNG MỞ: ĐANG CHỜ ĐỐI THỦ..."
+			pvp_status_lbl.text = "PHÒNG MỞ: ĐANG CHỜ ĐỐI THỦ..."
 			pvp_status_lbl.modulate = Color(0.25, 0.90, 0.55)
 	elif ptype == "guest_joined":
 		pvp_is_connected = true
@@ -3007,7 +3045,7 @@ func _on_net_packet_received(pkt: Dictionary) -> void:
 		if not g_char.is_empty():
 			pvp_opponent_char = g_char
 		if pvp_status_lbl:
-			pvp_status_lbl.text = "● ĐÃ KẾT NỐI VỚI " + pvp_opponent_name
+			pvp_status_lbl.text = "ĐÃ KẾT NỐI VỚI " + pvp_opponent_name
 			pvp_status_lbl.modulate = Color(0.20, 0.95, 0.60)
 		if btn_pvp_start:
 			btn_pvp_start.disabled = false
@@ -3031,7 +3069,7 @@ func _on_net_packet_received(pkt: Dictionary) -> void:
 		pvp_selected_sets = int(pkt.get("sets", pvp_selected_sets))
 		_update_pvp_controls()
 		if pvp_status_lbl:
-			pvp_status_lbl.text = "● ĐÃ KẾT NỐI VỚI " + pvp_opponent_name
+			pvp_status_lbl.text = "ĐÃ KẾT NỐI VỚI " + pvp_opponent_name
 			pvp_status_lbl.modulate = Color(0.20, 0.95, 0.60)
 		if btn_pvp_start:
 			btn_pvp_start.disabled = true
@@ -3043,7 +3081,7 @@ func _on_net_packet_received(pkt: Dictionary) -> void:
 		if not c_name.is_empty():
 			pvp_opponent_name = c_name
 		if pvp_status_lbl and pvp_is_connected:
-			pvp_status_lbl.text = "● ĐÃ KẾT NỐI VỚI " + pvp_opponent_name
+			pvp_status_lbl.text = "ĐÃ KẾT NỐI VỚI " + pvp_opponent_name
 			pvp_status_lbl.modulate = Color(0.20, 0.95, 0.60)
 		if pvp_is_host and btn_pvp_start:
 			btn_pvp_start.disabled = false

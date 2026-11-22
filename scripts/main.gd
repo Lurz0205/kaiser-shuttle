@@ -1057,13 +1057,13 @@ func _on_menu_start_pvp_match(room_code: String, is_host: bool, local_char: Stri
 	_apply_match_bgm(true)
 
 	# Hoạt cảnh Tung Đồng Xu ngẫu nhiên (Coin Toss) trước trận đấu:
-	_show_banner("🪙 ĐANG TUNG ĐỒNG XU QUYẾT ĐỊNH QUYỀN GIAO CẦU...", Color(1.0, 0.9, 0.3))
+	_show_banner("[TUNG ĐỒNG XU] ĐANG TUNG ĐỒNG XU QUYẾT ĐỊNH QUYỀN GIAO CẦU...", Color(1.0, 0.9, 0.3))
 	get_tree().create_timer(1.2).timeout.connect(func():
 		if not is_pvp_active: return
 		if current_server == "player":
-			_show_banner("🪙 BẠN THẮNG ĐỒNG XU: BẠN ĐƯỢC QUYỀN GIAO CẦU TRƯỚC!", Color(0.2, 1.0, 0.6))
+			_show_banner("[TUNG ĐỒNG XU] BẠN THẮNG ĐỒNG XU: ĐƯỢC QUYỀN GIAO CẦU TRƯỚC!", Color(0.2, 1.0, 0.6))
 		else:
-			_show_banner("🪙 ĐỐI THỦ THẮNG ĐỒNG XU: ĐỐI THỦ ĐƯỢC QUYỀN GIAO CẦU TRƯỚC!", Color(1.0, 0.85, 0.2))
+			_show_banner("[TUNG ĐỒNG XU] ĐỐI THỦ THẮNG ĐỒNG XU: ĐỐI THỦ ĐƯỢC QUYỀN GIAO CẦU TRƯỚC!", Color(1.0, 0.85, 0.2))
 		get_tree().create_timer(1.0).timeout.connect(func():
 			if not is_pvp_active: return
 			_play_umpire_opening_call(current_server)
@@ -1178,7 +1178,7 @@ func _show_spectator_banner() -> void:
 		
 		var lbl = Label.new()
 		lbl.name = "LabelSpec"
-		lbl.text = "👁 CHẾ ĐỘ KHÁN GIẢ • PHÒNG: " + pvp_room_code
+		lbl.text = "[KHÁN GIẢ] CHẾ ĐỘ THEO DÕI | PHÒNG: " + pvp_room_code
 		lbl.add_theme_font_size_override("font_size", 13)
 		lbl.modulate = Color(0.92, 0.65, 1.0)
 		hbox.add_child(lbl)
@@ -1206,7 +1206,7 @@ func _show_spectator_banner() -> void:
 		
 	var lbl = spectator_banner.find_child("LabelSpec", true, false) as Label
 	if lbl:
-		lbl.text = "👁 CHẾ ĐỘ KHÁN GIẢ • PHÒNG: " + pvp_room_code
+		lbl.text = "[KHÁN GIẢ] CHẾ ĐỘ THEO DÕI | PHÒNG: " + pvp_room_code
 	spectator_banner.visible = true
 	_strip_keyboard_focus(spectator_banner)
 
@@ -1699,7 +1699,7 @@ func _unhandled_input(event: InputEvent) -> void:
 			if is_spectator:
 				_on_spectator_leave()
 			# Đã hủy thoát trận bằng phím ESC để tránh người chơi ấn nhầm.
-			# Thoát trận chỉ qua nút [‹ SẢNH] trên góc trái màn hình.
+			# Thoát trận chỉ qua nút [< SẢNH] trên góc trái màn hình.
 
 
 func set_ai_difficulty(diff: int) -> void:
@@ -1962,16 +1962,16 @@ func _update_stats_display() -> void:
 	
 	var tension_str = ""
 	if rally_tension and rally_tension.tension_level > 0:
-		tension_str = "   •   %s" % rally_tension.get_status_text()
+		tension_str = "   |   %s" % rally_tension.get_status_text()
 	
 	if shuttlecock.is_boom_smash:
-		label_spike_stats.text = "%.0f km/h  •  %.2fm%s  [GOLDEN BOOM!]" % [speed_val, jump_height_m, tension_str]
+		label_spike_stats.text = "%.0f km/h  |  %.2fm%s  [GOLDEN BOOM!]" % [speed_val, jump_height_m, tension_str]
 		label_spike_stats.modulate = Color(3.8, 2.5, 0.4, 1.0)
 	elif shuttlecock.is_kill_smash:
-		label_spike_stats.text = "%.0f km/h  •  %.2fm%s  [KILL SMASH]" % [speed_val, jump_height_m, tension_str]
+		label_spike_stats.text = "%.0f km/h  |  %.2fm%s  [KILL SMASH]" % [speed_val, jump_height_m, tension_str]
 		label_spike_stats.modulate = Color(3.5, 1.5, 0.3, 1.0)
 	else:
-		label_spike_stats.text = "%.0f km/h  •  %.2fm%s  [SMASH]" % [speed_val, jump_height_m, tension_str]
+		label_spike_stats.text = "%.0f km/h  |  %.2fm%s  [SMASH]" % [speed_val, jump_height_m, tension_str]
 		label_spike_stats.modulate = Color(3.0, 1.8, 0.3, 1.0)
 
 
@@ -3308,7 +3308,7 @@ func _show_match_over_dialog(champ: String) -> void:
 			lbl_score_res.text = "TỈ SỐ SET: %d   -   %d" % [sets_won_player, sets_won_ai]
 	if lbl_sub:
 		var mode_str = "1 SET" if total_match_sets == 1 else "BEST OF 3 SETS"
-		lbl_sub.text = "THỂ THỨC: %s (CHẠM %d ĐIỂM) • BWF RULES" % [mode_str, target_match_points]
+		lbl_sub.text = "THỂ THỨC: %s (CHẠM %d ĐIỂM) | BWF RULES" % [mode_str, target_match_points]
 		
 	match_over_dialog.visible = true
 	if virtual_touch_pad:

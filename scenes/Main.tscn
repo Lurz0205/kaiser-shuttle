@@ -364,7 +364,7 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-text = "0.00 km/h   •   0.00 m"
+text = "0.00 km/h   |   0.00 m"
 label_settings = SubResource("LabelSettings_stats")
 horizontal_alignment = 1
 vertical_alignment = 1
@@ -394,7 +394,7 @@ offset_top = 16.0
 offset_right = 106.0
 offset_bottom = 48.0
 theme_override_styles/normal = SubResource("StyleBoxFlat_settings_btn")
-text = "‹ SẢNH"
+text = "< SẢNH"
 
 [node name="BtnFullscreen" type="Button" parent="HUD"]
 visible = false
@@ -409,7 +409,7 @@ offset_right = -16.0
 offset_bottom = 48.0
 grow_horizontal = 0
 theme_override_styles/normal = SubResource("StyleBoxFlat_settings_btn")
-text = "⛶ FULL"
+text = "[ ] FULL"
 
 [node name="BtnSettings" type="Button" parent="HUD"]
 visible = false
@@ -516,7 +516,7 @@ theme_override_styles/panel = SubResource("StyleBoxFlat_controls")
 
 [node name="LabelControls" type="Label" parent="HUD/ControlsBar"]
 layout_mode = 2
-text = "[A / D] Di chuyển (DD Cứu cầu)   •   [W] Nhảy   •   [J] Bỏ nhỏ   •   [K] Phông   •   [L] Smash   •   [C] Đổi tướng"
+text = "[A / D] Di chuyển (DD Cứu cầu)   |   [W] Nhảy   |   [J] Bỏ nhỏ   |   [K] Phông   |   [L] Smash   |   [C] Đổi tướng"
 label_settings = SubResource("LabelSettings_controls")
 horizontal_alignment = 1
 vertical_alignment = 1
