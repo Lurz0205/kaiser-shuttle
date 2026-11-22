@@ -3,6 +3,7 @@ import sys
 import os
 import re
 import time
+import shutil
 
 def patch_index_html(build_dir, build_hash=None):
     if not build_hash:
@@ -12,27 +13,134 @@ def patch_index_html(build_dir, build_hash=None):
         print(f"Error: {index_path} not found!")
         sys.exit(1)
 
+    # 1. Ensure logo image from TAI NGUYEN is placed into build_dir as logo_kaiser_shuttle.png
+    target_logo = os.path.join(build_dir, "logo_kaiser_shuttle.png")
+    if not os.path.exists(target_logo):
+        src_candidates = [
+            "assets/icons/logo_kaiser_shuttle.png",
+            "TAI NGUYEN/Logo game tốc độ Kaiser Shuttle.png",
+            os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "TAI NGUYEN", "Logo game tốc độ Kaiser Shuttle.png"),
+            os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "assets", "icons", "logo_kaiser_shuttle.png")
+        ]
+        for src in src_candidates:
+            if os.path.exists(src):
+                shutil.copyfile(src, target_logo)
+                print(f"[COPIED] Placed logo: {src} -> {target_logo}")
+                break
+
     with open(index_path, "r", encoding="utf-8") as f:
         html = f.read()
 
-    # 1. Force experimentalVK: true
+    # 2. Force experimentalVK: true
     html = re.sub(r'"experimentalVK"\s*:\s*false', '"experimentalVK":true', html)
 
-    # 2. Add version hash to index.js and pwa_fullscreen.js
+    # 3. Add version hash to index.js and pwa_fullscreen.js
     html = re.sub(r'src=["\']index\.js(?:\?v=\d+)?["\']', f'src="index.js?v={build_hash}"', html)
     html = re.sub(r'src=["\']pwa_fullscreen\.js(?:\?v=\d+)?["\']', f'src="pwa_fullscreen.js?v={build_hash}"', html)
 
-    # 3. Replace Godot robot logo splash screen with Kaiser Shuttle branded loader
-    old_status_pattern = r'<div id="status">[\s\S]*?<div id="status-notice"></div>\s*</div>'
-    new_status = f'''<div id="status" style="background: radial-gradient(circle at center, #111a2e 0%, #060911 100%); display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 99999;">
-\t\t\t<img id="status-splash" src="icon_192.png?v={build_hash}" alt="Kaiser Shuttle" style="width: 104px; height: 104px; border-radius: 22px; margin-bottom: 24px; box-shadow: 0 10px 35px rgba(0,0,0,0.6); object-fit: cover;">
-\t\t\t<progress id="status-progress" style="width: 250px; height: 7px; border-radius: 4px; accent-color: #f59e0b;"></progress>
-\t\t\t<div id="status-text" style="color: #cbd5e1; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 13px; font-weight: 600; margin-top: 14px; letter-spacing: 0.5px;">Đang tải dữ liệu trò chơi...</div>
-\t\t\t<div id="status-notice"></div>
-\t\t</div>'''
-    html = re.sub(old_status_pattern, new_status, html)
+    # 4. Replace CSS in <style> to center the logo and loader perfectly
+    style_pattern = r'#status[\s\S]*?#status-notice\s*\{[\s\S]*?\}'
+    new_style = '''#status {
+	position: absolute;
+	left: 0;
+	top: 0;
+	right: 0;
+	bottom: 0;
+	background: radial-gradient(circle at center, #111a2e 0%, #060911 100%);
+	display: flex;
+	flex-direction: column;
+	justify-content: center;
+	align-items: center;
+	visibility: hidden;
+	z-index: 99999;
+}
 
-    # 4. Enhance onProgress to update status-text percentage in real time
+#status-container {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	width: 100%;
+	max-width: 90vw;
+	margin: auto;
+}
+
+#status-splash {
+	display: block;
+	width: min(540px, 86vw);
+	max-height: 28vh;
+	height: auto;
+	object-fit: contain;
+	margin: 0 0 24px 0;
+	filter: drop-shadow(0 14px 35px rgba(0, 0, 0, 0.75));
+}
+
+#status-progress {
+	display: block;
+	width: min(320px, 78vw);
+	height: 8px;
+	border-radius: 6px;
+	border: none;
+	background-color: rgba(255, 255, 255, 0.12);
+	accent-color: #f59e0b;
+	box-shadow: 0 0 16px rgba(245, 158, 11, 0.35);
+	margin: 0 auto;
+}
+
+#status-progress::-webkit-progress-bar {
+	background-color: rgba(255, 255, 255, 0.12);
+	border-radius: 6px;
+}
+
+#status-progress::-webkit-progress-value {
+	background: linear-gradient(90deg, #f59e0b, #fbbf24);
+	border-radius: 6px;
+}
+
+#status-text {
+	color: #cbd5e1;
+	font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+	font-size: 14px;
+	font-weight: 600;
+	margin-top: 14px;
+	letter-spacing: 0.6px;
+	text-align: center;
+	text-shadow: 0 2px 4px rgba(0, 0, 0, 0.85);
+}
+
+#status-notice {
+	display: none;
+	background-color: #5b3943;
+	border-radius: 0.5rem;
+	border: 1px solid #9b3943;
+	color: #e0e0e0;
+	font-family: 'Noto Sans', 'Droid Sans', Arial, sans-serif;
+	line-height: 1.3;
+	margin: 1rem 2rem;
+	overflow: hidden;
+	padding: 1rem;
+	text-align: center;
+	z-index: 1;
+}'''
+    if re.search(style_pattern, html):
+        html = re.sub(style_pattern, new_style, html)
+    else:
+        # If pattern didn't match directly, insert before </style>
+        html = html.replace('</style>', f'\n{new_style}\n</style>')
+
+    # 5. Replace Godot status HTML with centered Kaiser Shuttle logo and loader
+    status_pattern = r'<div id="status"[^>]*>[\s\S]*?<div id="status-notice">[\s\S]*?</div>(?:\s*</div>)*\s*</div>'
+    new_status = f'''<div id="status">
+\t\t\t<div id="status-container">
+\t\t\t\t<img id="status-splash" src="logo_kaiser_shuttle.png?v={build_hash}" alt="Kaiser Shuttle">
+\t\t\t\t<progress id="status-progress"></progress>
+\t\t\t\t<div id="status-text">Đang tải dữ liệu trò chơi...</div>
+\t\t\t\t<div id="status-notice"></div>
+\t\t\t</div>
+\t\t</div>'''
+    html = re.sub(status_pattern, new_status, html)
+
+    # 6. Enhance onProgress to update status-text percentage in real time
     old_progress = r"'onProgress': function \(current, total\) \{[\s\S]*?\},"
     new_progress = '''\'onProgress\': function (current, total) {
 \t\t\t\tconst txt = document.getElementById('status-text');
@@ -52,7 +160,7 @@ def patch_index_html(build_dir, build_hash=None):
 
     with open(index_path, "w", encoding="utf-8") as f:
         f.write(html)
-    print(f"[SUCCESS] Patched {index_path} with build hash v={build_hash}")
+    print(f"[SUCCESS] Patched {index_path} with build hash v={build_hash} and centered Kaiser Shuttle logo")
 
 if __name__ == "__main__":
     b_dir = sys.argv[1] if len(sys.argv) > 1 else "build/web"

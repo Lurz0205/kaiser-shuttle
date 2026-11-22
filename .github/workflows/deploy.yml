@@ -47,6 +47,7 @@ jobs:
           cp assets/icons/icon_192.png build/web/icon_192.png
           cp assets/icons/icon_512.png build/web/icon_512.png
           cp assets/icons/icon_maskable.png build/web/icon_maskable.png
+          cp assets/icons/logo_kaiser_shuttle.png build/web/logo_kaiser_shuttle.png
           
           # Chạy script patch HTML thông minh:
           # 1. Khử hoàn toàn logo Godot Engine và thay bằng logo game Kaiser Shuttle
