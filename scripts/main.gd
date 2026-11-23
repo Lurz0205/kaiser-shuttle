@@ -1437,9 +1437,9 @@ func _on_network_packet_received(data: Dictionary) -> void:
 				)
 			_update_scoreboard()
 			if winner == "player":
-				_show_banner("ĐIỂM CHO %s! - %s" % [_get_p1_display_name(), reason], Color(0.2, 1.0, 0.4), true, 1.5)
+				_show_banner(reason, Color(0.2, 1.0, 0.4), true, 1.5)
 			else:
-				_show_banner("ĐIỂM CHO %s! - %s" % [_get_p2_display_name(), reason], Color(1.0, 0.4, 0.4), true, 1.5)
+				_show_banner(reason, Color(1.0, 0.4, 0.4), true, 1.5)
 				
 			get_tree().create_timer(1.8).timeout.connect(func():
 				if is_pvp_active:
@@ -1671,8 +1671,7 @@ func _on_network_packet_received(data: Dictionary) -> void:
 			if bwf_scoreboard:
 				bwf_scoreboard.set_server(current_server != "player")
 				
-			var winner_label = "P1 (SÂN TRÁI)" if winner == "player" else "P2 (SÂN PHẢI)"
-			_show_banner("ĐIỂM CHO %s! - %s" % [winner_label, reason], Color(0.95, 0.85, 0.25), true, 1.5)
+			_show_banner(reason, Color(0.95, 0.85, 0.25), true, 1.5)
 			
 			get_tree().create_timer(1.8).timeout.connect(func():
 				if is_pvp_active and is_spectator:
@@ -2986,7 +2985,7 @@ func _confirm_shuttlecock_landed(pos: Vector2, p_is_serve: bool = false) -> void
 			# Người chơi phát cầu: phải qua vạch SHORT_SERVICE_RIGHT (785px) và không ra ngoài
 			if pos.x < SHORT_SERVICE_RIGHT:
 				point_winner = "ai"
-				reason = "GIAO CẦU CHƯA QUA VẠCH! ĐIỂM CHO RIVAL AI"
+				reason = "GIAO CẦU CHƯA QUA VẠCH! ĐIỂM CHO %s" % _get_p2_display_name()
 				_show_landing_callout(pos, "FAULT", "CHƯA QUA VẠCH")
 			elif pos.x > RIGHT_OUT_X:
 				point_winner = "ai"

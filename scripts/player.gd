@@ -108,7 +108,8 @@ var is_swinging: bool = false
 var swing_timer: float = 0.0
 var swing_prog: float = 0.0
 var swing_recovery: float = 0.0
-const SWING_DURATION: float = 0.28
+const SWING_DURATION: float = 0.18
+var swing_started_from_backpedal: bool = false
 var swing_cooldown: float = 0.0
 const SWING_COOLDOWN_MAX: float = 0.5 # Chỉ cho phép vung vợt 0.5s 1 lần
 var input_buffer_shot: String = ""
@@ -442,7 +443,7 @@ func _physics_process(delta: float) -> void:
 				is_swinging = false
 				swing_recovery = 1.0
 		elif swing_recovery > 0.0:
-			swing_recovery = move_toward(swing_recovery, 0.0, delta * 3.2)
+			swing_recovery = move_toward(swing_recovery, 0.0, delta * 4.2)
 		if is_on_ground() and abs(velocity.x) > 10.0:
 			walk_phase += delta * (abs(velocity.x) / move_speed_x) * 8.5
 		else:
@@ -500,6 +501,7 @@ func _physics_process(delta: float) -> void:
 			input_buffer_timer -= delta
 			if input_buffer_timer <= 0.0:
 				input_buffer_shot = ""
+				swing_started_from_backpedal = (is_on_ground() and (facing * velocity.x < -10.0)) or (joint_upper_racket * -facing > 1.3)
 				is_swinging = true
 				swing_timer = 0.0
 				swing_recovery = 0.0
@@ -514,7 +516,7 @@ func _physics_process(delta: float) -> void:
 			is_swinging = false
 			swing_recovery = 1.0
 	elif swing_recovery > 0.0:
-		swing_recovery = move_toward(swing_recovery, 0.0, delta * 3.2)
+		swing_recovery = move_toward(swing_recovery, 0.0, delta * 4.2)
 	
 	# Swing cooldown timer (Chỉ cho phép vung vợt 0.5s 1 lần)
 	if swing_cooldown > 0.0:
@@ -597,35 +599,42 @@ func _update_joint_kinematics(delta: float) -> void:
 	
 	if is_swinging:
 		var p = swing_prog
-		if p < 0.35:
-			# Windup: Giương vợt ra sau, cẳng tay giơ cao, ngực ưỡn lấy đà
-			# ĐỒNG THỜI: Tay trái hướng theo tay cầm vợt, nâng cao chỉ hướng cầu ngắm điểm rơi
-			var sp = p / 0.35
-			target_torso = lerp(0.0, -facing * 0.35, sp)
-			target_upper_racket = lerp(-facing * 1.4, -facing * 2.35, sp)
-			target_fore_racket = lerp(-facing * 2.1, -facing * 2.90, sp) # Cẳng tay hướng lên trên
-			target_racket_angle = lerp(-1.10, -2.45, sp)
-			target_upper_off = lerp(facing * 0.75, facing * 1.35, sp)
-			target_fore_off = lerp(facing * 1.10, facing * 1.70, sp)
-		elif p < 0.72:
+		if p < 0.30:
+			if swing_started_from_backpedal:
+				# Khi đang di chuyển tay đã đưa ra phía sau sẵn -> animation không cần đưa ra sau lần nữa!
+				target_torso = -facing * 0.35
+				target_upper_racket = -facing * 2.30
+				target_fore_racket = -facing * 2.85
+				target_racket_angle = -2.40
+				target_upper_off = facing * 1.20
+				target_fore_off = facing * 1.60
+			else:
+				# Chỉ animation vung vợt ra sau khi đang đứng yên hoặc di chuyển về phía trước:
+				var sp = p / 0.30
+				target_torso = lerp(0.0, -facing * 0.35, sp)
+				target_upper_racket = lerp(-facing * 1.5, -facing * 2.3, sp)
+				target_fore_racket = lerp(-facing * 2.2, -facing * 2.85, sp) # Cẳng tay hướng lên trên!
+				target_racket_angle = lerp(-1.10, -2.40, sp)
+				target_upper_off = lerp(facing * 0.6, facing * 1.2, sp)
+				target_fore_off = lerp(facing * 1.0, facing * 1.6, sp)
+		elif p < 0.70:
 			# Forward Whip: Vụt mạnh qua đầu, duỗi tay cắm thẳng vào điểm tiếp xúc!
-			# ĐỒNG THỜI: Tay trái xoay đối trọng, co gập về ngực/hông kéo mô-men xoắn
-			var sp = (p - 0.35) / 0.37
+			var sp = (p - 0.30) / 0.40
 			target_torso = lerp(-facing * 0.35, facing * 0.45, sp)
-			target_upper_racket = lerp(-facing * 2.35, facing * 1.45, sp)
-			target_fore_racket = lerp(-facing * 2.90, facing * 1.55, sp)
-			target_racket_angle = lerp(-2.45, 0.75, sp)
-			target_upper_off = lerp(facing * 1.35, -facing * 0.65, sp)
-			target_fore_off = lerp(facing * 1.70, -facing * 0.45, sp)
+			target_upper_racket = lerp(-facing * 2.3, facing * 1.4, sp)
+			target_fore_racket = lerp(-facing * 2.85, facing * 1.55, sp)
+			target_racket_angle = lerp(-2.40, 0.75, sp)
+			target_upper_off = lerp(facing * 1.2, -facing * 0.5, sp)
+			target_fore_off = lerp(facing * 1.6, -facing * 0.3, sp)
 		else:
 			# Follow-through: Hạ vợt quét chéo hông mượt mà
-			var sp = (p - 0.72) / 0.28
-			target_torso = lerp(facing * 0.45, facing * 0.20, sp)
-			target_upper_racket = lerp(facing * 1.45, facing * 0.70, sp)
+			var sp = (p - 0.70) / 0.30
+			target_torso = lerp(facing * 0.45, facing * 0.22, sp)
+			target_upper_racket = lerp(facing * 1.4, facing * 0.75, sp)
 			target_fore_racket = lerp(facing * 1.55, facing * 0.45, sp)
 			target_racket_angle = lerp(0.75, 1.40, sp)
-			target_upper_off = lerp(-facing * 0.65, -facing * 0.35, sp)
-			target_fore_off = lerp(-facing * 0.45, -facing * 0.20, sp)
+			target_upper_off = -facing * 0.45
+			target_fore_off = -facing * 0.25
 			
 	elif swing_recovery > 0.0:
 		# Hồi về vị trí thủ (Recovery blend - không giật frame)
@@ -670,7 +679,7 @@ func _update_joint_kinematics(delta: float) -> void:
 		
 	elif in_air:
 		# ==========================================================
-		# TRÊN KHÔNG (JUMP POSTURE): CHÂN CO TỪ TỪ TỪ LÚC NHẢY ĐẾN ĐỈNH CAO NHẤT
+		# TRÊN KHÔNG (JUMP POSTURE): 2 CHÂN CO TỪ TỪ TỪ LÚC NHẢY ĐẾN ĐỈNH CAO NHẤT
 		# ==========================================================
 		var jump_tuck: float = 0.0
 		var max_v = abs(JUMP_FORCE)
@@ -684,22 +693,20 @@ func _update_joint_kinematics(delta: float) -> void:
 			var fall_ratio = clamp(velocity.y / max(1.0, max_v * 0.75), 0.0, 1.0)
 			jump_tuck = clamp(1.0 - fall_ratio, 0.20, 1.0)
 			
-		target_torso = lerp(0.0, -facing * 0.28, jump_tuck)
-		
-		# Cánh tay và cẳng tay cầm vợt: Nâng dần lên cao theo đà bật
-		target_upper_racket = lerp(facing * 0.55, -facing * 2.25, jump_tuck)
-		target_fore_racket = lerp(facing * 1.05, -facing * 2.85, jump_tuck)
-		target_racket_angle = lerp(-0.75, -2.40, jump_tuck)
-		
-		# Tay trái (tay không cầm vợt) hướng đồng bộ theo tay vợt, giơ lên ngắm đón cầu:
-		target_upper_off = lerp(facing * 0.35, facing * 1.25, jump_tuck)
-		target_fore_off = lerp(facing * 0.70, facing * 1.65, jump_tuck)
+		target_torso = -facing * 0.28
+		# Cánh tay và cẳng tay cầm vợt HƯỚNG LÊN TRÊN sau đầu (Spike ready)
+		target_upper_racket = -facing * 2.25
+		target_fore_racket = -facing * 2.85 # Hướng thẳng lên trời!
+		target_racket_angle = -2.40         # Cán vợt dựng hướng lên và ra sau đầu
+		# Tay sau chỉ điểm cầu bổng
+		target_upper_off = facing * 1.20
+		target_fore_off = facing * 1.60
 		
 		# 2 chân co gối mượt mà từ lúc nhảy đến khi chạm đỉnh cao nhất:
-		target_thigh_r = lerp(facing * 0.12, -facing * 0.42, jump_tuck)
-		target_knee_flex_r = lerp(0.20, 0.78, jump_tuck)
-		target_thigh_l = lerp(-facing * 0.12, -facing * 0.54, jump_tuck)
-		target_knee_flex_l = lerp(0.20, 0.88, jump_tuck)
+		target_thigh_r = lerp(facing * 0.12, -facing * 0.40, jump_tuck)
+		target_knee_flex_r = lerp(0.20, 0.75, jump_tuck)
+		target_thigh_l = lerp(-facing * 0.12, -facing * 0.52, jump_tuck)
+		target_knee_flex_l = lerp(0.20, 0.85, jump_tuck)
 		
 	elif is_moving_back:
 		# ==========================================================
@@ -761,16 +768,16 @@ func _update_joint_kinematics(delta: float) -> void:
 		target_knee_flex_r = 0.20
 	
 	# NỘI SUY GÓC KHỚP MƯỢT MÀ (SMOOTH INTERPOLATION - ZERO SNAPPING)
-	joint_torso = lerp_angle(joint_torso, target_torso, 14.0 * delta)
-	joint_thigh_l = lerp_angle(joint_thigh_l, target_thigh_l, 13.0 * delta)
-	joint_knee_flex_l = lerp(joint_knee_flex_l, target_knee_flex_l, 13.0 * delta)
-	joint_thigh_r = lerp_angle(joint_thigh_r, target_thigh_r, 13.0 * delta)
-	joint_knee_flex_r = lerp(joint_knee_flex_r, target_knee_flex_r, 13.0 * delta)
-	joint_upper_off = lerp_angle(joint_upper_off, target_upper_off, 15.0 * delta)
-	joint_fore_off = lerp_angle(joint_fore_off, target_fore_off, 15.0 * delta)
-	joint_upper_racket = lerp_angle(joint_upper_racket, target_upper_racket, 16.0 * delta)
-	joint_fore_racket = lerp_angle(joint_fore_racket, target_fore_racket, 16.0 * delta)
-	joint_racket_angle = lerp_angle(joint_racket_angle, target_racket_angle, 18.0 * delta)
+	joint_torso = lerp_angle(joint_torso, target_torso, 20.0 * delta)
+	joint_thigh_l = lerp_angle(joint_thigh_l, target_thigh_l, 20.0 * delta)
+	joint_knee_flex_l = lerp(joint_knee_flex_l, target_knee_flex_l, 20.0 * delta)
+	joint_thigh_r = lerp_angle(joint_thigh_r, target_thigh_r, 20.0 * delta)
+	joint_knee_flex_r = lerp(joint_knee_flex_r, target_knee_flex_r, 20.0 * delta)
+	joint_upper_off = lerp_angle(joint_upper_off, target_upper_off, 22.0 * delta)
+	joint_fore_off = lerp_angle(joint_fore_off, target_fore_off, 22.0 * delta)
+	joint_upper_racket = lerp_angle(joint_upper_racket, target_upper_racket, 24.0 * delta)
+	joint_fore_racket = lerp_angle(joint_fore_racket, target_fore_racket, 24.0 * delta)
+	joint_racket_angle = lerp_angle(joint_racket_angle, target_racket_angle, 26.0 * delta)
 
 
 func start_dive(dir: float = 1.0) -> void:
@@ -941,6 +948,7 @@ func _trigger_shot(shot_pressed: String, hit_status: Dictionary) -> void:
 		return
 		
 	swing_cooldown = SWING_COOLDOWN_MAX
+	swing_started_from_backpedal = (is_on_ground() and (facing * velocity.x < -10.0)) or (joint_upper_racket * -facing > 1.3)
 	is_swinging = true
 	swing_timer = 0.0
 	swing_recovery = 0.0
@@ -1770,6 +1778,7 @@ func _execute_dive_rescue(hit_status: Dictionary = {}) -> void:
 	can_hit = false
 	if opponent_player:
 		opponent_player.can_hit = true
+	swing_started_from_backpedal = (is_on_ground() and (facing * velocity.x < -10.0)) or (joint_upper_racket * -facing > 1.3)
 	is_swinging = true
 	swing_timer = 0.0
 	swing_recovery = 0.0
@@ -1822,6 +1831,7 @@ func _execute_counter_turnaround_hit(hit_status: Dictionary = {}) -> void:
 	can_hit = false
 	if opponent_player:
 		opponent_player.can_hit = true
+	swing_started_from_backpedal = (is_on_ground() and (facing * velocity.x < -10.0)) or (joint_upper_racket * -facing > 1.3)
 	is_swinging = true
 	swing_timer = 0.0
 	swing_recovery = 0.0
@@ -1900,6 +1910,7 @@ func _execute_hit(shot_type: String, hit_status: Dictionary = {}) -> void:
 	can_hit = false
 	if opponent_player:
 		opponent_player.can_hit = true
+	swing_started_from_backpedal = (is_on_ground() and (facing * velocity.x < -10.0)) or (joint_upper_racket * -facing > 1.3)
 	is_swinging = true
 	swing_timer = 0.0
 	swing_recovery = 0.0
@@ -2371,6 +2382,7 @@ func _execute_hit(shot_type: String, hit_status: Dictionary = {}) -> void:
 		pending_smash_err = pending_special_err
 		
 		# Khởi động vung vợt từ từ tiến sát vào quả cầu
+		swing_started_from_backpedal = (is_on_ground() and (facing * velocity.x < -10.0)) or (joint_upper_racket * -facing > 1.3)
 		is_swinging = true
 		swing_timer = 0.02
 		swing_recovery = 0.0
@@ -2409,6 +2421,7 @@ func _execute_fault_smash_into_net(_hit_status: Dictionary = {}) -> void:
 	can_hit = false
 	if opponent_player:
 		opponent_player.can_hit = true
+	swing_started_from_backpedal = (is_on_ground() and (facing * velocity.x < -10.0)) or (joint_upper_racket * -facing > 1.3)
 	is_swinging = true
 	swing_timer = 0.0
 	swing_recovery = 0.0
