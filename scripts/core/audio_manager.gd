@@ -144,20 +144,24 @@ func ensure_music_playing() -> void:
 # ==========================================================
 # MATCH TRANSITIONS (Tùy chọn Tắt nhạc nền trong trận)
 # ==========================================================
-func on_enter_match() -> void:
+func on_enter_match(restart: bool = true) -> void:
 	is_in_match = true
 	if not bgm_match_enabled:
 		if bgm_player and bgm_player.playing:
 			bgm_player.stop()
 	else:
-		if is_playing and bgm_player and not bgm_player.playing:
-			bgm_player.play()
+		if is_playing and bgm_player:
+			if restart:
+				bgm_player.play(0.0)
+			elif not bgm_player.playing:
+				bgm_player.play()
+	playback_state_changed.emit(is_playing and bgm_player != null and bgm_player.playing)
 
 func on_leave_match() -> void:
 	is_in_match = false
 	if is_playing and bgm_player and not bgm_player.playing:
 		bgm_player.play()
-	playback_state_changed.emit(is_playing and bgm_player.playing)
+	playback_state_changed.emit(is_playing and bgm_player != null and bgm_player.playing)
 
 # ==========================================================
 # 5-STEP VOLUME CALCULATIONS & PERSISTENCE

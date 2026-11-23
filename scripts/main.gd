@@ -39,6 +39,9 @@ const FloatingTextManager = preload("res://scripts/ui/floating_text_manager.gd")
 var floating_text_mgr: FloatingTextManager = FloatingTextManager.new()
 var effects_overlay: Node2D = null
 
+const TEX_LEAF_FUJI: Texture2D = preload("res://assets/images/trails/leaf_bamboo_fuji.png")
+const TEX_SWIRL_FUJI: Texture2D = preload("res://assets/images/trails/vortex_swirl_fuji.png")
+
 @onready var camera: Camera2D = $Camera2D
 @onready var player: BadmintonPlayer = $Player
 @onready var ai_rival: BadmintonPlayer = $AIRival
@@ -1799,10 +1802,10 @@ func _get_audio() -> Node:
 	return null
 
 
-func _apply_match_bgm(_restart_from_beginning: bool = false) -> void:
+func _apply_match_bgm(restart_from_beginning: bool = true) -> void:
 	var am = _get_audio()
 	if am:
-		am.on_enter_match()
+		am.on_enter_match(restart_from_beginning)
 
 
 func _apply_menu_bgm() -> void:
@@ -3513,49 +3516,39 @@ func _on_effects_overlay_draw() -> void:
 		effects_overlay.draw_line(p_start, p_end, Color(0.20, 1.8, 0.55, alpha * 0.55), 7.5, true)
 		effects_overlay.draw_line(p_start, p_end, Color(0.85, 2.6, 1.4, alpha * 0.95), 2.8, true)
 		
-		# Chế độ đồ họa thấp: Bỏ qua bầy lá trúc và đa tầng lốc xoáy để tránh drop FPS
+		# Hiệu ứng Lốc Xoáy & Lá Trúc Fuji (Toàn bộ bằng GPU Texture, 0% drop FPS WebGL/WASM)
 		if not low_graphics_mode:
-			# A. Lốc xoáy ngọc bích tâm điểm (Vortex Eye Aura)
-			var r_eye = 16.0 + p_prog * 24.0
-			effects_overlay.draw_circle(center, r_eye * 0.65, Color(0.85, 2.5, 1.3, alpha * 0.40))
-			effects_overlay.draw_circle(center, r_eye * 1.35, Color(0.20, 1.85, 0.60, alpha * 0.22))
-			
-			# B. Các vòng sóng xung kích gió bão nở rộng (Expanding Wind Pressure Rings)
-			var r_ring1 = 20.0 + p_prog * 85.0
-			effects_overlay.draw_arc(center, r_ring1, 0, TAU, 36, Color(0.30, 2.0, 0.75, alpha * 0.85), 3.0, true)
-			effects_overlay.draw_arc(center, r_ring1 * 0.65, 0, TAU, 28, Color(0.90, 2.6, 1.4, alpha * 0.90), 1.8, true)
-			
-			# C. 3 dải lưỡi gió xoáy lượn vòng (Gale Vortex Blades)
-			var base_spin = p_prog * 14.0 * facing_dir
-			for b in range(3):
-				var ang_start = base_spin + (TAU / 3.0) * b
-				var ang_end = ang_start + PI * 0.75
-				var r_blade = 28.0 + p_prog * 38.0 + b * 6.0
-				effects_overlay.draw_arc(center, r_blade, ang_start, ang_end, 20, Color(0.25, 2.2, 0.70, alpha * 0.90), 3.2, true)
-				effects_overlay.draw_arc(center, r_blade, ang_start + 0.1, ang_end - 0.1, 16, Color(0.90, 2.8, 1.5, alpha * 0.98), 1.5, true)
+			# A. Lốc xoáy ngọc bích tâm điểm bằng GPU Texture
+			if TEX_SWIRL_FUJI:
+				var swirl_sz = 80.0 + p_prog * 120.0
+				var base_spin = p_prog * 10.0 * facing_dir
+				var swirl_xform = Transform2D(base_spin, center)
+				effects_overlay.draw_set_transform_matrix(swirl_xform)
+				effects_overlay.draw_texture_rect(TEX_SWIRL_FUJI, Rect2(-swirl_sz * 0.5, -swirl_sz * 0.5, swirl_sz, swirl_sz), false, Color(0.35, 2.2, 0.85, alpha * 0.90))
+				effects_overlay.draw_set_transform_matrix(Transform2D.IDENTITY)
 				
-			# E. Bầy lá trúc bay lượn xoáy ốc trong slow-mo (Slow-mo Orbiting Bamboo Leaves)
-			for lf in fuji_slowmo_leaves:
-				var ang = lf["ang0"] + p_prog * lf["spin_speed"] * lf["spin_dir"]
-				var dist = lf["dist0"] + p_prog * lf["dist_speed"]
-				var leaf_pos = center + Vector2(cos(ang), sin(ang)) * dist
-				var leaf_rot = ang + p_prog * 6.0
-				var sz = lf["size"]
-				var col = lf["col"]
-				col.a = alpha * 0.95
+			# B. Bầy lá trúc bay lượn xoáy ốc bằng Sprite Texture Quad
+			if TEX_LEAF_FUJI:
+				var tex = TEX_LEAF_FUJI
+				var tex_w = float(tex.get_width())
+				var tex_h = float(tex.get_height())
+				var aspect = tex_w / max(1.0, tex_h)
+				for lf in fuji_slowmo_leaves:
+					var ang = lf["ang0"] + p_prog * lf["spin_speed"] * lf["spin_dir"]
+					var dist = lf["dist0"] + p_prog * lf["dist_speed"]
+					var leaf_pos = center + Vector2(cos(ang), sin(ang)) * dist
+					var leaf_rot = ang + p_prog * 6.0
+					var sz = lf["size"]
+					var col = lf["col"]
+					col.a = alpha * 0.95
+					
+					var w = sz * 2.4
+					var h = w / aspect
+					var xform = Transform2D(leaf_rot, leaf_pos)
+					effects_overlay.draw_set_transform_matrix(xform)
+					effects_overlay.draw_texture_rect(tex, Rect2(-w * 0.5, -h * 0.5, w, h), false, col)
 				
-				var cos_r = cos(leaf_rot)
-				var sin_r = sin(leaf_rot)
-				var pts = PackedVector2Array([
-					leaf_pos + Vector2(-sz * 0.7 * cos_r, -sz * 0.7 * sin_r),
-					leaf_pos + Vector2(-sz * 0.25 * cos_r + sz * 0.38 * sin_r, -sz * 0.25 * sin_r - sz * 0.38 * cos_r),
-					leaf_pos + Vector2(sz * 0.45 * cos_r + sz * 0.30 * sin_r, sz * 0.45 * sin_r - sz * 0.30 * cos_r),
-					leaf_pos + Vector2(sz * 1.0 * cos_r, sz * 1.0 * sin_r),
-					leaf_pos + Vector2(sz * 0.45 * cos_r - sz * 0.30 * sin_r, sz * 0.45 * sin_r + sz * 0.30 * cos_r),
-					leaf_pos + Vector2(-sz * 0.25 * cos_r - sz * 0.38 * sin_r, -sz * 0.25 * sin_r + sz * 0.38 * cos_r)
-				])
-				effects_overlay.draw_colored_polygon(pts, col)
-				effects_overlay.draw_polyline(pts, Color(0.9, 2.4, 1.2, alpha * 0.8), 1.0, true)
+				effects_overlay.draw_set_transform_matrix(Transform2D.IDENTITY)
 	
 	# 11. Floating Combat Text (Popup PERFECT bay nhẹ lên trên)
 	if floating_text_mgr:

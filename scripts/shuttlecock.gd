@@ -72,6 +72,8 @@ const TEX_TRAIL_LIGHTNING: Texture2D = preload("res://assets/images/trails/trail
 const TEX_TRAIL_EMERALD: Texture2D = preload("res://assets/images/trails/trail_emerald_vortex.png")
 const TEX_TRAIL_SPEED: Texture2D = preload("res://assets/images/trails/trail_speed_white.png")
 const TEX_TRAIL_MIRAGE: Texture2D = preload("res://assets/images/trails/trail_mirage_cyan.png")
+const TEX_LEAF_FUJI: Texture2D = preload("res://assets/images/trails/leaf_bamboo_fuji.png")
+const TEX_SWIRL_FUJI: Texture2D = preload("res://assets/images/trails/vortex_swirl_fuji.png")
 
 # Visual Trail & Ground Shadow
 var trail_points: Array[Vector2] = []
@@ -672,18 +674,13 @@ func _on_lightning_trail_draw() -> void:
 			if not is_web:
 				lightning_trail.draw_polyline(helix2_pts, Color(0.90, 2.4, 1.8, 0.95), 1.4, true)
 			
-		# Lốc xoáy mini bao bọc quả cầu đang lao dốc (Cork Vortex Aura)
-		if is_active:
-			lightning_trail.draw_arc(global_position, 16.0, time_sec * 14.0, time_sec * 14.0 + PI * 1.35, 12 if is_web else 16, Color(0.35, 2.0, 0.75, 0.90), 2.4, use_aa)
-			if not is_web:
-				lightning_trail.draw_arc(global_position, 9.0, -time_sec * 18.0, -time_sec * 18.0 + PI * 1.2, 16, Color(0.85, 2.4, 1.4, 0.95), 1.8, true)
-			
-			# Vệt khí cắt gió (Wind Slash Crescents)
-			for w in range(2 if is_web else 3):
-				var ang = time_sec * 12.0 + (TAU / 3.0) * w
-				var w_pos = global_position + Vector2(cos(ang), sin(ang)) * 14.0
-				var w_end = w_pos + Vector2(-sin(ang), cos(ang)) * 10.0
-				lightning_trail.draw_line(w_pos, w_end, Color(0.6, 2.2, 0.9, 0.85), 1.8, use_aa)
+		# Lốc xoáy mini bao bọc quả cầu đang lao dốc (Cork Vortex Aura - GPU Texture)
+		if is_active and TEX_SWIRL_FUJI:
+			var swirl_sz = 36.0
+			var swirl_xform = Transform2D(time_sec * 10.0, global_position)
+			lightning_trail.draw_set_transform_matrix(swirl_xform)
+			lightning_trail.draw_texture_rect(TEX_SWIRL_FUJI, Rect2(-swirl_sz * 0.5, -swirl_sz * 0.5, swirl_sz, swirl_sz), false, Color(0.35, 2.0, 0.80, 0.88))
+			lightning_trail.draw_set_transform_matrix(Transform2D.IDENTITY)
 		return
 
 	# ==========================================================
@@ -801,44 +798,27 @@ func _update_fuji_leaves(delta: float) -> void:
 
 
 func _on_fuji_leaf_draw() -> void:
-	if fuji_leaves.is_empty() or not leaf_trail:
+	if fuji_leaves.is_empty() or not leaf_trail or not TEX_LEAF_FUJI:
 		return
 		
+	var tex = TEX_LEAF_FUJI
+	var tex_w = float(tex.get_width())
+	var tex_h = float(tex.get_height())
+	var aspect = tex_w / max(1.0, tex_h)
+	
 	for lf in fuji_leaves:
 		var frac = clamp(lf["life"] / lf["max_life"], 0.0, 1.0)
 		var alpha = sin(frac * PI)
 		var pos = lf["pos"]
 		var rot = lf["rot"]
-		var sz = lf["size"] * (0.8 + 0.2 * frac)
+		var sz = lf["size"] * (0.85 + 0.25 * frac)
 		var col = lf["col"]
 		col.a = alpha * 0.95
 		
-		var cos_r = cos(rot)
-		var sin_r = sin(rot)
+		var w = sz * 2.4
+		var h = w / aspect
+		var xform = Transform2D(rot, pos)
+		leaf_trail.draw_set_transform_matrix(xform)
+		leaf_trail.draw_texture_rect(tex, Rect2(-w * 0.5, -h * 0.5, w, h), false, col)
 		
-		var local_pts = [
-			Vector2(-sz * 0.7, 0.0),
-			Vector2(-sz * 0.25, sz * 0.38),
-			Vector2(sz * 0.45, sz * 0.30),
-			Vector2(sz * 1.0, 0.0),
-			Vector2(sz * 0.45, -sz * 0.30),
-			Vector2(-sz * 0.25, -sz * 0.38)
-		]
-		var poly = PackedVector2Array()
-		for lp in local_pts:
-			poly.append(Vector2(
-				pos.x + lp.x * cos_r - lp.y * sin_r,
-				pos.y + lp.x * sin_r + lp.y * cos_r
-			))
-		
-		leaf_trail.draw_colored_polygon(poly, col)
-		
-		var rim_col = Color(0.12, 0.60, 0.22, alpha * 0.90)
-		var poly_loop = poly.duplicate()
-		poly_loop.append(poly[0])
-		leaf_trail.draw_polyline(poly_loop, rim_col, 1.1, true)
-		
-		var v0 = pos + Vector2(-sz * 0.5 * cos_r, -sz * 0.5 * sin_r)
-		var v1 = pos + Vector2(sz * 0.85 * cos_r, sz * 0.85 * sin_r)
-		var vein_col = Color(0.85, 1.0, 0.75, alpha * 0.80)
-		leaf_trail.draw_line(v0, v1, vein_col, 1.0, true)
+	leaf_trail.draw_set_transform_matrix(Transform2D.IDENTITY)
