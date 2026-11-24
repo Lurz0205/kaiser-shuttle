@@ -2677,29 +2677,38 @@ func draw_ellipse_shape(center: Vector2, rx: float, ry: float, col: Color) -> vo
 
 
 # ==========================================================
-# 2D MODULAR SKELETAL RIG (TEXTURE ASSETS)
+# 2D MODULAR SKELETAL RIG (TEXTURE ATLAS ASSETS)
 # ==========================================================
-static var tex_p_head: Texture2D = preload("res://assets/characters/default/head.png")
-static var tex_p_torso: Texture2D = preload("res://assets/characters/default/torso.png")
-static var tex_p_pelvis: Texture2D = preload("res://assets/characters/default/pelvis.png")
-static var tex_p_arm_upper: Texture2D = preload("res://assets/characters/default/arm_upper.png")
-static var tex_p_arm_fore: Texture2D = preload("res://assets/characters/default/arm_fore.png")
-static var tex_p_hand: Texture2D = preload("res://assets/characters/default/hand.png")
-static var tex_p_thigh: Texture2D = preload("res://assets/characters/default/thigh.png")
-static var tex_p_shin: Texture2D = preload("res://assets/characters/default/shin.png")
-static var tex_p_shoe: Texture2D = preload("res://assets/characters/default/shoe.png")
-static var tex_p_racket: Texture2D = preload("res://assets/characters/default/racket.png")
+static var tex_atlas_player: Texture2D = preload("res://assets/characters/default/character_atlas.png")
+static var tex_atlas_ai: Texture2D = preload("res://assets/characters/opponent/character_atlas.png")
 
-static var tex_ai_head: Texture2D = preload("res://assets/characters/opponent/head.png")
-static var tex_ai_torso: Texture2D = preload("res://assets/characters/opponent/torso.png")
-static var tex_ai_pelvis: Texture2D = preload("res://assets/characters/opponent/pelvis.png")
-static var tex_ai_arm_upper: Texture2D = preload("res://assets/characters/opponent/arm_upper.png")
-static var tex_ai_arm_fore: Texture2D = preload("res://assets/characters/opponent/arm_fore.png")
-static var tex_ai_hand: Texture2D = preload("res://assets/characters/opponent/hand.png")
-static var tex_ai_thigh: Texture2D = preload("res://assets/characters/opponent/thigh.png")
-static var tex_ai_shin: Texture2D = preload("res://assets/characters/opponent/shin.png")
-static var tex_ai_shoe: Texture2D = preload("res://assets/characters/opponent/shoe.png")
-static var tex_ai_racket: Texture2D = preload("res://assets/characters/opponent/racket.png")
+static func _make_atlas_tex(base_atlas: Texture2D, rect: Rect2) -> AtlasTexture:
+	var at = AtlasTexture.new()
+	at.atlas = base_atlas
+	at.region = rect
+	return at
+
+static var atlas_p_head: AtlasTexture = _make_atlas_tex(tex_atlas_player, Rect2(100, 0, 128, 128))
+static var atlas_p_torso: AtlasTexture = _make_atlas_tex(tex_atlas_player, Rect2(232, 0, 96, 112))
+static var atlas_p_pelvis: AtlasTexture = _make_atlas_tex(tex_atlas_player, Rect2(332, 0, 96, 64))
+static var atlas_p_arm_upper: AtlasTexture = _make_atlas_tex(tex_atlas_player, Rect2(100, 132, 64, 128))
+static var atlas_p_arm_fore: AtlasTexture = _make_atlas_tex(tex_atlas_player, Rect2(168, 132, 64, 128))
+static var atlas_p_hand: AtlasTexture = _make_atlas_tex(tex_atlas_player, Rect2(432, 0, 48, 48))
+static var atlas_p_thigh: AtlasTexture = _make_atlas_tex(tex_atlas_player, Rect2(236, 132, 64, 128))
+static var atlas_p_shin: AtlasTexture = _make_atlas_tex(tex_atlas_player, Rect2(304, 132, 64, 128))
+static var atlas_p_shoe: AtlasTexture = _make_atlas_tex(tex_atlas_player, Rect2(430, 52, 80, 48))
+static var atlas_p_racket: AtlasTexture = _make_atlas_tex(tex_atlas_player, Rect2(0, 0, 96, 256))
+
+static var atlas_ai_head: AtlasTexture = _make_atlas_tex(tex_atlas_ai, Rect2(100, 0, 128, 128))
+static var atlas_ai_torso: AtlasTexture = _make_atlas_tex(tex_atlas_ai, Rect2(232, 0, 96, 112))
+static var atlas_ai_pelvis: AtlasTexture = _make_atlas_tex(tex_atlas_ai, Rect2(332, 0, 96, 64))
+static var atlas_ai_arm_upper: AtlasTexture = _make_atlas_tex(tex_atlas_ai, Rect2(100, 132, 64, 128))
+static var atlas_ai_arm_fore: AtlasTexture = _make_atlas_tex(tex_atlas_ai, Rect2(168, 132, 64, 128))
+static var atlas_ai_hand: AtlasTexture = _make_atlas_tex(tex_atlas_ai, Rect2(432, 0, 48, 48))
+static var atlas_ai_thigh: AtlasTexture = _make_atlas_tex(tex_atlas_ai, Rect2(236, 132, 64, 128))
+static var atlas_ai_shin: AtlasTexture = _make_atlas_tex(tex_atlas_ai, Rect2(304, 132, 64, 128))
+static var atlas_ai_shoe: AtlasTexture = _make_atlas_tex(tex_atlas_ai, Rect2(430, 52, 80, 48))
+static var atlas_ai_racket: AtlasTexture = _make_atlas_tex(tex_atlas_ai, Rect2(0, 0, 96, 256))
 
 
 func _draw_textured_limb(tex: Texture2D, p1: Vector2, p2: Vector2, width_scale: float = 1.0, tint: Color = Color.WHITE) -> void:
@@ -2725,16 +2734,16 @@ func _draw_textured_player(
 	shoulder_racket: Vector2, elbow_racket: Vector2, hand_racket: Vector2,
 	racket_dir: Vector2
 ) -> void:
-	var tex_head = tex_ai_head if is_ai else tex_p_head
-	var tex_torso = tex_ai_torso if is_ai else tex_p_torso
-	var tex_pelvis = tex_ai_pelvis if is_ai else tex_p_pelvis
-	var tex_arm_upper = tex_ai_arm_upper if is_ai else tex_p_arm_upper
-	var tex_arm_fore = tex_ai_arm_fore if is_ai else tex_p_arm_fore
-	var tex_hand = tex_ai_hand if is_ai else tex_p_hand
-	var tex_thigh = tex_ai_thigh if is_ai else tex_p_thigh
-	var tex_shin = tex_ai_shin if is_ai else tex_p_shin
-	var tex_shoe = tex_ai_shoe if is_ai else tex_p_shoe
-	var tex_racket = tex_ai_racket if is_ai else tex_p_racket
+	var tex_head = atlas_ai_head if is_ai else atlas_p_head
+	var tex_torso = atlas_ai_torso if is_ai else atlas_p_torso
+	var tex_pelvis = atlas_ai_pelvis if is_ai else atlas_p_pelvis
+	var tex_arm_upper = atlas_ai_arm_upper if is_ai else atlas_p_arm_upper
+	var tex_arm_fore = atlas_ai_arm_fore if is_ai else atlas_p_arm_fore
+	var tex_hand = atlas_ai_hand if is_ai else atlas_p_hand
+	var tex_thigh = atlas_ai_thigh if is_ai else atlas_p_thigh
+	var tex_shin = atlas_ai_shin if is_ai else atlas_p_shin
+	var tex_shoe = atlas_ai_shoe if is_ai else atlas_p_shoe
+	var tex_racket = atlas_ai_racket if is_ai else atlas_p_racket
 
 	var tint_back = Color(0.72, 0.72, 0.78, 1.0)
 	

@@ -37,6 +37,7 @@ window/size/viewport_width=1280
 window/size/viewport_height=720
 window/size/initial_position_type=2
 window/stretch/mode="canvas_items"
+window/stretch/mode.web="viewport"
 window/stretch/aspect="keep"
 window/handheld/orientation="sensor_landscape"
 window/vsync/vsync_mode.web=1
@@ -52,6 +53,7 @@ common/max_physics_steps_per_frame=4
 common/max_physics_steps_per_frame.web=2
 common/physics_ticks_per_second=60
 common/physics_interpolation=true
+common/physics_jitter_fix.web=0.0
 
 [rendering]
 

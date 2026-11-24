@@ -62,6 +62,10 @@ const TEX_SWIRL_FUJI: Texture2D = preload("res://assets/images/trails/vortex_swi
 @onready var nishikawa_lightning: Node2D = $NishikawaLightning
 @onready var aoi_shield: Node2D = $IsabelShield
 
+# Performance Debug HUD
+var debug_perf_label: Label = null
+var _debug_perf_timer: float = 0.0
+
 # Isabel (The Wall) Mirage Shield Barrier Effect
 var aoi_shield_active: bool = false
 var aoi_shield_timer: float = 0.0
@@ -336,8 +340,19 @@ func _ready() -> void:
 	effects_overlay = Node2D.new()
 	effects_overlay.name = "EffectsOverlay"
 	effects_overlay.z_index = 50
+	effects_overlay.visible = false
 	add_child(effects_overlay)
 	effects_overlay.draw.connect(_on_effects_overlay_draw)
+	
+	# Performance Debug HUD (FPS & Draw Calls - góc trên bên trái dưới nút < SẢNH)
+	debug_perf_label = Label.new()
+	debug_perf_label.name = "DebugPerfHUD"
+	debug_perf_label.z_index = 160
+	debug_perf_label.position = Vector2(20.0, 54.0)
+	debug_perf_label.add_theme_font_size_override("font_size", 12)
+	debug_perf_label.modulate = Color(0.20, 1.0, 0.40, 0.95)
+	debug_perf_label.visible = false
+	$HUD.add_child(debug_perf_label)
 	
 	# Âm thanh môi trường sân thi đấu nhẹ nhàng liên tục (Khử hiện tượng ngắt âm nền đột ngột ở tai nghe)
 	amb_player = AudioStreamPlayer.new()
@@ -662,6 +677,10 @@ func _set_in_game_hud_visible(show: bool) -> void:
 			controls_bar.z_index = 100
 			controls_bar.move_to_front()
 
+	# Performance Debug HUD (FPS & Draw Calls)
+	if debug_perf_label:
+		debug_perf_label.visible = show
+
 	# Các thanh chỉ số thể lực, độ chính xác, nộ khí (Player 1 & Rival)
 	var gauge_nodes = [
 		stamina_bar_bg_player, accuracy_bar_bg_player, flow_bar_bg_player,
@@ -805,7 +824,11 @@ func _on_jump_taken(takeoff_pos: Vector2, facing_dir: float) -> void:
 
 
 func _redraw_effects() -> void:
-	if effects_overlay:
+	if not effects_overlay:
+		return
+	var has_effects = (shockwave_alpha > 0.01) or (perfect_burst_timer > 0.0) or (jump_takeoff_effects.size() > 0) or fuji_slowmo_active or (floating_text_mgr and floating_text_mgr.items.size() > 0)
+	effects_overlay.visible = has_effects
+	if has_effects:
 		effects_overlay.queue_redraw()
 
 
@@ -1790,6 +1813,15 @@ func _update_difficulty_buttons() -> void:
 func _process(delta: float) -> void:
 	if current_state == MatchState.LOBBY_IDLE or (main_menu and main_menu.visible):
 		return
+		
+	# Performance Debug HUD (FPS & Draw Calls)
+	_debug_perf_timer += delta
+	if _debug_perf_timer >= 0.25:
+		_debug_perf_timer = 0.0
+		if debug_perf_label and debug_perf_label.visible:
+			var fps = Engine.get_frames_per_second()
+			var dc = int(Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME))
+			debug_perf_label.text = "FPS: %d | DC: %d" % [fps, dc]
 		
 	# Authoritative PvP Landing Grace Timer (Đợi gói cứu cầu muộn do độ trễ mạng từ Guest)
 	if pvp_landing_pending:
