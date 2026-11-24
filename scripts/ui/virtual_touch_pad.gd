@@ -117,6 +117,12 @@ func _update_layout() -> void:
 	
 	queue_redraw()
 
+# Timers tự động giải phóng trạng thái nhấn để tránh kẹt nút trên mobile browser
+var _btn_slide_down_time: float = 0.0
+var _btn_j_down_time: float = 0.0
+var _btn_k_down_time: float = 0.0
+var _btn_l_down_time: float = 0.0
+
 func _process(delta: float) -> void:
 	if not visible:
 		return
@@ -135,6 +141,35 @@ func _process(delta: float) -> void:
 				player.touch_move_axis = 0.0
 	else:
 		needs_redraw = true
+	
+	# Auto-release bảo vệ chống kẹt nút (tránh việc trình duyệt mobile nuốt sự kiện touchend)
+	if btn_slide_pressed:
+		_btn_slide_down_time += delta
+		if _btn_slide_down_time > 0.14:
+			btn_slide_pressed = false
+			btn_slide_touch_id = -1
+			needs_redraw = true
+			
+	if btn_j_pressed:
+		_btn_j_down_time += delta
+		if _btn_j_down_time > 0.14:
+			btn_j_pressed = false
+			btn_j_touch_id = -1
+			needs_redraw = true
+			
+	if btn_k_pressed:
+		_btn_k_down_time += delta
+		if _btn_k_down_time > 0.14:
+			btn_k_pressed = false
+			btn_k_touch_id = -1
+			needs_redraw = true
+			
+	if btn_l_pressed:
+		_btn_l_down_time += delta
+		if _btn_l_down_time > 0.14:
+			btn_l_pressed = false
+			btn_l_touch_id = -1
+			needs_redraw = true
 	
 	# Smooth button scale transitions
 	var target_slide = 0.88 if btn_slide_pressed else 1.0
@@ -178,101 +213,126 @@ func _input(event: InputEvent) -> void:
 	elif event is InputEventScreenDrag:
 		_handle_drag(event.index, event.position)
 	elif event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
-		if track_touch_id != 0 and btn_slide_touch_id != 0 and btn_j_touch_id != 0 and btn_k_touch_id != 0 and btn_l_touch_id != 0:
-			_handle_touch(999, event.pressed, event.position)
+		_handle_touch(999, event.pressed, event.position)
 	elif event is InputEventMouseMotion and is_dragging_knob and track_touch_id == 999:
 		_handle_drag(999, event.position)
 
+func _trigger_btn_slide(touch_id: int) -> void:
+	btn_slide_touch_id = touch_id
+	btn_slide_pressed = true
+	_btn_slide_down_time = 0.0
+	if player and is_instance_valid(player):
+		player.start_slide(1.0 if player.court_side == "player" else -1.0)
+	shot_triggered.emit("slide")
+	queue_redraw()
+
+func _trigger_btn_j(touch_id: int) -> void:
+	btn_j_touch_id = touch_id
+	btn_j_pressed = true
+	_btn_j_down_time = 0.0
+	if player and is_instance_valid(player):
+		player.handle_touch_action("drop")
+	shot_triggered.emit("drop")
+	queue_redraw()
+
+func _trigger_btn_k(touch_id: int) -> void:
+	btn_k_touch_id = touch_id
+	btn_k_pressed = true
+	_btn_k_down_time = 0.0
+	if player and is_instance_valid(player):
+		player.handle_touch_action("clear")
+	shot_triggered.emit("clear")
+	queue_redraw()
+
+func _trigger_btn_l(touch_id: int) -> void:
+	btn_l_touch_id = touch_id
+	btn_l_pressed = true
+	_btn_l_down_time = 0.0
+	if player and is_instance_valid(player):
+		if not player.is_on_ground():
+			player.handle_touch_action("smash")
+			shot_triggered.emit("smash")
+		else:
+			player.handle_touch_jump()
+			jump_triggered.emit()
+	else:
+		jump_triggered.emit()
+	queue_redraw()
+
 func _handle_touch(touch_id: int, is_down: bool, pos: Vector2) -> void:
 	if is_down:
-		# 1. Track Di Chuyển Trái/Phải (Hitbox hào phóng)
-		var exp_rect = track_rect.grow(35.0)
-		if exp_rect.has_point(pos) and track_touch_id == -1:
+		# 1. Track Di Chuyển Trái/Phải
+		var exp_rect = track_rect.grow(40.0)
+		if exp_rect.has_point(pos):
 			track_touch_id = touch_id
 			is_dragging_knob = true
 			_update_knob_drag(pos.x)
 			queue_redraw()
 			return
 			
-		# Hitbox bán kính mở rộng 1.45x để đảm bảo chạm mép vẫn ăn 100%
+		# Không chặn bởi `touch_id == -1` để đảm bảo nhấp liên tục / đa ngón luôn ăn 100%
 		# 2. Button Slide (Trượt sàn / Cứu cầu)
-		if pos.distance_to(btn_slide_center) <= btn_slide_radius * 1.45 and btn_slide_touch_id == -1:
-			btn_slide_touch_id = touch_id
-			btn_slide_pressed = true
-			if player and is_instance_valid(player):
-				player.start_slide(1.0 if player.court_side == "player" else -1.0)
-			shot_triggered.emit("slide")
-			queue_redraw()
+		if pos.distance_to(btn_slide_center) <= btn_slide_radius * 1.45:
+			_trigger_btn_slide(touch_id)
 			return
 			
 		# 3. Button Drop (Bỏ nhỏ - Phím J)
-		if pos.distance_to(btn_j_center) <= btn_j_radius * 1.45 and btn_j_touch_id == -1:
-			btn_j_touch_id = touch_id
-			btn_j_pressed = true
-			if player and is_instance_valid(player):
-				player.touch_shot_pressed = "drop"
-			shot_triggered.emit("drop")
-			queue_redraw()
+		if pos.distance_to(btn_j_center) <= btn_j_radius * 1.45:
+			_trigger_btn_j(touch_id)
 			return
 			
 		# 4. Button Clear (Phông sâu - Phím K)
-		if pos.distance_to(btn_k_center) <= btn_k_radius * 1.45 and btn_k_touch_id == -1:
-			btn_k_touch_id = touch_id
-			btn_k_pressed = true
-			if player and is_instance_valid(player):
-				player.touch_shot_pressed = "clear"
-			shot_triggered.emit("clear")
-			queue_redraw()
+		if pos.distance_to(btn_k_center) <= btn_k_radius * 1.45:
+			_trigger_btn_k(touch_id)
 			return
 			
 		# 5. Button Jump / Smash (Nhảy & Đập - Phím L)
-		if pos.distance_to(btn_l_center) <= btn_l_radius * 1.45 and btn_l_touch_id == -1:
-			btn_l_touch_id = touch_id
-			btn_l_pressed = true
-			if player and is_instance_valid(player):
-				if not player.is_on_ground():
-					player.touch_shot_pressed = "smash"
-					shot_triggered.emit("smash")
-				else:
-					player.touch_jump_pressed = true
-					jump_triggered.emit()
-			else:
-				jump_triggered.emit()
-			queue_redraw()
+		if pos.distance_to(btn_l_center) <= btn_l_radius * 1.45:
+			_trigger_btn_l(touch_id)
 			return
 	else:
 		# Nhả ngón tay
-		if touch_id == track_touch_id or (touch_id == 999 and track_touch_id != -1):
+		if touch_id == track_touch_id or touch_id == 999:
 			track_touch_id = -1
 			is_dragging_knob = false
 			if player and is_instance_valid(player):
 				player.touch_move_axis = 0.0
 			queue_redraw()
 			
-		if touch_id == btn_slide_touch_id or (touch_id == 999 and btn_slide_touch_id != -1):
+		if touch_id == btn_slide_touch_id or touch_id == 999:
 			btn_slide_touch_id = -1
 			btn_slide_pressed = false
 			queue_redraw()
 			
-		if touch_id == btn_j_touch_id or (touch_id == 999 and btn_j_touch_id != -1):
+		if touch_id == btn_j_touch_id or touch_id == 999:
 			btn_j_touch_id = -1
 			btn_j_pressed = false
 			queue_redraw()
 			
-		if touch_id == btn_k_touch_id or (touch_id == 999 and btn_k_touch_id != -1):
+		if touch_id == btn_k_touch_id or touch_id == 999:
 			btn_k_touch_id = -1
 			btn_k_pressed = false
 			queue_redraw()
 			
-		if touch_id == btn_l_touch_id or (touch_id == 999 and btn_l_touch_id != -1):
+		if touch_id == btn_l_touch_id or touch_id == 999:
 			btn_l_touch_id = -1
 			btn_l_pressed = false
 			queue_redraw()
 
 func _handle_drag(touch_id: int, pos: Vector2) -> void:
-	if touch_id == track_touch_id or (touch_id == 999 and track_touch_id != -1):
+	if touch_id == track_touch_id or (touch_id == 999 and is_dragging_knob):
 		_update_knob_drag(pos.x)
 		queue_redraw()
+	else:
+		# Hỗ trợ trượt ngón tay vào nút hành động (slide-to-press)
+		if not btn_slide_pressed and pos.distance_to(btn_slide_center) <= btn_slide_radius * 1.35:
+			_trigger_btn_slide(touch_id)
+		elif not btn_j_pressed and pos.distance_to(btn_j_center) <= btn_j_radius * 1.35:
+			_trigger_btn_j(touch_id)
+		elif not btn_k_pressed and pos.distance_to(btn_k_center) <= btn_k_radius * 1.35:
+			_trigger_btn_k(touch_id)
+		elif not btn_l_pressed and pos.distance_to(btn_l_center) <= btn_l_radius * 1.35:
+			_trigger_btn_l(touch_id)
 
 func _update_knob_drag(finger_x: float) -> void:
 	var offset = clamp(finger_x - knob_center.x, -max_drag_dist, max_drag_dist)

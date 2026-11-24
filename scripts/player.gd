@@ -111,10 +111,10 @@ var swing_recovery: float = 0.0
 const SWING_DURATION: float = 0.18
 var swing_started_from_backpedal: bool = false
 var swing_cooldown: float = 0.0
-const SWING_COOLDOWN_MAX: float = 0.5 # Chỉ cho phép vung vợt 0.5s 1 lần
+const SWING_COOLDOWN_MAX: float = 0.22 # Giảm cooldown vung hụt từ 0.5s về 0.22s để mobile bấm cực nhạy, không nghẽn lệnh
 var input_buffer_shot: String = ""
 var input_buffer_timer: float = 0.0
-const INPUT_BUFFER_WINDOW: float = 0.16 # 160ms cửa sổ đệm phím bấm đón đầu cầu
+const INPUT_BUFFER_WINDOW: float = 0.32 # Tăng cửa sổ đệm đón đầu phím bấm lên 320ms để chạm trước điểm ngọt vẫn ăn 100%
 var facing: float = 1.0 # 1.0 = right, -1.0 = left
 var consecutive_drops: int = 0 # Đếm số quả drop liên tiếp để phạt mỏi từ quả thứ 8
 
@@ -816,6 +816,39 @@ func start_dive(dir: float = 1.0) -> void:
 
 func start_slide(dir: float = 1.0) -> void:
 	start_dive(dir)
+
+
+func handle_touch_jump() -> void:
+	touch_jump_pressed = true
+	if is_on_ground() and not is_serving_phase and not is_diving and not is_getting_up:
+		velocity.y = JUMP_FORCE
+		jump_taken.emit(Vector2(global_position.x, current_ground_y), facing)
+		if stats:
+			var jump_drain = 2.0 if (stats.character_id == "nishikawa") else 4.0
+			stats.consume_stamina_action(jump_drain)
+
+
+func handle_touch_action(shot_type: String) -> void:
+	touch_shot_pressed = shot_type
+	if is_serving_phase and not is_server_turn:
+		return
+	if is_diving or is_getting_up:
+		return
+	if swing_cooldown > 0.0:
+		# Nếu vừa vung vợt, vẫn đệm lệnh đón đầu vào bộ nhớ đệm (buffer) để vung ngay khi cooldown xong
+		input_buffer_shot = shot_type
+		input_buffer_timer = INPUT_BUFFER_WINDOW
+		return
+	
+	# Kiểm tra va chạm ngay lập tức (0ms phản hồi tức thì cho màn hình cảm ứng)
+	var hit_status = get_hit_status()
+	if hit_status["can_hit"]:
+		input_buffer_shot = ""
+		input_buffer_timer = 0.0
+		_trigger_shot(shot_type, hit_status)
+	else:
+		input_buffer_shot = shot_type
+		input_buffer_timer = INPUT_BUFFER_WINDOW
 
 
 func _process_player_input(delta: float) -> void:

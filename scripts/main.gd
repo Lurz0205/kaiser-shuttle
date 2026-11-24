@@ -160,9 +160,6 @@ func _get_p2_display_name() -> String:
 @onready var btn_settings: Button = $HUD/BtnSettings
 @onready var settings_panel: PanelContainer = $HUD/SettingsPanel
 @onready var btn_close_settings: Button = $HUD/SettingsPanel/VBox/Header/BtnClose
-@onready var btn_easy: Button = $HUD/SettingsPanel/VBox/DifficultyRow/BtnEasy
-@onready var btn_medium: Button = $HUD/SettingsPanel/VBox/DifficultyRow/BtnMedium
-@onready var btn_hard: Button = $HUD/SettingsPanel/VBox/DifficultyRow/BtnHard
 @onready var btn_squeak: Button = $HUD/SettingsPanel/VBox/SqueakRow/BtnSqueak
 var bgm_match_enabled: bool = true
 var bgm_match_volume: float = 0.20
@@ -368,23 +365,6 @@ func _ready() -> void:
 		btn_close_settings.pressed.connect(func():
 			btn_close_settings.release_focus()
 			if settings_panel: settings_panel.visible = false
-		)
-	
-	if btn_easy and btn_medium and btn_hard:
-		btn_easy.focus_mode = Control.FOCUS_NONE
-		btn_medium.focus_mode = Control.FOCUS_NONE
-		btn_hard.focus_mode = Control.FOCUS_NONE
-		btn_easy.pressed.connect(func():
-			btn_easy.release_focus()
-			set_ai_difficulty(0)
-		)
-		btn_medium.pressed.connect(func():
-			btn_medium.release_focus()
-			set_ai_difficulty(1)
-		)
-		btn_hard.pressed.connect(func():
-			btn_hard.release_focus()
-			set_ai_difficulty(2)
 		)
 	
 	if btn_squeak:
@@ -1753,16 +1733,6 @@ func set_ai_difficulty(diff: int) -> void:
 
 
 func _update_settings_ui() -> void:
-	if not ai_rival:
-		return
-	var cur = ai_rival.ai_difficulty
-	if btn_easy:
-		btn_easy.modulate = Color(3.5, 2.8, 0.4) if cur == 0 else Color(0.75, 0.75, 0.75, 0.8)
-	if btn_medium:
-		btn_medium.modulate = Color(3.5, 2.8, 0.4) if cur == 1 else Color(0.75, 0.75, 0.75, 0.8)
-	if btn_hard:
-		btn_hard.modulate = Color(3.5, 2.8, 0.4) if cur == 2 else Color(0.75, 0.75, 0.75, 0.8)
-		
 	if btn_squeak:
 		btn_squeak.text = "BẬT" if squeak_enabled else "TẮT"
 		btn_squeak.modulate = Color(1.2, 3.2, 1.2) if squeak_enabled else Color(1.8, 0.6, 0.6)

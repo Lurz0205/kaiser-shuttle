@@ -454,36 +454,6 @@ custom_minimum_size = Vector2(28, 28)
 layout_mode = 2
 text = "X"
 
-[node name="LabelDiff" type="Label" parent="HUD/SettingsPanel/VBox"]
-layout_mode = 2
-text = "ĐỘ KHÓ AI (PHÍM 1, 2, 3):"
-label_settings = SubResource("LabelSettings_settings_item")
-
-[node name="DifficultyRow" type="HBoxContainer" parent="HUD/SettingsPanel/VBox"]
-layout_mode = 2
-theme_override_constants/separation = 6
-
-[node name="BtnEasy" type="Button" parent="HUD/SettingsPanel/VBox/DifficultyRow"]
-custom_minimum_size = Vector2(86, 30)
-layout_mode = 2
-size_flags_horizontal = 3
-theme_override_styles/normal = SubResource("StyleBoxFlat_btn")
-text = "1: DỄ"
-
-[node name="BtnMedium" type="Button" parent="HUD/SettingsPanel/VBox/DifficultyRow"]
-custom_minimum_size = Vector2(86, 30)
-layout_mode = 2
-size_flags_horizontal = 3
-theme_override_styles/normal = SubResource("StyleBoxFlat_btn")
-text = "2: TB"
-
-[node name="BtnHard" type="Button" parent="HUD/SettingsPanel/VBox/DifficultyRow"]
-custom_minimum_size = Vector2(86, 30)
-layout_mode = 2
-size_flags_horizontal = 3
-theme_override_styles/normal = SubResource("StyleBoxFlat_btn")
-text = "3: KHÓ"
-
 [node name="SqueakRow" type="HBoxContainer" parent="HUD/SettingsPanel/VBox"]
 layout_mode = 2
 
