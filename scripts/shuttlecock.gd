@@ -34,6 +34,8 @@ var is_suspended_in_smash_slowmo: bool = false
 var suspended_smash_pos: Vector2 = Vector2.ZERO
 
 var current_shot_type: String = "clear"
+var is_fire_ball: bool = false
+var fire_ball_owner: String = ""
 
 # Trajectory parameters
 var launch_from: Vector2 = Vector2(390.0, 515.0)
@@ -318,6 +320,10 @@ func launch_to_target_2d(from_pt: Vector2, target_pt: Vector2, shot_type: String
 	if not is_weak_return and not is_serve and tension_speed_mult > 1.0:
 		flight_duration = flight_duration / tension_speed_mult
 	
+	if is_fire_ball:
+		# Tốc độ quả cầu lửa bay chậm hơn 25% (tăng thời gian bay tương ứng)
+		flight_duration *= 1.333
+	
 	launch_target = Vector2(final_target_x, floor_y)
 	flight_time_elapsed = 0.0
 	floor_contact_timer = 0.0
@@ -578,7 +584,11 @@ func _update_trail_styling() -> void:
 	trail.begin_cap_mode = Line2D.LINE_CAP_NONE
 	trail.end_cap_mode = Line2D.LINE_CAP_ROUND
 	
-	if is_boom_smash or tension_level == 2:
+	if is_fire_ball:
+		trail.texture = TEX_TRAIL_LIGHTNING
+		trail.default_color = Color(3.8, 1.2, 0.2, 1.0) # Vệt lửa rực cháy đỏ cam
+		trail.width = 32.0
+	elif is_boom_smash or tension_level == 2:
 		trail.texture = TEX_TRAIL_LIGHTNING
 		trail.default_color = Color(1.2, 1.1, 0.9, 1.0)
 		trail.width = 34.0
@@ -633,7 +643,7 @@ func _update_trail() -> void:
 
 
 func _on_lightning_trail_draw() -> void:
-	if not is_boom_smash and not is_tsubame_gaeshi:
+	if not is_boom_smash and not is_tsubame_gaeshi and not is_fire_ball:
 		return
 	if trail_points.size() < 2:
 		return
@@ -642,6 +652,18 @@ func _on_lightning_trail_draw() -> void:
 	var use_aa = not is_web
 	var n_pts = trail_points.size()
 	var time_sec = Time.get_ticks_msec() / 1000.0
+	
+	# ==========================================================
+	# 0. HAN GITAE - HỎA DIỄM CUỒNG NỘ (BLAZING FIRE EMBER TRAIL)
+	# ==========================================================
+	if is_fire_ball:
+		for i in range(min(n_pts, 8)):
+			var pt = trail_points[i]
+			var frac = 1.0 - (float(i) / 8.0)
+			var spark_r = 4.5 * frac
+			var spark_col = Color(3.8, 1.2, 0.2, frac * 0.9)
+			lightning_trail.draw_circle(pt + Vector2(sin(time_sec * 10.0 + i) * 6.0, cos(time_sec * 8.0 + i) * 4.0), spark_r, spark_col)
+		return
 	
 	# ==========================================================
 	# 1. FUJI - CƠN LỐC XANH (EMERALD GALE VORTEX TWIN-HELIX)

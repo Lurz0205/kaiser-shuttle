@@ -21,7 +21,7 @@ var card_nodes: Dictionary = {}
 const CHAR_DATA = {
 	"nishikawa": {
 		"name": "NISHIKAWA",
-		"title": "Tia chớp vàng",
+		"title": "Tia chớp vàng (S+)",
 		"archetype": "TẤN CÔNG BÙNG NỔ",
 		"color": Color(1.0, 0.78, 0.18, 1.0),
 		"icon_type": CustomIcon.IconType.LIGHTNING,
@@ -29,25 +29,25 @@ const CHAR_DATA = {
 		"agility": 78,
 		"control": 74,
 		"composure": 84,
-		"skill_name": "Golden Smash",
+		"skill_name": "Golden Smash (Flow 100)",
 		"skill_desc": "Đập sấm sét cắm sàn, ngưng đọng thời gian 1s, thế giới chuyển trắng đen!"
 	},
 	"fuji": {
 		"name": "FUJI",
-		"title": "Cơn lốc xanh",
+		"title": "Cơn lốc xanh (S+)",
 		"archetype": "KỸ THUẬT BIẾN ẢO",
 		"color": Color(0.2, 0.88, 0.55, 1.0),
 		"icon_type": CustomIcon.IconType.FEATHER,
-		"power": 76,
-		"agility": 84,
-		"control": 96,
-		"composure": 86,
-		"skill_name": "Tsubame Gaeshi",
-		"skill_desc": "Cơn lốc xanh - Cắt xoáy lướt sà mép lưới, góc lượn gục hiểm hóc sát chân lưới!"
+		"power": 82,
+		"agility": 92,
+		"control": 99,
+		"composure": 90,
+		"skill_name": "Tsubame Gaeshi (Flow 80)",
+		"skill_desc": "Phong Thần S+: Cắt xoáy lốc lướt sà mép lưới, góc lượn gục hiểm sát mép lưới!"
 	},
 	"wall": {
 		"name": "ISABEL",
-		"title": "Nữ hoàng của đấu trường La Mã",
+		"title": "Nữ hoàng đấu trường La Mã (S+)",
 		"archetype": "BỨC TƯỜNG PHÒNG THỦ",
 		"color": Color(0.25, 0.65, 1.0, 1.0),
 		"icon_type": CustomIcon.IconType.SHIELD,
@@ -55,8 +55,34 @@ const CHAR_DATA = {
 		"agility": 88,
 		"control": 85,
 		"composure": 96,
-		"skill_name": "Mirage Shield",
+		"skill_name": "Mirage Shield (Flow 90)",
 		"skill_desc": "Khiên La Mã - Hóa giải cú đập smash của đối thủ, bung cầu cao sâu và lập tức hồi 20% thể lực!"
+	},
+	"gitae": {
+		"name": "HAN GITAE",
+		"title": "Bão lửa tiên phong (S+)",
+		"archetype": "ĐẤU SĨ BÙNG NỔ",
+		"color": Color(1.0, 0.42, 0.15, 1.0),
+		"icon_type": CustomIcon.IconType.FIRE_BLADE,
+		"power": 92,
+		"agility": 82,
+		"control": 78,
+		"composure": 94,
+		"skill_name": "Infernal Flame Realm (Flow 100)",
+		"skill_desc": "Trong 5s biến nửa sân thành Hỏa Ngục: Hitbox rộng hết nửa sân, cầu dính lửa thiêu đốt đối thủ (-25 Thể lực, -30 Thăng bằng, -25 Accuracy)!"
+	},
+	"sara": {
+		"name": "SARA",
+		"title": "Băng giá toàn năng (S+)",
+		"archetype": "BIẾN ẢO HƯ KHÔNG",
+		"color": Color(0.35, 0.85, 1.0, 1.0),
+		"icon_type": CustomIcon.IconType.STAR,
+		"power": 80,
+		"agility": 96,
+		"control": 92,
+		"composure": 88,
+		"skill_name": "Glacial Frost Domain (Flow 105)",
+		"skill_desc": "Trong 10s đóng băng sàn đối phương (chậm 20% tốc độ). Phím Space/Jump hóa thành Dịch chuyển tức thời tới đón cầu trên không hoặc mặt đất!"
 	}
 }
 
@@ -93,6 +119,12 @@ func _unhandled_input(event: InputEvent) -> void:
 			get_viewport().set_input_as_handled()
 		elif event.keycode == KEY_3:
 			_select_player("wall")
+			get_viewport().set_input_as_handled()
+		elif event.keycode == KEY_4:
+			_select_player("gitae")
+			get_viewport().set_input_as_handled()
+		elif event.keycode == KEY_5:
+			_select_player("sara")
 			get_viewport().set_input_as_handled()
 
 func _build_ui() -> void:

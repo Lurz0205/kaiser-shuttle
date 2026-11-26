@@ -32,17 +32,18 @@ var max_stamina_cap: float = 100.0 # Trần thể lực hồi tối đa (giảm 
 # Liên kết chặt chẽ đa yếu tố: Thể lực (Stamina) + Thăng bằng (Balance) + Căng thẳng (Tension)
 var accuracy: float = 100.0
 
-# Flow / Momentum Gauge [0.0 -> 100.0] (Thanh Hưng Phấn / Nộ Kích Hoạt Tuyệt Kỹ)
+# Flow / Momentum Gauge (Thanh Hưng Phấn / Nộ Kích Hoạt Tuyệt Kỹ)
+@export var max_flow: float = 100.0
 var flow: float = 0.0
 var is_special_primed: bool = false
 
 
 func add_flow(amount: float) -> void:
-	flow = clamp(flow + amount, 0.0, 100.0)
+	flow = clamp(flow + amount, 0.0, max_flow)
 
 
 func can_use_special() -> bool:
-	return flow >= 100.0
+	return flow >= max_flow
 
 
 func prime_special() -> bool:
@@ -55,6 +56,14 @@ func prime_special() -> bool:
 func consume_flow() -> void:
 	flow = 0.0
 	is_special_primed = false
+
+
+## Hiệu ứng thiêu đốt khi đánh trả quả cầu lửa của Han Gitae
+func apply_fire_burn(stamina_loss: float = 25.0, balance_loss: float = 30.0, accuracy_loss: float = 25.0) -> void:
+	stamina = max(0.0, stamina - stamina_loss)
+	accuracy = max(0.0, accuracy - accuracy_loss)
+	# Mất thăng bằng tức thì gây chao đảo và giật lùi
+	# (accuracy tụt dẫn đến thu hẹp hitbox và tăng nguy cơ đánh hỏng)
 
 
 func reset_stamina() -> void:
@@ -375,18 +384,20 @@ static func create_nishikawa() -> Resource:
 	s.agility = 78.0
 	s.control = 75.0
 	s.composure = 82.0
+	s.max_flow = 100.0
 	return s
 
 static func create_fuji() -> Resource:
 	var s = load("res://scripts/core/character_stats.gd").new()
 	s.character_id = "fuji"
-	s.character_name = "Fuji (Cơn lốc xanh)"
+	s.character_name = "Fuji (Cơn lốc xanh - Phong Thần S+)"
 	s.special_skill_id = "tsubame_gaeshi"
 	s.special_skill_name = "Tsubame Gaeshi"
-	s.power = 78.0
-	s.agility = 86.0
-	s.control = 96.0
-	s.composure = 85.0
+	s.power = 82.0
+	s.agility = 92.0
+	s.control = 99.0
+	s.composure = 90.0
+	s.max_flow = 80.0
 	return s
 
 static func create_wall() -> Resource:
@@ -399,6 +410,33 @@ static func create_wall() -> Resource:
 	s.agility = 88.0
 	s.control = 84.0
 	s.composure = 96.0
+	s.max_flow = 90.0
+	return s
+
+static func create_gitae() -> Resource:
+	var s = load("res://scripts/core/character_stats.gd").new()
+	s.character_id = "gitae"
+	s.character_name = "Han Gitae (Bão lửa tiên phong)"
+	s.special_skill_id = "fire_realm"
+	s.special_skill_name = "Infernal Flame Realm"
+	s.power = 92.0
+	s.agility = 82.0
+	s.control = 78.0
+	s.composure = 94.0
+	s.max_flow = 100.0
+	return s
+
+static func create_sara() -> Resource:
+	var s = load("res://scripts/core/character_stats.gd").new()
+	s.character_id = "sara"
+	s.character_name = "Sara (Băng giá toàn năng)"
+	s.special_skill_id = "ice_domain"
+	s.special_skill_name = "Glacial Frost Domain"
+	s.power = 80.0
+	s.agility = 96.0
+	s.control = 92.0
+	s.composure = 88.0
+	s.max_flow = 105.0
 	return s
 
 static func create_cannon() -> Resource:

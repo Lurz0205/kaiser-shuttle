@@ -109,9 +109,10 @@ func update_gauges(p1_stats, p2_stats) -> void:
 				p1_accuracy_fill.color = Color(0.20, 0.88, 1.0, 0.95)
 
 		if p1_flow_fill:
-			var p_flow = clamp(float(p1_stats.flow) / 100.0, 0.0, 1.0)
+			var max_f1 = float(p1_stats.max_flow) if (p1_stats is Object and "max_flow" in p1_stats) else 100.0
+			var p_flow = clamp(float(p1_stats.flow) / max(1.0, max_f1), 0.0, 1.0)
 			p1_flow_fill.size.x = 140.0 * p_flow
-			var can_p1_spec = p1_stats.can_use_special() if (p1_stats is Object and p1_stats.has_method("can_use_special")) else (float(p1_stats.flow) >= 100.0)
+			var can_p1_spec = p1_stats.can_use_special() if (p1_stats is Object and p1_stats.has_method("can_use_special")) else (float(p1_stats.flow) >= max_f1)
 			if can_p1_spec:
 				p1_flow_fill.color = Color(1.0, 0.85, 0.20, flow_pulse)
 			else:
@@ -140,9 +141,10 @@ func update_gauges(p1_stats, p2_stats) -> void:
 				p2_accuracy_fill.color = Color(0.20, 0.88, 1.0, 0.95)
 
 		if p2_flow_fill:
-			var r_flow = clamp(float(p2_stats.flow) / 100.0, 0.0, 1.0)
+			var max_f2 = float(p2_stats.max_flow) if (p2_stats is Object and "max_flow" in p2_stats) else 100.0
+			var r_flow = clamp(float(p2_stats.flow) / max(1.0, max_f2), 0.0, 1.0)
 			p2_flow_fill.size.x = 140.0 * r_flow
-			var can_p2_spec = p2_stats.can_use_special() if (p2_stats is Object and p2_stats.has_method("can_use_special")) else (float(p2_stats.flow) >= 100.0)
+			var can_p2_spec = p2_stats.can_use_special() if (p2_stats is Object and p2_stats.has_method("can_use_special")) else (float(p2_stats.flow) >= max_f2)
 			if can_p2_spec:
 				p2_flow_fill.color = Color(1.0, 0.85, 0.20, flow_pulse)
 			else:

@@ -11,6 +11,8 @@ extends RefCounted
 const GOLDEN_SMASH: String = "golden_smash"
 const TSUBAME_GAESHI: String = "tsubame_gaeshi"
 const MIRAGE_COUNTER: String = "mirage_counter"
+const FIRE_REALM: String = "fire_realm"
+const ICE_DOMAIN: String = "ice_domain"
 
 static func get_skill_name(skill_id: String) -> String:
 	match skill_id:
@@ -19,7 +21,11 @@ static func get_skill_name(skill_id: String) -> String:
 		TSUBAME_GAESHI:
 			return "FUJI: TSUBAME GAESHI!"
 		MIRAGE_COUNTER:
-			return "AOI: MIRAGE COUNTER!"
+			return "ISABEL: MIRAGE COUNTER!"
+		FIRE_REALM:
+			return "HAN GITAE: INFERNAL FLAME REALM!"
+		ICE_DOMAIN:
+			return "SARA: GLACIAL FROST DOMAIN!"
 		_:
 			return "SPECIAL MOVE!"
 
@@ -31,5 +37,9 @@ static func get_skill_color(skill_id: String) -> Color:
 			return Color(0.2, 3.2, 1.8, 1.0) # Lục bảo én lượn
 		MIRAGE_COUNTER:
 			return Color(0.3, 1.8, 3.8, 1.0) # Lam ảnh thần thuẫn
+		FIRE_REALM:
+			return Color(3.8, 1.2, 0.2, 1.0) # Hỏa ngục cuồng nộ rực lửa
+		ICE_DOMAIN:
+			return Color(0.4, 2.6, 3.8, 1.0) # Băng giá hư không
 		_:
 			return Color(1.0, 1.0, 1.0, 1.0)

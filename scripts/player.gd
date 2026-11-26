@@ -8,6 +8,8 @@ signal shot_hit(shot_type: String, is_smash: bool, quality: float, is_perfect: b
 signal shot_whiffed()
 signal jump_taken(takeoff_pos: Vector2, facing_dir: float)
 signal shoe_squeak_triggered()
+signal active_skill_activated(skill_id: String, court_side: String)
+signal teleport_triggered(from_pos: Vector2, to_pos: Vector2)
 
 # Squeak audio tracking
 var was_in_air_prev: bool = false
@@ -104,6 +106,13 @@ var walk_phase: float = 0.0
 var touch_move_axis: float = 0.0 # [-1.0 -> 1.0] from drag touchpad
 var touch_jump_pressed: bool = false
 var touch_shot_pressed: String = "" # "drop", "clear", "smash"
+var is_fire_realm_active: bool = false
+var fire_realm_timer: float = 0.0
+var is_ice_domain_active: bool = false
+var ice_domain_timer: float = 0.0
+var ice_slow_active: bool = false
+var prev_shift_pressed: bool = false
+var prev_jump_input: bool = false
 var is_swinging: bool = false
 var swing_timer: float = 0.0
 var swing_prog: float = 0.0
@@ -419,6 +428,22 @@ func _physics_process(delta: float) -> void:
 		if shuttlecock:
 			rally_hits = shuttlecock.tension_level
 	
+	# Active Skill Timers (Han Gitae Fire Realm & Sara Ice Domain)
+	if is_fire_realm_active:
+		fire_realm_timer -= delta
+		if fire_realm_timer <= 0.0:
+			is_fire_realm_active = false
+	
+	if is_ice_domain_active:
+		ice_domain_timer -= delta
+		if ice_domain_timer <= 0.0:
+			is_ice_domain_active = false
+	
+	if opponent_player and opponent_player.is_ice_domain_active:
+		ice_slow_active = true
+	else:
+		ice_slow_active = false
+	
 	if is_remote_puppet:
 		if has_net_target:
 			var d = global_position.distance_to(net_target_pos)
@@ -471,6 +496,8 @@ func _physics_process(delta: float) -> void:
 		stats.update_stamina(delta, is_moving_footwork, is_slow_tempo, rally_time, rally_hits, stamina_eff)
 		var stamina_speed_mult = stats.get_speed_multiplier()
 		velocity.x *= stamina_speed_mult
+		if ice_slow_active:
+			velocity.x *= 0.80 # Băng tuyết làm chậm 20% tốc độ di chuyển
 		stats.update_accuracy(delta, balance, current_tension_level)
 	
 	# TỰ ĐỘNG CỨU CẦU KHI BAY NGƯỜI (AUTOMATIC DIVE RESCUE):
@@ -820,6 +847,10 @@ func start_slide(dir: float = 1.0) -> void:
 
 func handle_touch_jump() -> void:
 	touch_jump_pressed = true
+	if is_ice_domain_active and (stats and (stats.character_id == "sara" or stats.special_skill_id == "ice_domain")):
+		teleport_to_shuttlecock()
+		touch_jump_pressed = false
+		return
 	if is_on_ground() and not is_serving_phase and not is_diving and not is_getting_up:
 		velocity.y = JUMP_FORCE
 		jump_taken.emit(Vector2(global_position.x, current_ground_y), facing)
@@ -828,7 +859,14 @@ func handle_touch_jump() -> void:
 			stats.consume_stamina_action(jump_drain)
 
 
+func handle_touch_skill() -> void:
+	activate_active_skill()
+
+
 func handle_touch_action(shot_type: String) -> void:
+	if shot_type == "skill":
+		activate_active_skill()
+		return
 	touch_shot_pressed = shot_type
 	if is_serving_phase and not is_server_turn:
 		return
@@ -924,14 +962,21 @@ func _process_player_input(delta: float) -> void:
 		velocity.x = move_x * move_speed_x
 		
 		# Jump: Space, W, Up, or touch_jump_pressed
-		var jump_input = (Input.is_key_pressed(KEY_SPACE) or Input.is_key_pressed(KEY_W) or Input.is_key_pressed(KEY_UP) or touch_jump_pressed)
-		if jump_input and is_on_ground():
-			velocity.y = JUMP_FORCE
-			jump_taken.emit(Vector2(global_position.x, current_ground_y), facing)
-			if stats:
-				var jump_drain = 2.0 if (stats.character_id == "nishikawa") else 4.0
-				stats.consume_stamina_action(jump_drain)
-		touch_jump_pressed = false
+		var cur_jump_raw = (Input.is_key_pressed(KEY_SPACE) or Input.is_key_pressed(KEY_W) or Input.is_key_pressed(KEY_UP))
+		var jump_just_pressed = (cur_jump_raw and not prev_jump_input) or touch_jump_pressed
+		prev_jump_input = cur_jump_raw
+		
+		if jump_just_pressed:
+			if is_ice_domain_active and (stats and (stats.character_id == "sara" or stats.special_skill_id == "ice_domain")):
+				teleport_to_shuttlecock()
+				touch_jump_pressed = false
+			elif is_on_ground():
+				velocity.y = JUMP_FORCE
+				jump_taken.emit(Vector2(global_position.x, current_ground_y), facing)
+				if stats:
+					var jump_drain = 2.0 if (stats.character_id == "nishikawa") else 4.0
+					stats.consume_stamina_action(jump_drain)
+				touch_jump_pressed = false
 	
 	# Swing / Shot trigger: Player can ALWAYS swing anytime!
 	var cur_j = Input.is_key_pressed(KEY_J)
@@ -950,6 +995,12 @@ func _process_player_input(delta: float) -> void:
 	prev_key_j = cur_j
 	prev_key_k = cur_k
 	prev_key_l = cur_l
+	
+	# Active Skill Key (PC Shift)
+	var cur_shift = Input.is_key_pressed(KEY_SHIFT)
+	if cur_shift and not prev_shift_pressed:
+		activate_active_skill()
+	prev_shift_pressed = cur_shift
 	
 	if shot_pressed != "":
 		# Khóa hoàn toàn lệnh đánh khi đang đợi đối phương giao cầu (bên nhận cầu không vung vợt bừa bãi trước khi cầu bay qua lưới)
@@ -1171,6 +1222,20 @@ func _process_ai(delta: float) -> void:
 			return
 		else:
 			ai_has_reacted = true
+	
+	# AI KÍCH HOẠT TUYỆT KỸ CHỦ ĐỘNG (HAN GITAE & SARA):
+	if stats and stats.can_use_special():
+		if stats.character_id == "gitae" or stats.special_skill_id == "fire_realm":
+			if shuttlecock and shuttlecock.velocity.x > 0.0:
+				activate_active_skill()
+		elif stats.character_id == "sara" or stats.special_skill_id == "ice_domain":
+			if shuttlecock and shuttlecock.velocity.x > 0.0:
+				activate_active_skill()
+	
+	# SARA AI TELEPORT TRONG ICE DOMAIN KHI Ở XA CẦU:
+	if is_ice_domain_active and (stats and (stats.character_id == "sara" or stats.special_skill_id == "ice_domain")):
+		if abs(s_pos.x - global_position.x) > 130.0 and s_pos.x > 670.0 and s_pos.x < 1140.0:
+			teleport_to_shuttlecock()
 	
 	# 3. KHI CẦU ĐANG BAY VỀ PHÍA SÂN AI: DI CHUYỂN ĐÓN ĐIỂM RƠI THEO ĐỘ KHÓ
 	var pred_x = shuttlecock.predicted_landing_2d.x
@@ -1764,6 +1829,11 @@ func get_hit_status() -> Dictionary:
 	elif court_side == "ai" and s_pt.x < net_x_val:
 		return {"can_hit": false, "zone": "none", "quality": 0.0, "is_perfect": false}
 	
+	# HAN GITAE: INFERNAL FLAME REALM - HITBOX RỘNG TOÀN BỘ NỬA SÂN
+	if is_fire_realm_active:
+		var zone_type = "overhead" if s_pt.y < current_ground_y - 100.0 else "underhand"
+		return {"can_hit": true, "zone": zone_type, "quality": 1.0, "is_perfect": true}
+	
 	var is_air = not is_on_ground() and global_position.y < current_ground_y - 35.0
 	
 	# Mở rộng vùng kiểm tra 20px theo kích thước thực của quả cầu (đầu bần + lông vũ)
@@ -1919,6 +1989,18 @@ func _execute_hit(shot_type: String, hit_status: Dictionary = {}) -> void:
 	var is_wall_auto_counter = is_incoming_smash and stats and (stats.character_id == "wall" or stats.special_skill_id == "mirage_counter") and stats.can_use_special()
 	if is_wall_auto_counter:
 		shot_type = "mirage_counter"
+	
+	# ĐỠ QUẢ CẦU LỬA CỦA HAN GITAE (BỊ PHẠT THỂ LỰC, THĂNG BẰNG VÀ ĐỘ CHÍNH XÁC):
+	var is_opp_fire_ball = shuttlecock and shuttlecock.is_fire_ball and shuttlecock.fire_ball_owner != court_side
+	if is_opp_fire_ball:
+		if stats:
+			stats.apply_fire_burn(25.0, 30.0, 25.0)
+		shuttlecock.is_fire_ball = false
+	
+	# HAN GITAE INFERNAL FLAME REALM: KHÔNG CHO ĐẬP, CHỈ CHO DROP VÀ PHÔNG CẦU (CLEAR):
+	if is_fire_realm_active:
+		if shot_type == "smash" or shot_type == "boom_smash" or shot_type == "kill_smash":
+			shot_type = "clear"
 	
 	# AI TUYỆT ĐỐI BỊ CẤM SMASH KHI Ở DƯỚI ĐẤT HOẶC KHI CẦU ĐẾN KHÔNG PHẢI PHÔNG BỔNG (TRỪ KHI LÀ CẦU NON CHANCE BALL HOẶC NISHIKAWA ĐẦY FLOW):
 	var is_chance_ball = shuttlecock and (shuttlecock.is_weak_return or shuttlecock.current_shot_type == "weak_return")
@@ -2424,6 +2506,9 @@ func _execute_hit(shot_type: String, hit_status: Dictionary = {}) -> void:
 		return
 	
 	shuttlecock.launch_to_target_2d(from_2d, Vector2(target_x, current_ground_y), actual_shot, err_offset_x, is_perfect, is_jump_smash_shot, current_tension_mult, current_tension_level)
+	if is_fire_realm_active:
+		shuttlecock.is_fire_ball = true
+		shuttlecock.fire_ball_owner = court_side
 	shot_hit.emit(actual_shot, is_any_smash, quality, is_perfect, is_air, from_2d)
 
 
@@ -2442,12 +2527,72 @@ func execute_pending_special() -> void:
 			current_tension_mult,
 			current_tension_level
 		)
+		if is_fire_realm_active:
+			shuttlecock.is_fire_ball = true
+			shuttlecock.fire_ball_owner = court_side
 		pending_special_target = Vector2.ZERO
 		pending_smash_target = Vector2.ZERO
 
 
 func execute_pending_smash() -> void:
 	execute_pending_special()
+
+
+func activate_active_skill() -> bool:
+	if not stats or not stats.can_use_special():
+		return false
+	
+	if stats.character_id == "gitae" or stats.special_skill_id == "fire_realm":
+		if is_fire_realm_active:
+			return false
+		is_fire_realm_active = true
+		fire_realm_timer = 5.0
+		stats.consume_flow()
+		active_skill_activated.emit("fire_realm", court_side)
+		return true
+	elif stats.character_id == "sara" or stats.special_skill_id == "ice_domain":
+		if is_ice_domain_active:
+			return false
+		is_ice_domain_active = true
+		ice_domain_timer = 10.0
+		if opponent_player:
+			opponent_player.ice_slow_active = true
+		stats.consume_flow()
+		active_skill_activated.emit("ice_domain", court_side)
+		return true
+	return false
+
+
+func teleport_to_shuttlecock() -> void:
+	if not shuttlecock or not shuttlecock.is_active:
+		return
+	var s_pos = shuttlecock.global_position
+	var net_x_val = tuning.net_x if tuning else 640.0
+	
+	var p_min_x = min_x
+	var p_max_x = max_x
+	if court_side == "player":
+		p_max_x = min(max_x, net_x_val - 25.0)
+	else:
+		p_min_x = max(min_x, net_x_val + 25.0)
+	
+	var from_pos = global_position
+	var target_x = clamp(s_pos.x - facing * 40.0, p_min_x, p_max_x)
+	var target_y = current_ground_y
+	
+	# Nếu cầu đang bung cao: tele lên không trung tại sweetspot overhead để đập hoặc đánh
+	# Nếu cầu đang gần mặt đất: chỉ tele ngang ở mặt đất (current_ground_y), không nhấc cao
+	var is_air_cock = s_pos.y < (current_ground_y - 120.0)
+	if is_air_cock:
+		target_y = clamp(s_pos.y + 149.0, current_ground_y - 280.0, current_ground_y)
+		velocity.y = -35.0 # Nhấc nhẹ trên không giúp người chơi kịp vung vợt đập bóng
+	else:
+		target_y = current_ground_y
+		velocity.y = 0.0
+		
+	velocity.x = 0.0
+	global_position = Vector2(target_x, target_y)
+	teleport_triggered.emit(from_pos, global_position)
 
 
 func _execute_fault_smash_into_net(_hit_status: Dictionary = {}) -> void:

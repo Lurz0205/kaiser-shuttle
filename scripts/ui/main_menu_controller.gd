@@ -216,21 +216,21 @@ const CHAR_DATA = {
 	},
 	"fuji": {
 		"name": "FUJI",
-		"title": "Cơn lốc xanh - Phong Ảnh",
+		"title": "Cơn lốc xanh - Phong Thần Tuyệt Đỉnh",
 		"archetype": "KỸ THUẬT TINH TẾ",
-		"rarity": "S",
-		"stars": 4,
+		"rarity": "S+",
+		"stars": 5,
 		"color": Color(0.25, 0.90, 0.60, 1.0),
 		"icon_type": CustomIcon.IconType.FEATHER,
 		"skill_icon": TEX_SKILL_WIND,
 		"standee": null,
-		"power": 76,
-		"agility": 84,
-		"control": 96,
-		"composure": 86,
+		"power": 82,
+		"agility": 92,
+		"control": 99,
+		"composure": 90,
 		"skill_name": "Tsubame Gaeshi",
-		"skill_desc": "Cắt xoáy lốc xoáy lướt sát mép lưới, góc lượn gục hiểm hóc sát chân lưới!",
-		"passive": "Cơn lốc xanh: Cú bỏ nhỏ hóa thành Én Lượn lướt sà mép lưới, tăng 30% tốc độ bước lướt trên sân!"
+		"skill_desc": "Cắt xoáy lốc xoáy lướt sát mép lưới, góc lượn gục hiểm hóc sát chân lưới! (Flow: 80)",
+		"passive": "Phong Thần S+: Bỏ nhỏ hóa Én Lượn lướt sà mép lưới, tích Flow cực nhanh chỉ cần 80 điểm để tung chiêu!"
 	},
 	"wall": {
 		"name": "ISABEL",
@@ -247,8 +247,44 @@ const CHAR_DATA = {
 		"control": 85,
 		"composure": 96,
 		"skill_name": "Mirage Shield",
-		"skill_desc": "Hóa giải toàn bộ cú đập smash của đối thủ, bung cầu cao sâu và hồi ngay 20% thể lực!",
+		"skill_desc": "Hóa giải toàn bộ cú đập smash của đối thủ, bung cầu cao sâu và hồi ngay 20% thể lực! (Flow: 90)",
 		"passive": "Khiên La Mã: Hóa giải hoàn toàn đòn smash khi đầy Nộ, bung sâu cuối sân & hồi ngay 20% thể lực!"
+	},
+	"gitae": {
+		"name": "HAN GITAE",
+		"title": "Bão lửa tiên phong - Hỏa Thần",
+		"archetype": "ĐẤU SĨ BÙNG NỔ",
+		"rarity": "S+",
+		"stars": 5,
+		"color": Color(1.0, 0.42, 0.15, 1.0),
+		"icon_type": CustomIcon.IconType.FIRE_BLADE,
+		"skill_icon": TEX_SKILL_FIRE,
+		"standee": null,
+		"power": 92,
+		"agility": 82,
+		"control": 78,
+		"composure": 94,
+		"skill_name": "Infernal Flame Realm",
+		"skill_desc": "Trong 5s biến nửa sân thành Hỏa Ngục: Hitbox rộng hết nửa sân, cầu dính lửa thiêu đốt đối thủ (-25 Thể lực, -30 Thăng bằng, -25 Accuracy khi đánh trả)! (Flow: 100)",
+		"passive": "Hỏa Thần Cuồng Nộ: Khi kích hoạt skill, bao sân 100% không lo trượt cầu. Quả cầu lửa thiêu đốt phá vỡ bộ pháp đối phương!"
+	},
+	"sara": {
+		"name": "SARA",
+		"title": "Băng giá toàn năng - Hàn Băng Nữ Hoàng",
+		"archetype": "BIẾN ẢO HƯ KHÔNG",
+		"rarity": "S+",
+		"stars": 5,
+		"color": Color(0.35, 0.85, 1.0, 1.0),
+		"icon_type": CustomIcon.IconType.STAR,
+		"skill_icon": TEX_SKILL_FROST,
+		"standee": null,
+		"power": 80,
+		"agility": 96,
+		"control": 92,
+		"composure": 88,
+		"skill_name": "Glacial Frost Domain",
+		"skill_desc": "Trong 10s đóng băng sàn đối phương (chậm 20% tốc độ). Phím Space/Jump hóa thành Dịch chuyển tức thời tới đón cầu trên không hoặc mặt đất! (Flow: 105)",
+		"passive": "Hư Không Tốc Biến: Teleport thẳng tới vị trí đón cầu thuận lợi nhất, đóng băng kìm hãm bước chạy đối thủ!"
 	}
 }
 
@@ -1899,15 +1935,13 @@ func _build_roster_panel() -> void:
 	grid_scroll.add_child(grid)
 	
 	# Populate characters with pre-rendered HD skill textures
-	for cid in ["nishikawa", "fuji", "wall"]:
+	for cid in ["nishikawa", "fuji", "wall", "gitae", "sara"]:
 		var data = CHAR_DATA[cid]
 		var c_card = _create_roster_card(cid, data["name"], data["rarity"], data["archetype"], data["color"], data["skill_icon"], false)
 		grid.add_child(c_card)
 		
-	# Locked players with studio skill icons
-	grid.add_child(_create_roster_card("gitae", "HAN GITAE", "S+", "BÃO LỬA TIÊN PHONG", Color(1.0, 0.4, 0.2), TEX_SKILL_FIRE, true))
+	# Locked preview player (Raul)
 	grid.add_child(_create_roster_card("raul", "RAUL", "S+", "BÓNG ĐÊM HUYỀN ẢO", Color(0.8, 0.3, 0.9), TEX_SKILL_VOID, true))
-	grid.add_child(_create_roster_card("sara", "SARA", "S+", "BĂNG GIÁ TOÀN NĂNG", Color(0.3, 0.8, 1.0), TEX_SKILL_FROST, true))
 
 func _create_roster_card(cid: String, cname: String, rarity: String, arch: String, col: Color, skill_tex: Texture2D, is_locked: bool) -> PanelContainer:
 	var p = _create_spike_translucent_panel(Vector2(250, 160), 10, Color(col.r, col.g, col.b, 0.50))

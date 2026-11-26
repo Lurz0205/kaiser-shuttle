@@ -122,6 +122,7 @@ var fuji_slowmo_leaves: Array = []
 
 # Takeoff Jump Effects (Hiệu ứng dậm nhảy bùng nổ mặt sàn)
 var jump_takeoff_effects: Array = []
+var teleport_effects: Array = []
 
 # Settings UI & Character Select
 const CharacterStats = preload("res://scripts/core/character_stats.gd")
@@ -292,6 +293,12 @@ func _ready() -> void:
 	# Hiệu ứng dậm nhảy bùng nổ mặt sàn
 	player.jump_taken.connect(_on_jump_taken)
 	ai_rival.jump_taken.connect(_on_jump_taken)
+	
+	# Kỹ năng chủ động (Han Gitae & Sara) & Dịch chuyển
+	player.active_skill_activated.connect(_on_active_skill_activated)
+	ai_rival.active_skill_activated.connect(_on_active_skill_activated)
+	player.teleport_triggered.connect(_on_teleport_triggered)
+	ai_rival.teleport_triggered.connect(_on_teleport_triggered)
 	
 	shuttlecock.landed.connect(_on_shuttlecock_landed)
 	shuttlecock.hit_net.connect(_on_shuttlecock_hit_net)
@@ -823,10 +830,23 @@ func _on_jump_taken(takeoff_pos: Vector2, facing_dir: float) -> void:
 	_redraw_effects()
 
 
+func _on_active_skill_activated(skill_id: String, _side: String) -> void:
+	_show_banner(SpecialSkills.get_skill_name(skill_id), SpecialSkills.get_skill_color(skill_id), true, 1.5)
+	_redraw_effects()
+
+
+func _on_teleport_triggered(from_pos: Vector2, to_pos: Vector2) -> void:
+	teleport_effects.append({"pos": from_pos, "timer": 0.35, "dur": 0.35})
+	teleport_effects.append({"pos": to_pos, "timer": 0.35, "dur": 0.35})
+	_redraw_effects()
+
+
 func _redraw_effects() -> void:
 	if not effects_overlay:
 		return
-	var has_effects = (shockwave_alpha > 0.01) or (perfect_burst_timer > 0.0) or (jump_takeoff_effects.size() > 0) or fuji_slowmo_active or (floating_text_mgr and floating_text_mgr.items.size() > 0)
+	var has_gitae_fire = (player and player.is_fire_realm_active) or (ai_rival and ai_rival.is_fire_realm_active)
+	var has_sara_ice = (player and player.is_ice_domain_active) or (ai_rival and ai_rival.is_ice_domain_active)
+	var has_effects = (shockwave_alpha > 0.01) or (perfect_burst_timer > 0.0) or (jump_takeoff_effects.size() > 0) or (teleport_effects.size() > 0) or fuji_slowmo_active or (floating_text_mgr and floating_text_mgr.items.size() > 0) or has_gitae_fire or has_sara_ice
 	effects_overlay.visible = has_effects
 	if has_effects:
 		effects_overlay.queue_redraw()
@@ -898,6 +918,8 @@ func _on_menu_start_match(p_id: String, r_id: String, diff: int, target_points: 
 			"nishikawa": player.stats = CharacterStats.create_nishikawa()
 			"fuji": player.stats = CharacterStats.create_fuji()
 			"wall": player.stats = CharacterStats.create_wall()
+			"gitae": player.stats = CharacterStats.create_gitae()
+			"sara": player.stats = CharacterStats.create_sara()
 			_: player.stats = CharacterStats.create_nishikawa()
 		player.move_speed_x = lerp(207.0, 238.5, (player.stats.agility - 40.0) / 59.0)
 		if player.stats:
@@ -911,6 +933,8 @@ func _on_menu_start_match(p_id: String, r_id: String, diff: int, target_points: 
 			"nishikawa": ai_rival.stats = CharacterStats.create_nishikawa()
 			"fuji": ai_rival.stats = CharacterStats.create_fuji()
 			"wall": ai_rival.stats = CharacterStats.create_wall()
+			"gitae": ai_rival.stats = CharacterStats.create_gitae()
+			"sara": ai_rival.stats = CharacterStats.create_sara()
 			_: ai_rival.stats = CharacterStats.create_wall()
 		ai_rival.move_speed_x = lerp(207.0, 238.5, (ai_rival.stats.agility - 40.0) / 59.0)
 		if ai_rival.stats:
@@ -934,8 +958,8 @@ func _on_menu_start_match(p_id: String, r_id: String, diff: int, target_points: 
 			p_name = player.stats.character_name.split("(")[0].strip_edges().to_upper()
 		if ai_rival and ai_rival.stats:
 			r_name = ai_rival.stats.character_name.split("(")[0].strip_edges().to_upper()
-		var flag_p1 = "JP" if p_id == "nishikawa" or p_id == "fuji" else "DK"
-		var flag_p2 = "DK" if r_id == "wall" else "JP"
+		var flag_p1 = "KR" if p_id == "gitae" else ("SE" if p_id == "sara" else ("JP" if p_id == "nishikawa" or p_id == "fuji" else "DK"))
+		var flag_p2 = "KR" if r_id == "gitae" else ("SE" if r_id == "sara" else ("DK" if r_id == "wall" else "JP"))
 		bwf_scoreboard.set_players(p_name, r_name, flag_p1, flag_p2)
 		bwf_scoreboard.update_current_score(0, 0)
 		bwf_scoreboard.set_server(false)
@@ -975,6 +999,8 @@ func _create_char_stats(char_id: String) -> CharacterStats:
 		"nishikawa": return CharacterStats.create_nishikawa()
 		"fuji": return CharacterStats.create_fuji()
 		"wall": return CharacterStats.create_wall()
+		"gitae": return CharacterStats.create_gitae()
+		"sara": return CharacterStats.create_sara()
 		_: return CharacterStats.create_nishikawa()
 
 func _on_menu_start_pvp_match(room_code: String, is_host: bool, local_char: String, target_points: int, match_sets: int, first_server_role: String = "p1", opponent_char: String = "", local_player_name: String = "", opp_player_name: String = "") -> void:
@@ -1884,6 +1910,24 @@ func _process(delta: float) -> void:
 				jump_takeoff_effects.remove_at(i)
 		if need_redraw:
 			_redraw_effects()
+			
+	# Teleport Effects update
+	if not teleport_effects.is_empty():
+		var need_redraw_tp = false
+		for i in range(teleport_effects.size() - 1, -1, -1):
+			var eff = teleport_effects[i]
+			eff["timer"] -= delta
+			need_redraw_tp = true
+			if eff["timer"] <= 0.0:
+				teleport_effects.remove_at(i)
+		if need_redraw_tp:
+			_redraw_effects()
+			
+	# Redraw active skills court visuals (Han Gitae Fire Realm & Sara Ice Domain)
+	var has_gitae_fire_eff = (player and player.is_fire_realm_active) or (ai_rival and ai_rival.is_fire_realm_active)
+	var has_sara_ice_eff = (player and player.is_ice_domain_active) or (ai_rival and ai_rival.is_ice_domain_active)
+	if has_gitae_fire_eff or has_sara_ice_eff:
+		_redraw_effects()
 	
 	# Nishikawa Lightning update:
 	# Giai đoạn 1: Slow-mo chung với game (bò từ từ quanh vợt và quả cầu, bị đảo màu trắng đen)
@@ -3551,7 +3595,58 @@ func _on_effects_overlay_draw() -> void:
 				
 				effects_overlay.draw_set_transform_matrix(Transform2D.IDENTITY)
 	
-	# 11. Floating Combat Text (Popup PERFECT bay nhẹ lên trên)
+	# 11. Sara Teleport Frost Rings (Vòng hào quang băng giá khi dịch chuyển)
+	for eff in teleport_effects:
+		var prog = clamp(1.0 - (eff["timer"] / eff["dur"]), 0.0, 1.0)
+		var alpha = (1.0 - prog) * 0.90
+		var r = 14.0 + prog * 44.0
+		effects_overlay.draw_arc(eff["pos"], r, 0, TAU, 24, Color(0.4, 2.4, 3.8, alpha), 2.5 * (1.0 - prog * 0.6), true)
+	
+	# 12. Han Gitae Infernal Flame Realm (Sân rực lửa bùng cháy & đốm lửa sáng bay lên)
+	var gitae_side = ""
+	if player and player.is_fire_realm_active:
+		gitae_side = player.court_side
+	elif ai_rival and ai_rival.is_fire_realm_active:
+		gitae_side = ai_rival.court_side
+		
+	if gitae_side != "":
+		var f_x1 = 40.0 if gitae_side == "player" else 640.0
+		var f_w = 600.0
+		var floor_y_val = 550.0
+		var time_f = Time.get_ticks_msec() / 1000.0
+		# Màn sương nhiệt đỏ rực sát sàn
+		effects_overlay.draw_rect(Rect2(f_x1, floor_y_val - 35.0, f_w, 45.0), Color(1.0, 0.35, 0.05, 0.15))
+		effects_overlay.draw_line(Vector2(f_x1, floor_y_val), Vector2(f_x1 + f_w, floor_y_val), Color(3.8, 1.4, 0.2, 0.85), 3.0, true)
+		# Đốm lửa sáng bay lên (rising embers)
+		for i in range(16):
+			var ember_x = f_x1 + fmod((i * 37.0 + time_f * 45.0), f_w)
+			var ember_y = floor_y_val - fmod((i * 23.0 + time_f * 70.0), 160.0)
+			var ember_r = 2.0 + sin(time_f * 5.0 + i) * 1.0
+			var ember_a = clamp(1.0 - (floor_y_val - ember_y) / 160.0, 0.0, 1.0)
+			effects_overlay.draw_circle(Vector2(ember_x, ember_y), ember_r, Color(3.8, 1.2, 0.2, ember_a * 0.85))
+	
+	# 13. Sara Glacial Frost Domain (Băng giá phủ sàn đối phương làm chậm 20%)
+	var sara_opp_side = ""
+	if player and player.is_ice_domain_active:
+		sara_opp_side = "ai"
+	elif ai_rival and ai_rival.is_ice_domain_active:
+		sara_opp_side = "player"
+		
+	if sara_opp_side != "":
+		var ice_x1 = 40.0 if sara_opp_side == "player" else 640.0
+		var ice_w = 600.0
+		var floor_y_val = 550.0
+		var time_ice = Time.get_ticks_msec() / 1000.0
+		var shimmer = 0.20 + 0.08 * sin(time_ice * 4.0)
+		effects_overlay.draw_rect(Rect2(ice_x1, floor_y_val - 20.0, ice_w, 28.0), Color(0.3, 0.8, 1.3, shimmer))
+		effects_overlay.draw_line(Vector2(ice_x1, floor_y_val), Vector2(ice_x1 + ice_w, floor_y_val), Color(0.5, 2.4, 3.8, 0.80), 2.5, true)
+		for i in range(12):
+			var sp_x = ice_x1 + fmod(i * 51.0, ice_w)
+			var sp_y = floor_y_val - 4.0 + sin(time_ice * 3.0 + i) * 3.0
+			var sp_a = 0.4 + 0.5 * sin(time_ice * 6.0 + i * 2.0)
+			effects_overlay.draw_circle(Vector2(sp_x, sp_y), 2.5, Color(0.8, 2.5, 3.8, sp_a))
+	
+	# 14. Floating Combat Text (Popup PERFECT bay nhẹ lên trên)
 	if floating_text_mgr:
 		floating_text_mgr.draw(effects_overlay)
 

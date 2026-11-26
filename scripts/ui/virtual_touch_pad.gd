@@ -43,6 +43,14 @@ var btn_k_touch_id: int = -1
 var btn_k_pressed: bool = false
 var btn_k_scale: float = 1.0
 
+# Button Skill (Active Skill / Tuyệt Kỹ - Glowing Aura)
+var btn_skill_center: Vector2 = Vector2(940.0, 480.0)
+var btn_skill_radius: float = 52.0
+var btn_skill_touch_id: int = -1
+var btn_skill_pressed: bool = false
+var btn_skill_scale: float = 1.0
+var _btn_skill_down_time: float = 0.0
+
 # Button L (Dynamic Jump & Smash - Classic Warm Gold / Crimson)
 var btn_l_center: Vector2 = Vector2(1180.0, 610.0)
 var btn_l_radius: float = 62.0
@@ -98,6 +106,7 @@ func _update_layout() -> void:
 	btn_j_radius = 56.0     # Tăng từ 48 lên 56
 	btn_k_radius = 56.0     # Tăng từ 48 lên 56
 	btn_l_radius = 74.0     # Tăng từ 62 lên 74 (Nút Smash/Jump to đại, cực dễ bấm)
+	btn_skill_radius = 52.0 # Nút Tuyệt Kỹ chủ động (Shift / Skill)
 	
 	var pad_bottom_btn: float = 48.0 # Nâng nhẹ cụm nút lên trên
 	var rx: float = 1280.0 - 45.0
@@ -114,6 +123,9 @@ func _update_layout() -> void:
 	
 	# Button Slide (Cuu cau / Truot san) - Nam ngoai cung ben trai
 	btn_slide_center = Vector2(rx - btn_l_radius - 300.0, ry - btn_l_radius)
+	
+	# Button Skill (Tuyet ky chu dong) - Vong cung phia tren lech trai doi xung voi K
+	btn_skill_center = Vector2(rx - btn_l_radius - 235.0, ry - btn_l_radius - 128.0)
 	
 	queue_redraw()
 
@@ -170,6 +182,13 @@ func _process(delta: float) -> void:
 			btn_l_pressed = false
 			btn_l_touch_id = -1
 			needs_redraw = true
+			
+	if btn_skill_pressed:
+		_btn_skill_down_time += delta
+		if _btn_skill_down_time > 0.14:
+			btn_skill_pressed = false
+			btn_skill_touch_id = -1
+			needs_redraw = true
 	
 	# Smooth button scale transitions
 	var target_slide = 0.88 if btn_slide_pressed else 1.0
@@ -190,6 +209,14 @@ func _process(delta: float) -> void:
 	var target_l = 0.88 if btn_l_pressed else 1.0
 	if abs(btn_l_scale - target_l) > 0.005:
 		btn_l_scale = lerp(btn_l_scale, target_l, delta * 25.0)
+		needs_redraw = true
+		
+	var target_skill = 0.88 if btn_skill_pressed else 1.0
+	if abs(btn_skill_scale - target_skill) > 0.005:
+		btn_skill_scale = lerp(btn_skill_scale, target_skill, delta * 25.0)
+		needs_redraw = true
+		
+	if player and is_instance_valid(player) and player.stats and player.stats.can_use_special():
 		needs_redraw = true
 	
 	# Jump to Smash transition
@@ -259,6 +286,14 @@ func _trigger_btn_l(touch_id: int) -> void:
 		jump_triggered.emit()
 	queue_redraw()
 
+func _trigger_btn_skill(touch_id: int) -> void:
+	btn_skill_touch_id = touch_id
+	btn_skill_pressed = true
+	_btn_skill_down_time = 0.0
+	if player and is_instance_valid(player):
+		player.handle_touch_action("skill")
+	queue_redraw()
+
 func _handle_touch(touch_id: int, is_down: bool, pos: Vector2) -> void:
 	if is_down:
 		# 1. Track Di Chuyển Trái/Phải
@@ -286,7 +321,12 @@ func _handle_touch(touch_id: int, is_down: bool, pos: Vector2) -> void:
 			_trigger_btn_k(touch_id)
 			return
 			
-		# 5. Button Jump / Smash (Nhảy & Đập - Phím L)
+		# 5. Button Skill (Tuyệt kỹ - Phím Shift / Nộ)
+		if pos.distance_to(btn_skill_center) <= btn_skill_radius * 1.45:
+			_trigger_btn_skill(touch_id)
+			return
+			
+		# 6. Button Jump / Smash (Nhảy & Đập - Phím L)
 		if pos.distance_to(btn_l_center) <= btn_l_radius * 1.45:
 			_trigger_btn_l(touch_id)
 			return
@@ -314,6 +354,11 @@ func _handle_touch(touch_id: int, is_down: bool, pos: Vector2) -> void:
 			btn_k_pressed = false
 			queue_redraw()
 			
+		if touch_id == btn_skill_touch_id or touch_id == 999:
+			btn_skill_touch_id = -1
+			btn_skill_pressed = false
+			queue_redraw()
+			
 		if touch_id == btn_l_touch_id or touch_id == 999:
 			btn_l_touch_id = -1
 			btn_l_pressed = false
@@ -331,6 +376,8 @@ func _handle_drag(touch_id: int, pos: Vector2) -> void:
 			_trigger_btn_j(touch_id)
 		elif not btn_k_pressed and pos.distance_to(btn_k_center) <= btn_k_radius * 1.35:
 			_trigger_btn_k(touch_id)
+		elif not btn_skill_pressed and pos.distance_to(btn_skill_center) <= btn_skill_radius * 1.35:
+			_trigger_btn_skill(touch_id)
 		elif not btn_l_pressed and pos.distance_to(btn_l_center) <= btn_l_radius * 1.35:
 			_trigger_btn_l(touch_id)
 
@@ -398,11 +445,30 @@ func _draw() -> void:
 	# Button Clear: PHÔNG CẦU
 	_draw_classic_button(btn_k_center, btn_k_radius * btn_k_scale, "PHÔNG", "CLEAR", Color(1.0, 0.82, 0.25), btn_k_pressed)
 
+	# Button Skill: TUYỆT KỸ CHỦ ĐỘNG (SHIFT / SPECIAL)
+	var can_spec = player and is_instance_valid(player) and player.stats and player.stats.can_use_special()
+	var skill_active = player and is_instance_valid(player) and (player.is_fire_realm_active or player.is_ice_domain_active)
+	var char_id = player.stats.character_id if (player and is_instance_valid(player) and player.stats) else ""
+	var skill_col = Color(1.0, 0.40, 0.15) if char_id == "gitae" else (Color(0.35, 0.85, 1.0) if char_id == "sara" else Color(1.0, 0.85, 0.25))
+	if can_spec or skill_active:
+		var pulse = 0.75 + 0.25 * sin(Time.get_ticks_msec() / 120.0)
+		draw_circle(btn_skill_center, (btn_skill_radius + 6.0) * btn_skill_scale, Color(skill_col.r, skill_col.g, skill_col.b, 0.35 * pulse))
+	var skill_title = "TUYỆT KỸ"
+	var skill_sub = "SKILL"
+	if char_id == "gitae":
+		skill_sub = "HỎA NGỤC" if skill_active else "HỎA DIỄM"
+	elif char_id == "sara":
+		skill_sub = "BĂNG GIÁ" if skill_active else "BĂNG ĐOÀN"
+	_draw_classic_button(btn_skill_center, btn_skill_radius * btn_skill_scale, skill_title, skill_sub, skill_col if (can_spec or skill_active) else Color(0.60, 0.65, 0.75), btn_skill_pressed)
+
 	# Button Jump / Smash: NHẢY & ĐẬP CẦU
 	var is_air = btn_l_air_prog > 0.5
 	var l_col = Color(1.0, 0.82, 0.30).lerp(Color(1.0, 0.32, 0.30), btn_l_air_prog)
-	var l_title = "ĐẬP CẦU" if is_air else "BẬT NHẢY"
-	var l_sub = "SMASH" if is_air else "JUMP"
+	var is_sara_ice = player and is_instance_valid(player) and player.is_ice_domain_active and char_id == "sara"
+	var l_title = "ĐẬP CẦU" if is_air else ("DỊCH CHUYỂN" if is_sara_ice else "BẬT NHẢY")
+	var l_sub = "SMASH" if is_air else ("TELEPORT" if is_sara_ice else "JUMP")
+	if is_sara_ice and not is_air:
+		l_col = Color(0.35, 0.85, 1.0)
 	_draw_classic_button(btn_l_center, btn_l_radius * btn_l_scale, l_title, l_sub, l_col, btn_l_pressed, true)
 
 func _draw_small_arrow(pos: Vector2, dir: int) -> void:
