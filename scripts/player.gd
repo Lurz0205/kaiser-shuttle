@@ -988,18 +988,17 @@ func _process_player_input(delta: float) -> void:
 		var cur_jump_raw = (Input.is_key_pressed(KEY_SPACE) or Input.is_key_pressed(KEY_W) or Input.is_key_pressed(KEY_UP))
 		var jump_just_pressed = (cur_jump_raw and not prev_jump_input) or touch_jump_pressed
 		prev_jump_input = cur_jump_raw
+		touch_jump_pressed = false
 		
 		if jump_just_pressed:
 			if is_ice_domain_active and (stats and (stats.character_id == "sara" or stats.special_skill_id == "ice_domain")):
 				teleport_to_shuttlecock()
-				touch_jump_pressed = false
 			elif is_on_ground():
 				velocity.y = JUMP_FORCE
 				jump_taken.emit(Vector2(global_position.x, current_ground_y), facing)
 				if stats:
 					var jump_drain = 2.0 if (stats.character_id == "nishikawa") else 4.0
 					stats.consume_stamina_action(jump_drain)
-				touch_jump_pressed = false
 	
 	# Swing / Shot trigger: Player can ALWAYS swing anytime!
 	var cur_j = Input.is_key_pressed(KEY_J)

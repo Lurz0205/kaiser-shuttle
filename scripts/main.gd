@@ -2197,12 +2197,9 @@ func _process_serve_state() -> void:
 
 
 func _on_touch_jump_triggered() -> void:
-	if main_menu and main_menu.visible:
-		return
-	if is_umpire_speaking:
-		return
-	if player and is_instance_valid(player):
-		player.touch_jump_pressed = true
+	# VirtualTouchPad._trigger_btn_l đã gọi trực tiếp player.handle_touch_jump();
+	# Không gán lại player.touch_jump_pressed = true ở đây vì sẽ bị nhảy lặp lần 2 ngay khi tiếp đất!
+	pass
 
 func _on_touch_shot_triggered(shot_type: String) -> void:
 	if main_menu and main_menu.visible:
