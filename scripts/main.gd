@@ -127,6 +127,10 @@ var fuji_slowmo_start_ticks: int = 0
 var fuji_slowmo_facing: float = 1.0
 var fuji_slowmo_leaves: Array = []
 
+var sara_tele_slowmo_active: bool = false
+var sara_tele_slowmo_start_ticks: int = 0
+const SARA_TELE_SLOWMO_DURATION: float = 0.50
+
 # Takeoff Jump Effects (Hiệu ứng dậm nhảy bùng nổ mặt sàn)
 var jump_takeoff_effects: Array = []
 var teleport_effects: Array = []
@@ -875,6 +879,11 @@ func _on_teleport_triggered(from_pos: Vector2, to_pos: Vector2) -> void:
 	if sfx_sara_tele:
 		sfx_sara_tele.pitch_scale = randf_range(0.96, 1.05)
 		sfx_sara_tele.play()
+	# Slow-motion 0.5s sau khi Sara bấm nhảy dịch chuyển để tránh đánh hụt khi cầu bay nhanh
+	sara_tele_slowmo_active = true
+	sara_tele_slowmo_start_ticks = Time.get_ticks_msec()
+	if not fuji_slowmo_active and not aoi_shield_active and not impact_lightning_in_slowmo:
+		Engine.time_scale = 0.25
 	_redraw_effects()
 
 
@@ -2039,6 +2048,14 @@ func _process(delta: float) -> void:
 		if fuji_slowmo_timer >= FUJI_SLOWMO_DURATION:
 			fuji_slowmo_active = false
 		_redraw_effects()
+	
+	# Sara Teleport 0.5s Slow-Motion update:
+	if sara_tele_slowmo_active:
+		var elapsed_tele = (Time.get_ticks_msec() - sara_tele_slowmo_start_ticks) / 1000.0
+		if elapsed_tele >= SARA_TELE_SLOWMO_DURATION:
+			sara_tele_slowmo_active = false
+			if not fuji_slowmo_active and not aoi_shield_active and not impact_lightning_in_slowmo:
+				Engine.time_scale = 1.0
 	
 	# Authoritative WebSocket PvP Multiplayer Sync (Fixed 30Hz Tick Rate with Compact Precision)
 	if is_pvp_active and not is_spectator and net_manager:

@@ -111,6 +111,7 @@ var fire_realm_timer: float = 0.0
 var is_ice_domain_active: bool = false
 var ice_domain_timer: float = 0.0
 var ice_slow_active: bool = false
+var sara_smash_slow_stacks: int = 0
 var prev_shift_pressed: bool = false
 var prev_jump_input: bool = false
 var is_swinging: bool = false
@@ -444,22 +445,26 @@ func _physics_process(delta: float) -> void:
 			rally_hits = shuttlecock.tension_level
 	
 	# Active Skill Timers (Han Gitae Fire Realm & Sara Ice Domain)
+	# Không đếm ngược trong lúc đợi giao cầu (chỉ trừ thời gian khi đang đánh)
 	if is_fire_realm_active:
-		fire_realm_timer -= delta
-		if fire_realm_timer <= 0.0:
-			is_fire_realm_active = false
+		if not is_serving_phase:
+			fire_realm_timer -= delta
+			if fire_realm_timer <= 0.0:
+				is_fire_realm_active = false
 		queue_redraw()
 	
 	if is_ice_domain_active:
-		ice_domain_timer -= delta
-		if ice_domain_timer <= 0.0:
-			is_ice_domain_active = false
+		if not is_serving_phase:
+			ice_domain_timer -= delta
+			if ice_domain_timer <= 0.0:
+				is_ice_domain_active = false
 		queue_redraw()
 	
 	if opponent_player and opponent_player.is_ice_domain_active:
 		ice_slow_active = true
 	else:
 		ice_slow_active = false
+		sara_smash_slow_stacks = 0
 	
 	if is_remote_puppet:
 		if has_net_target:
@@ -515,6 +520,8 @@ func _physics_process(delta: float) -> void:
 		velocity.x *= stamina_speed_mult
 		if ice_slow_active:
 			velocity.x *= 0.80 # Băng tuyết làm chậm 20% tốc độ di chuyển
+		if sara_smash_slow_stacks > 0:
+			velocity.x *= max(0.30, 1.0 - float(sara_smash_slow_stacks) * 0.05) # -5% tốc độ cộng dồn mỗi cú Smash của Sara
 		stats.update_accuracy(delta, balance, current_tension_level)
 	
 	# TỰ ĐỘNG CỨU CẦU KHI BAY NGƯỜI (AUTOMATIC DIVE RESCUE):
@@ -2079,8 +2086,9 @@ func _execute_hit(shot_type: String, hit_status: Dictionary = {}) -> void:
 	# ĐỠ CẦU SMASH: Đánh giá Timing tốt / xấu và tác động lên Accuracy & Balance & Thể lực:
 	if is_incoming_smash:
 		if shuttlecock and shuttlecock.is_sara_ice_smash:
-			# SARA ICE SMASH: Cú đập trong lúc bật skill làm đối thủ mất 15 Balance
-			balance = max(0.0, balance - 15.0)
+			# SARA ICE SMASH: Cú đập trong lúc bật skill làm đối thủ mất 20 Balance và -5% tốc độ di chuyển (cộng dồn)
+			balance = max(0.0, balance - 20.0)
+			sara_smash_slow_stacks += 1
 		var is_kill = shuttlecock and (shuttlecock.is_kill_smash or shuttlecock.current_shot_type == "kill_smash")
 		var is_golden_boom_smash = shuttlecock and (shuttlecock.is_boom_smash or shuttlecock.current_shot_type == "boom_smash")
 		
@@ -2590,7 +2598,7 @@ func activate_active_skill() -> bool:
 		if is_fire_realm_active:
 			return false
 		is_fire_realm_active = true
-		fire_realm_timer = 5.0
+		fire_realm_timer = 7.0
 		stats.consume_flow()
 		active_skill_activated.emit("fire_realm", court_side)
 		return true
@@ -2598,7 +2606,7 @@ func activate_active_skill() -> bool:
 		if is_ice_domain_active:
 			return false
 		is_ice_domain_active = true
-		ice_domain_timer = 10.0
+		ice_domain_timer = 12.0
 		if opponent_player:
 			opponent_player.ice_slow_active = true
 		stats.consume_flow()
@@ -2608,10 +2616,16 @@ func activate_active_skill() -> bool:
 
 
 func teleport_to_shuttlecock() -> void:
-	if not shuttlecock or not shuttlecock.is_active:
+	if not shuttlecock or not shuttlecock.is_active or shuttlecock.is_net_fault:
 		return
 	var s_pos = shuttlecock.global_position
 	var net_x_val = tuning.net_x if tuning else 640.0
+	# Khóa nút nhảy/tele nếu cầu chưa bay qua sân mình (cho phép sai số 80px sang phần sân đối phương để tránh bấm không ăn)
+	const NET_TELE_MARGIN: float = 80.0
+	if court_side == "player" and s_pos.x > net_x_val + NET_TELE_MARGIN:
+		return
+	if court_side == "ai" and s_pos.x < net_x_val - NET_TELE_MARGIN:
+		return
 	
 	var p_min_x = min_x
 	var p_max_x = max_x
@@ -3024,11 +3038,11 @@ func _draw_textured_player(
 		var bar_border_col = Color.WHITE
 		
 		if is_fire_realm_active:
-			skill_ratio = clamp(fire_realm_timer / 5.0, 0.0, 1.0)
+			skill_ratio = clamp(fire_realm_timer / 7.0, 0.0, 1.0)
 			bar_fill_col = Color(1.0, 0.45, 0.10, 0.95)
 			bar_border_col = Color(1.0, 0.85, 0.20, 0.90)
 		elif is_ice_domain_active:
-			skill_ratio = clamp(ice_domain_timer / 10.0, 0.0, 1.0)
+			skill_ratio = clamp(ice_domain_timer / 12.0, 0.0, 1.0)
 			bar_fill_col = Color(0.20, 0.85, 1.0, 0.95)
 			bar_border_col = Color(0.70, 0.95, 1.0, 0.90)
 		

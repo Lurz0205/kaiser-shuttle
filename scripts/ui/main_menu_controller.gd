@@ -283,8 +283,8 @@ const CHAR_DATA = {
 		"control": 78,
 		"composure": 94,
 		"skill_name": "Đặc tính: Hỏa Ngục (Flow 100)",
-		"skill_desc": "• Hỏa Ngục (Shift/Skill - 5s): Hitbox mở rộng toàn bộ nửa sân nhà, mọi cú đánh tự động Perfect.\n• Cầu Lửa Thiêu Đốt: Không thể Đập khi bật skill; cầu lửa trừ 1.5 Thể lực, 1.5 Balance & 1.5 Accuracy địch khi đỡ.\n• Hỏa Diễm Tiết Chế: Đánh Perfect chỉ tăng 8 Flow (ít hơn người thường 15 Flow).",
-		"passive": "Hỏa Ngục & Cầu Lửa Thiêu Đốt: Bao sân 100% trong 5s, thiêu đốt nhẹ mọi chỉ số đối phương!"
+		"skill_desc": "• Hỏa Ngục (Shift/Skill - 7s): Hitbox mở rộng toàn bộ nửa sân nhà, mọi cú đánh tự động Perfect (tạm dừng đếm ngược khi đợi giao cầu).\n• Cầu Lửa Thiêu Đốt: Không thể Đập khi bật skill; cầu lửa trừ 1.5 Thể lực, 1.5 Balance & 1.5 Accuracy địch khi đỡ.\n• Hỏa Diễm Tiết Chế: Đánh Perfect chỉ tăng 8 Flow (ít hơn người thường 15 Flow).",
+		"passive": "Hỏa Ngục & Cầu Lửa Thiêu Đốt: Bao sân 100% trong 7s, thiêu đốt nhẹ mọi chỉ số đối phương!"
 	},
 	"sara": {
 		"name": "SARA",
@@ -302,8 +302,8 @@ const CHAR_DATA = {
 		"control": 92,
 		"composure": 88,
 		"skill_name": "Đặc tính: Hàn Băng (Flow 105)",
-		"skill_desc": "• Hàn Băng Thần Vực (Shift/Skill - 10s): Đóng băng sàn địch (-20% tốc chạy).\n• Không Gian Băng Giá: Space/Jump hóa Dịch Chuyển tới cầu; Hitbox Băng Auto-Perfect (0 Flow trong lúc bật skill).\n• Băng Toái Kích: Smash khi bật skill tạo vệt bông tuyết và trừ 15 Balance đối thủ.",
-		"passive": "Hàn Băng Thần Vực & Băng Toái Kích: Dịch chuyển tức thời, làm chậm địch 20% & đập cầu trừ 15 Balance!"
+		"skill_desc": "• Hàn Băng Thần Vực (Shift/Skill - 12s): Đóng băng sàn địch (-20% tốc chạy), tạm dừng đếm ngược khi đợi giao cầu.\n• Không Gian Băng Giá: Space/Jump hóa Dịch Chuyển khi cầu sang sân (làm chậm thời gian 0.5s); Hitbox Băng Auto-Perfect (0 Flow trong lúc bật skill).\n• Băng Toái Kích: Smash khi bật skill tạo vệt bông tuyết, trừ 20 Balance & -5% tốc độ địch (cộng dồn, giải trừ khi hết skill).",
+		"passive": "Hàn Băng Thần Vực & Băng Toái Kích: Dịch chuyển kèm slow-mo 0.5s, làm chậm địch 20% & đập trừ 20 Balance +5% slow cộng dồn!"
 	}
 }
 

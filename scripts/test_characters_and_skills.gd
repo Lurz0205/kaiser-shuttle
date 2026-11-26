@@ -101,40 +101,54 @@ func _init() -> void:
 	assert(player.stats.flow == 0.0, "Sara earns 0 flow during ice domain")
 	print("✓ 8b. Sara earns 0 flow during ice domain (auto-perfect doesn't farm flow)")
 
-	# Test Sara Ice Smash snowflake flag + 15 balance drain
+	# Test Sara Ice Smash snowflake flag + 20 balance drain + stackable -5% speed
 	shuttlecock.global_position = Vector2(400.0, 260.0)
 	player._execute_hit("smash", {"can_hit": true, "zone": "overhead", "quality": 1.0, "is_perfect": true})
 	assert(shuttlecock.is_sara_ice_smash == true, "Sara smash during ice domain sets is_sara_ice_smash")
 	ai_rival.balance = 100.0
+	ai_rival.sara_smash_slow_stacks = 0
 	shuttlecock.is_smash = true
 	shuttlecock.global_position = Vector2(800.0, 350.0)
 	ai_rival._execute_hit("clear", {"can_hit": true, "zone": "underhand", "quality": 1.0, "is_perfect": true})
-	assert(ai_rival.balance <= 90.0, "Opponent lost 15 balance from Sara Ice Smash")
-	print("✓ 8c. Sara Ice Smash snowflake trail flag & 15 balance drain confirmed")
+	assert(ai_rival.balance <= 85.0, "Opponent lost 20 balance from Sara Ice Smash")
+	assert(ai_rival.sara_smash_slow_stacks == 1, "Opponent gained 1 slow stack (-5% speed)")
+	print("✓ 8c. Sara Ice Smash snowflake trail flag, 20 balance drain & stackable -5% slow confirmed")
 
 	shuttlecock.global_position = Vector2(400.0, 300.0)
 	player.stats = gitae
 	player.stats.flow = 0.0
 	player.is_fire_realm_active = true
+	player.fire_realm_timer = 7.0
 	player.is_ice_domain_active = false
+	player.is_serving_phase = true
+	player._physics_process(0.5)
+	assert(player.fire_realm_timer == 7.0, "Skill timer pauses during serving phase")
+	player.is_serving_phase = false
 	player._execute_hit("clear", {"can_hit": true, "zone": "overhead", "quality": 1.0, "is_perfect": true})
 	assert(player.stats.flow == 8.0, "Han Gitae nerfed: earns 8 flow per perfect hit")
-	print("✓ 8d. Han Gitae nerfed: earns 8 flow per perfect hit (less than normal 15)")
+	print("✓ 8d. Han Gitae 7s duration, serve pause, and 8 flow per perfect hit confirmed")
 	
-	# Test Sara active skill & teleport
+	# Test Sara active skill (12s) & teleport lock/margin
 	player.stats = sara
 	player.stats.flow = 105.0
 	player.is_fire_realm_active = false
 	assert(player.stats.can_use_special(), "Sara flow full")
 	var sara_act = player.activate_active_skill()
 	assert(sara_act, "Sara active skill activated")
-	assert(player.is_ice_domain_active, "Sara is_ice_domain_active is true")
+	assert(player.is_ice_domain_active and player.ice_domain_timer == 12.0, "Sara ice domain 12s active")
 	player._physics_process(0.016)
 	ai_rival._physics_process(0.016)
 	assert(ai_rival.ice_slow_active, "Opponent slowed by ice domain")
-	print("✓ 9. Sara Ice Domain active & slows opponent by 20%")
+	print("✓ 9. Sara Ice Domain (12s) active & slows opponent by 20%")
 	
-	# Test Sara Teleport to high shuttlecock
+	# Test Sara Teleport locked when shuttlecock is far on opponent's court
+	shuttlecock.global_position = Vector2(950.0, 250.0)
+	player.global_position = Vector2(100.0, 560.0)
+	player.teleport_to_shuttlecock()
+	assert(abs(player.global_position.x - 100.0) < 1.0, "Sara teleport locked when ball far on opponent side")
+	print("✓ 9b. Sara Teleport locked when ball hasn't crossed net")
+
+	# Test Sara Teleport to high shuttlecock (allowed within 80px margin or on Sara's side)
 	shuttlecock.global_position = Vector2(300.0, 200.0) # High air
 	player.global_position = Vector2(100.0, 560.0)
 	player.teleport_to_shuttlecock()

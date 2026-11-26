@@ -69,7 +69,7 @@ const CHAR_DATA = {
 		"control": 78,
 		"composure": 94,
 		"skill_name": "Đặc tính: Hỏa Ngục (Flow 100)",
-		"skill_desc": "• Hỏa Ngục (Shift/Skill - 5s): Hitbox rộng hết nửa sân nhà, mọi cú đánh tự động Perfect.\n• Cầu Lửa Thiêu Đốt: Không thể Đập khi bật skill; cầu lửa trừ 1.5 Thể lực, 1.5 Balance & 1.5 Accuracy địch.\n• Hỏa Diễm Tiết Chế: Đánh Perfect chỉ tăng 8 Flow (ít hơn người thường 15 Flow)."
+		"skill_desc": "• Hỏa Ngục (Shift/Skill - 7s): Hitbox rộng hết nửa sân nhà, mọi cú đánh tự động Perfect (tạm dừng khi đợi giao cầu).\n• Cầu Lửa Thiêu Đốt: Không thể Đập khi bật skill; cầu lửa trừ 1.5 Thể lực, 1.5 Balance & 1.5 Accuracy địch.\n• Hỏa Diễm Tiết Chế: Đánh Perfect chỉ tăng 8 Flow (ít hơn người thường 15 Flow)."
 	},
 	"sara": {
 		"name": "SARA",
@@ -82,7 +82,7 @@ const CHAR_DATA = {
 		"control": 92,
 		"composure": 88,
 		"skill_name": "Đặc tính: Hàn Băng (Flow 105)",
-		"skill_desc": "• Hàn Băng Thần Vực (Shift/Skill - 10s): Đóng băng sàn địch (-20% tốc chạy).\n• Không Gian Băng Giá: Space/Jump hóa Dịch Chuyển; Hitbox Băng Auto-Perfect (0 Flow trong lúc bật skill).\n• Băng Toái Kích: Smash khi bật skill tạo vệt bông tuyết & trừ 15 Balance địch."
+		"skill_desc": "• Hàn Băng Thần Vực (Shift/Skill - 12s): Đóng băng sàn địch (-20% tốc chạy), tạm dừng khi đợi giao cầu.\n• Không Gian Băng Giá: Space/Jump hóa Dịch Chuyển khi cầu sang sân (slow-mo 0.5s); Hitbox Băng Auto-Perfect (0 Flow).\n• Băng Toái Kích: Smash khi bật skill tạo vệt bông tuyết, trừ 20 Balance & -5% tốc độ địch (cộng dồn, giải trừ khi hết skill)."
 	}
 }
 
