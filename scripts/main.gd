@@ -2049,13 +2049,12 @@ func _process(delta: float) -> void:
 			fuji_slowmo_active = false
 		_redraw_effects()
 	
-	# Sara Teleport 0.5s Slow-Motion update:
+	# Sara Teleport 0.5s Slow-Motion update (tự tắt sau 0.5s hoặc ngay khi bấm nút đánh/vung vợt):
 	if sara_tele_slowmo_active:
 		var elapsed_tele = (Time.get_ticks_msec() - sara_tele_slowmo_start_ticks) / 1000.0
-		if elapsed_tele >= SARA_TELE_SLOWMO_DURATION:
-			sara_tele_slowmo_active = false
-			if not fuji_slowmo_active and not aoi_shield_active and not impact_lightning_in_slowmo:
-				Engine.time_scale = 1.0
+		var pressed_hit = (player and player.is_swinging) or Input.is_key_pressed(KEY_J) or Input.is_key_pressed(KEY_K) or Input.is_key_pressed(KEY_L) or Input.is_key_pressed(KEY_ENTER)
+		if elapsed_tele >= SARA_TELE_SLOWMO_DURATION or pressed_hit:
+			_end_sara_tele_slowmo()
 	
 	# Authoritative WebSocket PvP Multiplayer Sync (Fixed 30Hz Tick Rate with Compact Precision)
 	if is_pvp_active and not is_spectator and net_manager:
@@ -2201,7 +2200,17 @@ func _on_touch_jump_triggered() -> void:
 	# Không gán lại player.touch_jump_pressed = true ở đây vì sẽ bị nhảy lặp lần 2 ngay khi tiếp đất!
 	pass
 
+func _end_sara_tele_slowmo() -> void:
+	if not sara_tele_slowmo_active:
+		return
+	sara_tele_slowmo_active = false
+	if not fuji_slowmo_active and not aoi_shield_active and not impact_lightning_in_slowmo:
+		Engine.time_scale = 1.0
+
+
 func _on_touch_shot_triggered(shot_type: String) -> void:
+	if shot_type in ["drop", "clear", "smash"]:
+		_end_sara_tele_slowmo()
 	if main_menu and main_menu.visible:
 		return
 	if is_umpire_speaking:
@@ -2484,6 +2493,9 @@ func _on_shot_hit(shot_type: String, is_smash: bool, quality: float, is_perfect:
 
 	var dist_to_net = abs(contact_pos.x - 640.0)
 	var skip_audio = is_pvp_active and hitter == "ai"
+
+	if hitter_node and (hitter_node == player or (hitter_node.stats and hitter_node.stats.character_id == "sara")):
+		_end_sara_tele_slowmo()
 
 	# Âm thanh kỹ năng bổ sung khi đánh cầu trong trạng thái kích hoạt skill
 	if not skip_audio and hitter_node:
