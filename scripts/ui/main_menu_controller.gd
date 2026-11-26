@@ -33,6 +33,14 @@ var top_avatar_rect: TextureRect = null
 # Studio Pre-rendered Character Standees (Full & Upper-body Cropped)
 const TEX_STANDEE_NISHIKAWA = preload("res://assets/characters/standee_nishikawa.png")
 const TEX_STANDEE_ISABEL = preload("res://assets/characters/standee_isabel.png")
+const TEX_STANDEE_GITAE = preload("res://assets/characters/standee_gitae.png")
+const TEX_STANDEE_SARA = preload("res://assets/characters/standee_sara.png")
+
+# Cropped Square Face Portrait Icons (64x64 / 128x128)
+const TEX_ICON_NISHIKAWA = preload("res://assets/characters/icons/icon_nishikawa.png")
+const TEX_ICON_ISABEL = preload("res://assets/characters/icons/icon_wall.png")
+const TEX_ICON_GITAE = preload("res://assets/characters/icons/icon_gitae.png")
+const TEX_ICON_SARA = preload("res://assets/characters/icons/icon_sara.png")
 
 # Studio Pre-rendered Character Skill Icons
 const TEX_SKILL_THUNDER = preload("res://assets/icons/skills/skill_thunder_spike.png")
@@ -185,6 +193,12 @@ class VinylDiscControl extends Control:
 
 # Setup UI nodes
 var card_nodes: Dictionary = {}
+var pve_player_tiles: Dictionary = {}
+var pve_rival_tiles: Dictionary = {}
+var pve_player_detail_card: PanelContainer = null
+var pve_rival_detail_card: PanelContainer = null
+var pvp_char_tiles: Dictionary = {}
+var pvp_detail_card: PanelContainer = null
 var label_matchup_summary: Label
 var btn_diff_easy: Button
 var btn_diff_medium: Button
@@ -204,6 +218,7 @@ const CHAR_DATA = {
 		"stars": 5,
 		"color": Color(1.0, 0.82, 0.22, 1.0),
 		"icon_type": CustomIcon.IconType.LIGHTNING,
+		"face_icon": TEX_ICON_NISHIKAWA,
 		"skill_icon": TEX_SKILL_THUNDER,
 		"standee": TEX_STANDEE_NISHIKAWA,
 		"power": 98,
@@ -222,6 +237,7 @@ const CHAR_DATA = {
 		"stars": 5,
 		"color": Color(0.25, 0.90, 0.60, 1.0),
 		"icon_type": CustomIcon.IconType.FEATHER,
+		"face_icon": null,
 		"skill_icon": TEX_SKILL_WIND,
 		"standee": null,
 		"power": 82,
@@ -240,6 +256,7 @@ const CHAR_DATA = {
 		"stars": 5,
 		"color": Color(0.30, 0.75, 1.0, 1.0),
 		"icon_type": CustomIcon.IconType.SHIELD,
+		"face_icon": TEX_ICON_ISABEL,
 		"skill_icon": TEX_SKILL_SHIELD,
 		"standee": TEX_STANDEE_ISABEL,
 		"power": 74,
@@ -258,8 +275,9 @@ const CHAR_DATA = {
 		"stars": 5,
 		"color": Color(1.0, 0.42, 0.15, 1.0),
 		"icon_type": CustomIcon.IconType.FIRE_BLADE,
+		"face_icon": TEX_ICON_GITAE,
 		"skill_icon": TEX_SKILL_FIRE,
-		"standee": null,
+		"standee": TEX_STANDEE_GITAE,
 		"power": 92,
 		"agility": 82,
 		"control": 78,
@@ -276,8 +294,9 @@ const CHAR_DATA = {
 		"stars": 5,
 		"color": Color(0.35, 0.85, 1.0, 1.0),
 		"icon_type": CustomIcon.IconType.STAR,
+		"face_icon": TEX_ICON_SARA,
 		"skill_icon": TEX_SKILL_FROST,
-		"standee": null,
+		"standee": TEX_STANDEE_SARA,
 		"power": 80,
 		"agility": 96,
 		"control": 92,
@@ -302,6 +321,7 @@ func _ready() -> void:
 	low_graphics_mode = false
 		
 	pvp_player_name = _load_saved_player_name()
+	_load_selected_chars()
 	
 	if OS.has_feature("web"):
 		JavaScriptBridge.eval("""
@@ -1424,75 +1444,156 @@ func _build_match_setup_panel() -> void:
 	setup_panel.visible = false
 	add_child(setup_panel)
 	
-	var setup_box = _create_spike_translucent_panel(Vector2(1040, 560), 12, Color(0.35, 0.50, 0.75, 0.55))
-	setup_box.position = Vector2(120, 85)
+	var setup_box = _create_spike_translucent_panel(Vector2(1040, 588), 12, Color(0.35, 0.50, 0.75, 0.55))
+	setup_box.position = Vector2(120, 72)
 	setup_box.mouse_filter = Control.MOUSE_FILTER_PASS
 	setup_panel.add_child(setup_box)
 	
 	var setup_m = MarginContainer.new()
-	setup_m.add_theme_constant_override("margin_left", 20)
-	setup_m.add_theme_constant_override("margin_top", 16)
-	setup_m.add_theme_constant_override("margin_right", 20)
-	setup_m.add_theme_constant_override("margin_bottom", 16)
+	setup_m.add_theme_constant_override("margin_left", 22)
+	setup_m.add_theme_constant_override("margin_top", 12)
+	setup_m.add_theme_constant_override("margin_right", 22)
+	setup_m.add_theme_constant_override("margin_bottom", 12)
 	setup_m.mouse_filter = Control.MOUSE_FILTER_PASS
 	setup_box.add_child(setup_m)
 	
 	var setup_vbox = VBoxContainer.new()
-	setup_vbox.add_theme_constant_override("separation", 10)
+	setup_vbox.add_theme_constant_override("separation", 8)
 	setup_vbox.mouse_filter = Control.MOUSE_FILTER_PASS
 	setup_m.add_child(setup_vbox)
 	
 	var setup_title = Label.new()
 	setup_title.text = "CẤU HÌNH TRANH TÀI"
 	setup_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	setup_title.add_theme_font_size_override("font_size", 18)
+	setup_title.add_theme_font_size_override("font_size", 17)
 	setup_title.modulate = Color(1.0, 0.85, 0.3)
 	setup_vbox.add_child(setup_title)
 	
-	# Scrollable Character Cards Row (Hỗ trợ mở rộng không giới hạn nhân vật)
-	var cards_scroll = ScrollContainer.new()
-	cards_scroll.custom_minimum_size = Vector2(1000, 310)
-	cards_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
-	cards_scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	cards_scroll.mouse_filter = Control.MOUSE_FILTER_PASS
-	setup_vbox.add_child(cards_scroll)
+	# Symmetric 2-Column Selector: BẠN (Trái) vs ĐỐI THỦ AI (Phải)
+	var sym_row = HBoxContainer.new()
+	sym_row.alignment = BoxContainer.ALIGNMENT_CENTER
+	sym_row.add_theme_constant_override("separation", 20)
+	sym_row.mouse_filter = Control.MOUSE_FILTER_PASS
+	setup_vbox.add_child(sym_row)
 	
-	var cards_row = HBoxContainer.new()
-	cards_row.add_theme_constant_override("separation", 14)
-	cards_row.mouse_filter = Control.MOUSE_FILTER_PASS
-	cards_scroll.add_child(cards_row)
+	# --- LEFT COLUMN: BẠN (PLAYER) ---
+	var p_col = VBoxContainer.new()
+	p_col.custom_minimum_size = Vector2(485, 0)
+	p_col.add_theme_constant_override("separation", 6)
+	p_col.mouse_filter = Control.MOUSE_FILTER_PASS
+	sym_row.add_child(p_col)
+	
+	var p_hdr = Label.new()
+	p_hdr.text = "BẠN (PLAYER)"
+	p_hdr.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	p_hdr.add_theme_font_size_override("font_size", 13)
+	p_hdr.modulate = Color(0.30, 0.95, 0.55)
+	p_col.add_child(p_hdr)
+	
+	var p_tile_scroll = ScrollContainer.new()
+	p_tile_scroll.custom_minimum_size = Vector2(485, 66)
+	p_tile_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	p_tile_scroll.mouse_filter = Control.MOUSE_FILTER_PASS
+	p_col.add_child(p_tile_scroll)
+	
+	var p_tile_grid = HFlowContainer.new()
+	p_tile_grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	p_tile_grid.alignment = FlowContainer.ALIGNMENT_CENTER
+	p_tile_grid.add_theme_constant_override("h_separation", 8)
+	p_tile_grid.add_theme_constant_override("v_separation", 8)
+	p_tile_grid.mouse_filter = Control.MOUSE_FILTER_PASS
+	p_tile_scroll.add_child(p_tile_grid)
 	
 	for cid in CHAR_DATA.keys():
-		var card = _create_character_card(cid)
-		cards_row.add_child(card)
-		card_nodes[cid] = card
+		var tile = _create_char_icon_tile(cid, 58, func(): _select_player(cid))
+		p_tile_grid.add_child(tile)
+		pve_player_tiles[cid] = tile
 		
-	# Difficulty Selector Row
-	var diff_box = HBoxContainer.new()
-	diff_box.alignment = BoxContainer.ALIGNMENT_CENTER
-	diff_box.add_theme_constant_override("separation", 10)
-	diff_box.mouse_filter = Control.MOUSE_FILTER_PASS
-	setup_vbox.add_child(diff_box)
+	pve_player_detail_card = _create_spike_translucent_panel(Vector2(485, 240), 10, Color(0.25, 0.90, 0.45, 0.55))
+	pve_player_detail_card.clip_contents = true
+	pve_player_detail_card.mouse_filter = Control.MOUSE_FILTER_PASS
+	p_col.add_child(pve_player_detail_card)
+	
+	# --- RIGHT COLUMN: ĐỐI THỦ (AI) ---
+	var r_col = VBoxContainer.new()
+	r_col.custom_minimum_size = Vector2(485, 0)
+	r_col.add_theme_constant_override("separation", 6)
+	r_col.mouse_filter = Control.MOUSE_FILTER_PASS
+	sym_row.add_child(r_col)
+	
+	var r_hdr = Label.new()
+	r_hdr.text = "ĐỐI THỦ (AI)"
+	r_hdr.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	r_hdr.add_theme_font_size_override("font_size", 13)
+	r_hdr.modulate = Color(0.35, 0.80, 1.0)
+	r_col.add_child(r_hdr)
+	
+	var r_tile_scroll = ScrollContainer.new()
+	r_tile_scroll.custom_minimum_size = Vector2(485, 66)
+	r_tile_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	r_tile_scroll.mouse_filter = Control.MOUSE_FILTER_PASS
+	r_col.add_child(r_tile_scroll)
+	
+	var r_tile_grid = HFlowContainer.new()
+	r_tile_grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	r_tile_grid.alignment = FlowContainer.ALIGNMENT_CENTER
+	r_tile_grid.add_theme_constant_override("h_separation", 8)
+	r_tile_grid.add_theme_constant_override("v_separation", 8)
+	r_tile_grid.mouse_filter = Control.MOUSE_FILTER_PASS
+	r_tile_scroll.add_child(r_tile_grid)
+	
+	for cid in CHAR_DATA.keys():
+		var tile = _create_char_icon_tile(cid, 58, func(): _select_rival(cid))
+		r_tile_grid.add_child(tile)
+		pve_rival_tiles[cid] = tile
+		
+	pve_rival_detail_card = _create_spike_translucent_panel(Vector2(485, 240), 10, Color(0.30, 0.70, 1.0, 0.55))
+	pve_rival_detail_card.clip_contents = true
+	pve_rival_detail_card.mouse_filter = Control.MOUSE_FILTER_PASS
+	r_col.add_child(pve_rival_detail_card)
+		
+	# Match Options Row 1: Độ khó + Số Set
+	var opt_row1 = HBoxContainer.new()
+	opt_row1.alignment = BoxContainer.ALIGNMENT_CENTER
+	opt_row1.add_theme_constant_override("separation", 10)
+	opt_row1.mouse_filter = Control.MOUSE_FILTER_PASS
+	setup_vbox.add_child(opt_row1)
 	
 	var lbl_diff = Label.new()
 	lbl_diff.text = "ĐỘ KHÓ:"
-	lbl_diff.add_theme_font_size_override("font_size", 12)
+	lbl_diff.add_theme_font_size_override("font_size", 11)
 	lbl_diff.modulate = Color(0.75, 0.82, 0.90)
-	diff_box.add_child(lbl_diff)
+	opt_row1.add_child(lbl_diff)
 	
-	btn_diff_easy = _create_clean_button("DỄ", Color(0.25, 0.85, 0.50), Vector2(100, 32), 11)
+	btn_diff_easy = _create_clean_button("DỄ", Color(0.25, 0.85, 0.50), Vector2(82, 28), 11)
 	btn_diff_easy.pressed.connect(func(): _set_difficulty(0))
-	diff_box.add_child(btn_diff_easy)
+	opt_row1.add_child(btn_diff_easy)
 	
-	btn_diff_medium = _create_clean_button("TRUNG BÌNH", Color(1.0, 0.80, 0.25), Vector2(120, 32), 11)
+	btn_diff_medium = _create_clean_button("TRUNG BÌNH", Color(1.0, 0.80, 0.25), Vector2(108, 28), 11)
 	btn_diff_medium.pressed.connect(func(): _set_difficulty(1))
-	diff_box.add_child(btn_diff_medium)
+	opt_row1.add_child(btn_diff_medium)
 	
-	btn_diff_hard = _create_clean_button("ĐỈNH CAO", Color(0.95, 0.35, 0.35), Vector2(110, 32), 11)
+	btn_diff_hard = _create_clean_button("ĐỈNH CAO", Color(0.95, 0.35, 0.35), Vector2(98, 28), 11)
 	btn_diff_hard.pressed.connect(func(): _set_difficulty(2))
-	diff_box.add_child(btn_diff_hard)
+	opt_row1.add_child(btn_diff_hard)
 	
-	# Points Selector Row
+	opt_row1.add_child(VSeparator.new())
+	
+	var lbl_sets = Label.new()
+	lbl_sets.text = "SỐ SET:"
+	lbl_sets.add_theme_font_size_override("font_size", 11)
+	lbl_sets.modulate = Color(0.75, 0.82, 0.90)
+	opt_row1.add_child(lbl_sets)
+	
+	btn_sets_1 = _create_clean_button("1 SET", Color(0.35, 0.85, 1.0), Vector2(86, 28), 11)
+	btn_sets_1.pressed.connect(func(): _set_match_sets(1))
+	opt_row1.add_child(btn_sets_1)
+	
+	btn_sets_3 = _create_clean_button("3 SET (BO3)", Color(1.0, 0.85, 0.25), Vector2(110, 28), 11)
+	btn_sets_3.pressed.connect(func(): _set_match_sets(3))
+	opt_row1.add_child(btn_sets_3)
+	
+	# Match Options Row 2: Điểm thắng
 	var pts_box = HBoxContainer.new()
 	pts_box.alignment = BoxContainer.ALIGNMENT_CENTER
 	pts_box.add_theme_constant_override("separation", 10)
@@ -1501,42 +1602,21 @@ func _build_match_setup_panel() -> void:
 	
 	var lbl_pts = Label.new()
 	lbl_pts.text = "ĐIỂM THẮNG MỖI SET:"
-	lbl_pts.add_theme_font_size_override("font_size", 12)
+	lbl_pts.add_theme_font_size_override("font_size", 11)
 	lbl_pts.modulate = Color(0.75, 0.82, 0.90)
 	pts_box.add_child(lbl_pts)
 	
-	btn_pts_11 = _create_clean_button("11 ĐIỂM", Color(0.3, 0.9, 0.4), Vector2(100, 32), 11)
+	btn_pts_11 = _create_clean_button("11 ĐIỂM", Color(0.3, 0.9, 0.4), Vector2(96, 28), 11)
 	btn_pts_11.pressed.connect(func(): _set_target_points(11))
 	pts_box.add_child(btn_pts_11)
 	
-	btn_pts_15 = _create_clean_button("15 ĐIỂM", Color(1.0, 0.80, 0.25), Vector2(100, 32), 11)
+	btn_pts_15 = _create_clean_button("15 ĐIỂM", Color(1.0, 0.80, 0.25), Vector2(96, 28), 11)
 	btn_pts_15.pressed.connect(func(): _set_target_points(15))
 	pts_box.add_child(btn_pts_15)
 	
-	btn_pts_21 = _create_clean_button("21 ĐIỂM TIÊU CHUẨN", Color(0.95, 0.40, 0.35), Vector2(160, 32), 11)
+	btn_pts_21 = _create_clean_button("21 ĐIỂM TIÊU CHUẨN", Color(0.95, 0.40, 0.35), Vector2(156, 28), 11)
 	btn_pts_21.pressed.connect(func(): _set_target_points(21))
 	pts_box.add_child(btn_pts_21)
-	
-	# Sets Selector Row
-	var sets_box = HBoxContainer.new()
-	sets_box.alignment = BoxContainer.ALIGNMENT_CENTER
-	sets_box.add_theme_constant_override("separation", 10)
-	sets_box.mouse_filter = Control.MOUSE_FILTER_PASS
-	setup_vbox.add_child(sets_box)
-	
-	var lbl_sets = Label.new()
-	lbl_sets.text = "SỐ SET ĐẤU:"
-	lbl_sets.add_theme_font_size_override("font_size", 12)
-	lbl_sets.modulate = Color(0.75, 0.82, 0.90)
-	sets_box.add_child(lbl_sets)
-	
-	btn_sets_1 = _create_clean_button("1 SET THẮNG NHANH", Color(0.35, 0.85, 1.0), Vector2(160, 32), 11)
-	btn_sets_1.pressed.connect(func(): _set_match_sets(1))
-	sets_box.add_child(btn_sets_1)
-	
-	btn_sets_3 = _create_clean_button("3 SET THẮNG 2", Color(1.0, 0.85, 0.25), Vector2(140, 32), 11)
-	btn_sets_3.pressed.connect(func(): _set_match_sets(3))
-	sets_box.add_child(btn_sets_3)
 	
 	# Matchup Summary
 	label_matchup_summary = Label.new()
@@ -1572,21 +1652,21 @@ func _build_pvp_panel() -> void:
 	pvp_panel.visible = false
 	add_child(pvp_panel)
 	
-	var pvp_box = _create_spike_translucent_panel(Vector2(1040, 560), 12, Color(0.25, 0.85, 0.75, 0.50))
-	pvp_box.position = Vector2(120, 85)
+	var pvp_box = _create_spike_translucent_panel(Vector2(1060, 592), 12, Color(0.25, 0.85, 0.75, 0.50))
+	pvp_box.position = Vector2(110, 70)
 	pvp_box.mouse_filter = Control.MOUSE_FILTER_PASS
 	pvp_panel.add_child(pvp_box)
 	
 	var m = MarginContainer.new()
-	m.add_theme_constant_override("margin_left", 32)
-	m.add_theme_constant_override("margin_top", 24)
-	m.add_theme_constant_override("margin_right", 32)
-	m.add_theme_constant_override("margin_bottom", 24)
+	m.add_theme_constant_override("margin_left", 24)
+	m.add_theme_constant_override("margin_top", 16)
+	m.add_theme_constant_override("margin_right", 24)
+	m.add_theme_constant_override("margin_bottom", 16)
 	m.mouse_filter = Control.MOUSE_FILTER_PASS
 	pvp_box.add_child(m)
 	
 	var vbox = VBoxContainer.new()
-	vbox.add_theme_constant_override("separation", 14)
+	vbox.add_theme_constant_override("separation", 10)
 	vbox.mouse_filter = Control.MOUSE_FILTER_PASS
 	m.add_child(vbox)
 	
@@ -1686,33 +1766,6 @@ func _build_pvp_panel() -> void:
 	cfg_row.add_child(name_box)
 	cfg_row.add_child(VSeparator.new())
 	
-	# Character selector (Scrollable - hỗ trợ danh sách tướng mở rộng)
-	var char_box = HBoxContainer.new()
-	char_box.add_theme_constant_override("separation", 6)
-	var lbl_c = Label.new()
-	lbl_c.text = "TƯỚNG:"
-	lbl_c.add_theme_font_size_override("font_size", 12)
-	lbl_c.modulate = Color(0.75, 0.82, 0.90)
-	char_box.add_child(lbl_c)
-	
-	var char_scroll = ScrollContainer.new()
-	char_scroll.custom_minimum_size = Vector2(320, 34)
-	char_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
-	char_scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	char_box.add_child(char_scroll)
-	
-	var char_btn_row = HBoxContainer.new()
-	char_btn_row.add_theme_constant_override("separation", 6)
-	char_scroll.add_child(char_btn_row)
-	
-	for cid in CHAR_DATA.keys():
-		var b = _create_clean_button(CHAR_DATA[cid]["name"], CHAR_DATA[cid]["color"], Vector2(96, 30), 11)
-		b.pressed.connect(func(): _select_pvp_char(cid))
-		char_btn_row.add_child(b)
-		pvp_char_btns[cid] = b
-	cfg_row.add_child(char_box)
-	cfg_row.add_child(VSeparator.new())
-	
 	# Points picker
 	var pts_box = HBoxContainer.new()
 	pts_box.add_theme_constant_override("separation", 4)
@@ -1745,11 +1798,53 @@ func _build_pvp_panel() -> void:
 	cfg_row.add_child(sets_box)
 	vbox.add_child(config_card)
 	
-	pvp_char_desc_lbl = Label.new()
-	pvp_char_desc_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	pvp_char_desc_lbl.add_theme_font_size_override("font_size", 11)
-	pvp_char_desc_lbl.modulate = Color(0.70, 0.80, 0.90)
-	vbox.add_child(pvp_char_desc_lbl)
+	# PVP Hero Selection Row: Square Icon Grid (Trái) + Detail Card với Standee mờ (Phải)
+	var pvp_hero_row = HBoxContainer.new()
+	pvp_hero_row.add_theme_constant_override("separation", 16)
+	vbox.add_child(pvp_hero_row)
+	
+	var pvp_grid_panel = _create_spike_translucent_panel(Vector2(380, 178), 8, Color(0.25, 0.85, 0.75, 0.35))
+	pvp_hero_row.add_child(pvp_grid_panel)
+	
+	var pgm = MarginContainer.new()
+	pgm.add_theme_constant_override("margin_left", 12)
+	pgm.add_theme_constant_override("margin_top", 10)
+	pgm.add_theme_constant_override("margin_right", 12)
+	pgm.add_theme_constant_override("margin_bottom", 10)
+	pvp_grid_panel.add_child(pgm)
+	
+	var pgv = VBoxContainer.new()
+	pgv.add_theme_constant_override("separation", 8)
+	pgm.add_child(pgv)
+	
+	var lbl_c = Label.new()
+	lbl_c.text = "CHỌN TƯỚNG RA SÂN"
+	lbl_c.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	lbl_c.add_theme_font_size_override("font_size", 12)
+	lbl_c.modulate = Color(0.35, 0.95, 0.85)
+	pgv.add_child(lbl_c)
+	
+	var pvp_tile_scroll = ScrollContainer.new()
+	pvp_tile_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	pvp_tile_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	pgv.add_child(pvp_tile_scroll)
+	
+	var pvp_tile_grid = HFlowContainer.new()
+	pvp_tile_grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	pvp_tile_grid.alignment = FlowContainer.ALIGNMENT_CENTER
+	pvp_tile_grid.add_theme_constant_override("h_separation", 8)
+	pvp_tile_grid.add_theme_constant_override("v_separation", 8)
+	pvp_tile_scroll.add_child(pvp_tile_grid)
+	
+	for cid in CHAR_DATA.keys():
+		var tile = _create_char_icon_tile(cid, 58, func(): _select_pvp_char(cid))
+		pvp_tile_grid.add_child(tile)
+		pvp_char_tiles[cid] = tile
+		
+	pvp_detail_card = _create_spike_translucent_panel(Vector2(616, 178), 10, Color(0.25, 0.85, 0.75, 0.55))
+	pvp_detail_card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	pvp_detail_card.clip_contents = true
+	pvp_hero_row.add_child(pvp_detail_card)
 	
 	# Action Cards: Host vs Join
 	var cards_row = HBoxContainer.new()
@@ -1759,7 +1854,7 @@ func _build_pvp_panel() -> void:
 	vbox.add_child(cards_row)
 	
 	# HOST CARD
-	var host_card = _create_spike_translucent_panel(Vector2(470, 230), 10, Color(0.20, 0.85, 0.65, 0.45))
+	var host_card = _create_spike_translucent_panel(Vector2(470, 185), 10, Color(0.20, 0.85, 0.65, 0.45))
 	host_card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	cards_row.add_child(host_card)
 	
@@ -2841,12 +2936,176 @@ func _create_clean_button(text: String, col: Color, min_size: Vector2, font_size
 # ==========================================================
 func _select_player(cid: String) -> void:
 	selected_player_id = cid
+	pvp_selected_char = cid
+	_save_selected_chars()
 	_update_setup_cards()
+	_update_pvp_controls()
 	_update_hero_standee()
 
 func _select_rival(cid: String) -> void:
 	selected_rival_id = cid
+	_save_selected_chars()
 	_update_setup_cards()
+
+func _save_selected_chars() -> void:
+	if OS.has_feature("web"):
+		JavaScriptBridge.eval("localStorage.setItem('kaiser_sel_player', '%s'); localStorage.setItem('kaiser_sel_rival', '%s'); localStorage.setItem('kaiser_sel_pvp', '%s');" % [selected_player_id, selected_rival_id, pvp_selected_char])
+	var cfg = ConfigFile.new()
+	cfg.set_value("prefs", "player_char", selected_player_id)
+	cfg.set_value("prefs", "rival_char", selected_rival_id)
+	cfg.set_value("prefs", "pvp_char", pvp_selected_char)
+	cfg.save("user://player_prefs.cfg")
+
+func _load_selected_chars() -> void:
+	var p_id = ""
+	var r_id = ""
+	var pvp_id = ""
+	if OS.has_feature("web"):
+		var jp = JavaScriptBridge.eval("localStorage.getItem('kaiser_sel_player') || ''")
+		var jr = JavaScriptBridge.eval("localStorage.getItem('kaiser_sel_rival') || ''")
+		var jv = JavaScriptBridge.eval("localStorage.getItem('kaiser_sel_pvp') || ''")
+		if jp is String: p_id = jp
+		if jr is String: r_id = jr
+		if jv is String: pvp_id = jv
+	var cfg = ConfigFile.new()
+	if cfg.load("user://player_prefs.cfg") == OK:
+		if p_id.is_empty(): p_id = str(cfg.get_value("prefs", "player_char", ""))
+		if r_id.is_empty(): r_id = str(cfg.get_value("prefs", "rival_char", ""))
+		if pvp_id.is_empty(): pvp_id = str(cfg.get_value("prefs", "pvp_char", ""))
+	if CHAR_DATA.has(p_id): selected_player_id = p_id
+	if CHAR_DATA.has(r_id): selected_rival_id = r_id
+	if CHAR_DATA.has(pvp_id): pvp_selected_char = pvp_id
+	elif CHAR_DATA.has(p_id): pvp_selected_char = p_id
+
+func _create_char_icon_tile(cid: String, tile_sz: int, on_click: Callable) -> PanelContainer:
+	var data = CHAR_DATA[cid]
+	var tile = PanelContainer.new()
+	tile.custom_minimum_size = Vector2(tile_sz, tile_sz)
+	tile.clip_contents = true
+	tile.mouse_filter = Control.MOUSE_FILTER_PASS
+	
+	if data.has("face_icon") and data["face_icon"] != null:
+		var tr = TextureRect.new()
+		tr.texture = data["face_icon"]
+		tr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		tr.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		tr.set_anchors_preset(Control.PRESET_FULL_RECT)
+		tr.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		tile.add_child(tr)
+	else:
+		var cc = CenterContainer.new()
+		cc.set_anchors_preset(Control.PRESET_FULL_RECT)
+		cc.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		cc.add_child(CustomIcon.new(data["icon_type"], Vector2(32, 32), data["color"]))
+		tile.add_child(cc)
+		
+	var rar = Label.new()
+	rar.text = data["rarity"]
+	rar.add_theme_font_size_override("font_size", 9)
+	rar.modulate = data["color"]
+	rar.position = Vector2(3, 1)
+	rar.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	tile.add_child(rar)
+	
+	var btn = Button.new()
+	btn.set_anchors_preset(Control.PRESET_FULL_RECT)
+	btn.flat = true
+	btn.focus_mode = Control.FOCUS_NONE
+	btn.tooltip_text = data["name"]
+	btn.pressed.connect(on_click)
+	tile.add_child(btn)
+	return tile
+
+func _update_icon_tile_style(tile: PanelContainer, is_sel: bool, accent: Color) -> void:
+	var sb = StyleBoxFlat.new()
+	sb.bg_color = Color(0.10, 0.14, 0.22, 0.95) if is_sel else Color(0.06, 0.08, 0.12, 0.85)
+	sb.set_corner_radius_all(8)
+	sb.set_border_width_all(2 if is_sel else 1)
+	sb.border_color = accent if is_sel else Color(0.25, 0.30, 0.40, 0.45)
+	tile.add_theme_stylebox_override("panel", sb)
+	tile.modulate = Color(1.08, 1.08, 1.08, 1.0) if is_sel else Color(0.65, 0.68, 0.74, 0.90)
+
+func _populate_detail_card(panel: PanelContainer, cid: String, role_label: String, role_color: Color) -> void:
+	if not panel or not CHAR_DATA.has(cid):
+		return
+	for c in panel.get_children():
+		c.queue_free()
+	var data = CHAR_DATA[cid]
+	panel.clip_contents = true
+	
+	# Standee mờ phía sau thẻ
+	if data.has("standee") and data["standee"] != null:
+		var s_bg = _create_card_standee_bg(data["standee"], panel.custom_minimum_size, 0.30)
+		if s_bg:
+			panel.add_child(s_bg)
+			
+	var m = MarginContainer.new()
+	m.add_theme_constant_override("margin_left", 14)
+	m.add_theme_constant_override("margin_top", 10)
+	m.add_theme_constant_override("margin_right", 14)
+	m.add_theme_constant_override("margin_bottom", 10)
+	m.mouse_filter = Control.MOUSE_FILTER_PASS
+	panel.add_child(m)
+	
+	var v = VBoxContainer.new()
+	v.add_theme_constant_override("separation", 4)
+	v.mouse_filter = Control.MOUSE_FILTER_PASS
+	m.add_child(v)
+	
+	var hdr = HBoxContainer.new()
+	hdr.add_theme_constant_override("separation", 8)
+	v.add_child(hdr)
+	
+	var r_tag = Label.new()
+	r_tag.text = "[" + role_label + "]"
+	r_tag.add_theme_font_size_override("font_size", 11)
+	r_tag.modulate = role_color
+	hdr.add_child(r_tag)
+	
+	var n_lbl = Label.new()
+	n_lbl.text = data["name"] + " (" + data["rarity"] + ")"
+	n_lbl.add_theme_font_size_override("font_size", 15)
+	n_lbl.modulate = data["color"]
+	hdr.add_child(n_lbl)
+	
+	var arch_lbl = Label.new()
+	arch_lbl.text = "· " + data["archetype"]
+	arch_lbl.add_theme_font_size_override("font_size", 11)
+	arch_lbl.modulate = Color(0.75, 0.82, 0.90, 0.85)
+	hdr.add_child(arch_lbl)
+	
+	# 2x2 Compact Stat Bars
+	var stat_grid = GridContainer.new()
+	stat_grid.columns = 2
+	stat_grid.add_theme_constant_override("h_separation", 14)
+	stat_grid.add_theme_constant_override("v_separation", 3)
+	v.add_child(stat_grid)
+	var b1 = _create_stat_bar("LỰC ĐẬP", data["power"], data["color"]); b1.size_flags_horizontal = Control.SIZE_EXPAND_FILL; stat_grid.add_child(b1)
+	var b2 = _create_stat_bar("TỐC ĐỘ", data["agility"], Color(0.25, 0.85, 1.0)); b2.size_flags_horizontal = Control.SIZE_EXPAND_FILL; stat_grid.add_child(b2)
+	var b3 = _create_stat_bar("KIỂM SOÁT", data["control"], Color(0.35, 0.95, 0.55)); b3.size_flags_horizontal = Control.SIZE_EXPAND_FILL; stat_grid.add_child(b3)
+	var b4 = _create_stat_bar("TÂM LÝ", data["composure"], Color(0.85, 0.55, 1.0)); b4.size_flags_horizontal = Control.SIZE_EXPAND_FILL; stat_grid.add_child(b4)
+	
+	v.add_child(HSeparator.new())
+	
+	var sk_title = Label.new()
+	sk_title.text = data["skill_name"]
+	sk_title.add_theme_font_size_override("font_size", 11)
+	sk_title.modulate = Color(1.0, 0.85, 0.35)
+	v.add_child(sk_title)
+	
+	var sk_scroll = ScrollContainer.new()
+	sk_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	sk_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	sk_scroll.mouse_filter = Control.MOUSE_FILTER_PASS
+	v.add_child(sk_scroll)
+	
+	var sk_desc = Label.new()
+	sk_desc.text = data["skill_desc"]
+	sk_desc.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	sk_desc.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	sk_desc.add_theme_font_size_override("font_size", 10)
+	sk_desc.modulate = Color(0.86, 0.91, 0.97)
+	sk_scroll.add_child(sk_desc)
 
 func _set_difficulty(diff: int) -> void:
 	selected_difficulty = diff
@@ -2886,54 +3145,15 @@ func _update_sets_buttons() -> void:
 		btn_sets_3.modulate = Color(1.3, 1.3, 1.3) if selected_match_sets == 3 else Color(0.60, 0.60, 0.60)
 
 func _update_setup_cards() -> void:
-	for cid in card_nodes.keys():
-		var card = card_nodes[cid] as PanelContainer
+	for cid in pve_player_tiles.keys():
 		var is_p = (cid == selected_player_id)
+		_update_icon_tile_style(pve_player_tiles[cid], is_p, Color(0.25, 0.95, 0.50, 0.95))
+	for cid in pve_rival_tiles.keys():
 		var is_r = (cid == selected_rival_id)
+		_update_icon_tile_style(pve_rival_tiles[cid], is_r, Color(0.30, 0.75, 1.0, 0.95))
 		
-		var sb = StyleBoxFlat.new()
-		sb.bg_color = Color(0.09, 0.11, 0.16, 0.95)
-		sb.corner_radius_top_left = 8
-		sb.corner_radius_top_right = 8
-		sb.corner_radius_bottom_right = 8
-		sb.corner_radius_bottom_left = 8
-		
-		if is_p and is_r:
-			sb.border_width_left = 2
-			sb.border_width_top = 2
-			sb.border_width_right = 2
-			sb.border_width_bottom = 2
-			sb.border_color = Color(0.90, 0.45, 0.90, 0.90)
-		elif is_p:
-			sb.border_width_left = 2
-			sb.border_width_top = 2
-			sb.border_width_right = 2
-			sb.border_width_bottom = 2
-			sb.border_color = Color(0.25, 0.90, 0.45, 0.90)
-		elif is_r:
-			sb.border_width_left = 2
-			sb.border_width_top = 2
-			sb.border_width_right = 2
-			sb.border_width_bottom = 2
-			sb.border_color = Color(0.30, 0.70, 1.0, 0.90)
-		else:
-			sb.border_width_left = 1
-			sb.border_width_top = 1
-			sb.border_width_right = 1
-			sb.border_width_bottom = 1
-			sb.border_color = Color(0.20, 0.25, 0.32, 0.5)
-			
-		card.add_theme_stylebox_override("panel", sb)
-		
-		var btn_p = card.find_child("BtnPlayer", true, false) as Button
-		if btn_p:
-			btn_p.text = "ĐANG CHỌN" if is_p else "CHỌN RA SÂN"
-			btn_p.modulate = Color(0.3, 1.8, 0.5) if is_p else Color(1, 1, 1)
-			
-		var btn_r = card.find_child("BtnRival", true, false) as Button
-		if btn_r:
-			btn_r.text = "ĐỐI THỦ CHỌN" if is_r else "CHỌN ĐỐI THỦ"
-			btn_r.modulate = Color(0.3, 1.3, 2.5) if is_r else Color(1, 1, 1)
+	_populate_detail_card(pve_player_detail_card, selected_player_id, "BẠN", Color(0.30, 0.95, 0.55))
+	_populate_detail_card(pve_rival_detail_card, selected_rival_id, "ĐỐI THỦ AI", Color(0.35, 0.80, 1.0))
 			
 	if label_matchup_summary:
 		var p_name = CHAR_DATA[selected_player_id]["name"]
@@ -2983,7 +3203,9 @@ func _save_player_name(name_str: String) -> void:
 func _select_pvp_char(cid: String) -> void:
 	pvp_selected_char = cid
 	selected_player_id = cid
+	_save_selected_chars()
 	_update_pvp_controls()
+	_update_setup_cards()
 	_update_hero_standee()
 	if pvp_is_connected and net_manager:
 		net_manager.send_packet({
@@ -3013,10 +3235,10 @@ func _select_pvp_sets(s_cnt: int) -> void:
 		})
 
 func _update_pvp_controls() -> void:
-	for cid in pvp_char_btns.keys():
-		var b = pvp_char_btns[cid] as Button
+	for cid in pvp_char_tiles.keys():
 		var is_sel = (cid == pvp_selected_char)
-		b.modulate = Color(1.3, 1.3, 1.3) if is_sel else Color(0.55, 0.55, 0.55)
+		_update_icon_tile_style(pvp_char_tiles[cid], is_sel, CHAR_DATA[cid]["color"])
+	_populate_detail_card(pvp_detail_card, pvp_selected_char, "PVP", Color(0.30, 0.95, 0.85))
 		
 	for pts in pvp_pts_btns.keys():
 		var b = pvp_pts_btns[pts] as Button
