@@ -207,6 +207,10 @@ var prev_key_r: bool = false
 @onready var sfx_chem: AudioStreamPlayer = $Audio/SFXChem
 @onready var sfx_low_ball_play: AudioStreamPlayer = $Audio/SFXLowBallPlay
 @onready var bgm_lobby: AudioStreamPlayer = $Audio/BGMLobby
+var sfx_han_gitae_skill: AudioStreamPlayer = null
+var sfx_han_gitae_hit: AudioStreamPlayer = null
+var sfx_sara_tele: AudioStreamPlayer = null
+var sfx_sara_skill_smash: AudioStreamPlayer = null
 var amb_player: AudioStreamPlayer = null
 
 # Multi-sample sound pools (phát random không lặp lại)
@@ -277,6 +281,12 @@ func _ready() -> void:
 	# Nạp các biến thể âm thanh string (ngẫu nhiên không trùng lặp)
 	sfx_string_streams.append(preload("res://assets/audio/string1.wav"))
 	sfx_string_streams.append(preload("res://assets/audio/string2.wav"))
+	
+	# Khởi tạo AudioStreamPlayer cho kỹ năng Han Gitae & Sara
+	sfx_han_gitae_skill = _create_sfx_player(preload("res://assets/audio/han_gitae_skill.wav"))
+	sfx_han_gitae_hit = _create_sfx_player(preload("res://assets/audio/han_gitae_hit.wav"))
+	sfx_sara_tele = _create_sfx_player(preload("res://assets/audio/sara_tele.wav"))
+	sfx_sara_skill_smash = _create_sfx_player(preload("res://assets/audio/sara_skill_smash.wav"))
 	
 	# Nạp 6 biến thể tiếng rít giày sàn đấu
 	sfx_squeak_streams.append(preload("res://assets/audio/squeak_1.wav"))
@@ -837,10 +847,24 @@ func _on_jump_taken(takeoff_pos: Vector2, facing_dir: float) -> void:
 	_redraw_effects()
 
 
+func _create_sfx_player(stream: AudioStream) -> AudioStreamPlayer:
+	var p = AudioStreamPlayer.new()
+	p.stream = stream
+	p.bus = &"SFX"
+	var audio_parent = get_node_or_null("Audio")
+	if audio_parent:
+		audio_parent.add_child(p)
+	else:
+		add_child(p)
+	return p
+
+
 func _on_active_skill_activated(skill_id: String, _side: String) -> void:
 	if skill_id == "fire_realm":
 		fire_realm_particles.clear()
 		fire_spawn_accumulator = 0.0
+		if sfx_han_gitae_skill:
+			sfx_han_gitae_skill.play()
 	_show_banner(SpecialSkills.get_skill_name(skill_id), SpecialSkills.get_skill_color(skill_id), true, 1.5)
 	_redraw_effects()
 
@@ -848,6 +872,9 @@ func _on_active_skill_activated(skill_id: String, _side: String) -> void:
 func _on_teleport_triggered(from_pos: Vector2, to_pos: Vector2) -> void:
 	teleport_effects.append({"pos": from_pos, "timer": 0.35, "dur": 0.35})
 	teleport_effects.append({"pos": to_pos, "timer": 0.35, "dur": 0.35})
+	if sfx_sara_tele:
+		sfx_sara_tele.pitch_scale = randf_range(0.96, 1.05)
+		sfx_sara_tele.play()
 	_redraw_effects()
 
 
@@ -2443,6 +2470,15 @@ func _on_shot_hit(shot_type: String, is_smash: bool, quality: float, is_perfect:
 
 	var dist_to_net = abs(contact_pos.x - 640.0)
 	var skip_audio = is_pvp_active and hitter == "ai"
+
+	# Âm thanh kỹ năng bổ sung khi đánh cầu trong trạng thái kích hoạt skill
+	if not skip_audio and hitter_node:
+		if hitter_node.is_fire_realm_active and sfx_han_gitae_hit:
+			sfx_han_gitae_hit.pitch_scale = randf_range(0.96, 1.04)
+			sfx_han_gitae_hit.play()
+		if is_actual_smash and hitter_node.is_ice_domain_active and sfx_sara_skill_smash:
+			sfx_sara_skill_smash.pitch_scale = randf_range(0.96, 1.04)
+			sfx_sara_skill_smash.play()
 
 	# Các cú đánh thông thường khác:
 	if shot_type == "weak_return":

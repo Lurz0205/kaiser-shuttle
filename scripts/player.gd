@@ -1920,9 +1920,9 @@ func _execute_dive_rescue(hit_status: Dictionary = {}) -> void:
 		if is_ice_domain_active and (stats.character_id == "sara" or stats.special_skill_id == "ice_domain"):
 			# SARA: Cú đánh trong lúc bật skill KHÔNG tính vào flow
 			pass
-		elif is_fire_realm_active and (stats.character_id == "gitae" or stats.special_skill_id == "fire_realm"):
-			# HAN GITAE: Nạp Flow cực nhanh (+28.0 Flow)
-			stats.add_flow(28.0)
+		elif stats.character_id == "gitae" or stats.special_skill_id == "fire_realm":
+			# HAN GITAE (Nerf): chỉ tăng 8 Flow
+			stats.add_flow(8.0)
 		else:
 			stats.add_flow(20.0)
 	
@@ -2018,11 +2018,12 @@ func _execute_hit(shot_type: String, hit_status: Dictionary = {}) -> void:
 	if is_wall_auto_counter:
 		shot_type = "mirage_counter"
 	
-	# ĐỠ QUẢ CẦU LỬA CỦA HAN GITAE (BỊ PHẠT NHẸ 5 THỂ LỰC, 5 THĂNG BẰNG, 5 ACCURACY):
+	# ĐỠ QUẢ CẦU LỬA CỦA HAN GITAE (BỊ PHẠT NHẸ 1.5 THỂ LỰC, 1.5 THĂNG BẰNG, 1.5 ACCURACY):
 	var is_opp_fire_ball = shuttlecock and shuttlecock.is_fire_ball and shuttlecock.fire_ball_owner != court_side
 	if is_opp_fire_ball:
 		if stats:
-			stats.apply_fire_burn(5.0, 5.0, 5.0)
+			stats.apply_fire_burn(1.5, 1.5, 1.5)
+		balance = max(0.0, balance - 1.5)
 		shuttlecock.is_fire_ball = false
 	
 	# HAN GITAE INFERNAL FLAME REALM: KHÔNG CHO ĐẬP, CHỈ CHO DROP VÀ PHÔNG CẦU (CLEAR):
@@ -2078,6 +2079,9 @@ func _execute_hit(shot_type: String, hit_status: Dictionary = {}) -> void:
 	
 	# ĐỠ CẦU SMASH: Đánh giá Timing tốt / xấu và tác động lên Accuracy & Balance & Thể lực:
 	if is_incoming_smash:
+		if shuttlecock and shuttlecock.is_sara_ice_smash:
+			# SARA ICE SMASH: Cú đập trong lúc bật skill làm đối thủ mất 15 Balance
+			balance = max(0.0, balance - 15.0)
 		var is_kill = shuttlecock and (shuttlecock.is_kill_smash or shuttlecock.current_shot_type == "kill_smash")
 		var is_golden_boom_smash = shuttlecock and (shuttlecock.is_boom_smash or shuttlecock.current_shot_type == "boom_smash")
 		
@@ -2494,9 +2498,12 @@ func _execute_hit(shot_type: String, hit_status: Dictionary = {}) -> void:
 		if is_ice_domain_active and (stats.character_id == "sara" or stats.special_skill_id == "ice_domain"):
 			# SARA: Cú đánh auto Perfect trong lúc bật skill KHÔNG tính vào flow
 			pass
-		elif is_fire_realm_active and (stats.character_id == "gitae" or stats.special_skill_id == "fire_realm"):
-			# HAN GITAE: Nạp Flow cực nhanh (+28.0 Flow) vì đánh auto Perfect, có thể spam skill liên tục
-			stats.add_flow(28.0)
+		elif stats.character_id == "gitae" or stats.special_skill_id == "fire_realm":
+			# HAN GITAE (Nerf): Cú đánh Perfect chỉ tăng 8 Flow (ít hơn nhân vật thường 15)
+			if is_perfect:
+				stats.add_flow(8.0)
+			else:
+				stats.add_flow(3.0)
 		elif is_perfect:
 			stats.add_flow(15.0)
 		else:
@@ -2543,6 +2550,10 @@ func _execute_hit(shot_type: String, hit_status: Dictionary = {}) -> void:
 	if is_fire_realm_active:
 		shuttlecock.is_fire_ball = true
 		shuttlecock.fire_ball_owner = court_side
+		shuttlecock._update_trail_styling()
+	if is_ice_domain_active and (stats and (stats.character_id == "sara" or stats.special_skill_id == "ice_domain")) and is_any_smash:
+		shuttlecock.is_sara_ice_smash = true
+		shuttlecock._update_trail_styling()
 	shot_hit.emit(actual_shot, is_any_smash, quality, is_perfect, is_air, from_2d)
 
 

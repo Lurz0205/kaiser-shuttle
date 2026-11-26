@@ -29,8 +29,8 @@ const CHAR_DATA = {
 		"agility": 78,
 		"control": 74,
 		"composure": 84,
-		"skill_name": "Golden Smash (Flow 100)",
-		"skill_desc": "Đập sấm sét cắm sàn, ngưng đọng thời gian 1s, thế giới chuyển trắng đen!"
+		"skill_name": "Đặc tính: Lôi Thần (Flow 100)",
+		"skill_desc": "• Lôi Thần Phấn Khích: Đầy 100% Flow, cú Đập cưỡng ép 100% Perfect.\n• Golden Boom Smash: Ngưng đọng 1.0s trắng đen, sét vàng bùng nổ; trừ 25% Thể lực & 40% Accuracy địch.\n• Bước Nhảy Lôi Điện: Nhảy chỉ tốn 50% thể lực (2.0 thay vì 4.0)."
 	},
 	"fuji": {
 		"name": "FUJI",
@@ -42,8 +42,8 @@ const CHAR_DATA = {
 		"agility": 92,
 		"control": 99,
 		"composure": 90,
-		"skill_name": "Tsubame Gaeshi (Flow 80)",
-		"skill_desc": "Phong Thần S+: Cắt xoáy lốc lướt sà mép lưới, góc lượn gục hiểm sát mép lưới!"
+		"skill_name": "Đặc tính: Én Lượn (Flow 80)",
+		"skill_desc": "• Phong Thần Tinh Anh: Control 99, ngưỡng Flow còn 80.\n• Tsubame Gaeshi: Đủ 80 Flow, Drop hóa cầu xoáy lướt sà mép lưới (+15 Balance, +10 Accuracy).\n• Áp Lực Gió Xoáy: Địch đỡ mất 20 Accuracy, 25 Balance & 30% bung cầu non."
 	},
 	"wall": {
 		"name": "ISABEL",
@@ -55,8 +55,8 @@ const CHAR_DATA = {
 		"agility": 88,
 		"control": 85,
 		"composure": 96,
-		"skill_name": "Mirage Shield (Flow 90)",
-		"skill_desc": "Khiên La Mã - Hóa giải cú đập smash của đối thủ, bung cầu cao sâu và lập tức hồi 20% thể lực!"
+		"skill_name": "Đặc tính: Thần Thuẫn (Flow 90)",
+		"skill_desc": "• Bức Tường Thép: Đủ 90 Flow tự động kích hoạt Mirage Counter khi đỡ Smash/Cầu non.\n• Mirage Shield: Hóa giải lực đập (slow-mo 1.55s), bung sâu cuối sân, hồi 20% Thể lực & +15 Accuracy.\n• Phản Chấn La Mã: Kẻ đập mất 10% Thể lực & 30 Balance."
 	},
 	"gitae": {
 		"name": "HAN GITAE",
@@ -68,8 +68,8 @@ const CHAR_DATA = {
 		"agility": 82,
 		"control": 78,
 		"composure": 94,
-		"skill_name": "Infernal Flame Realm (Flow 100)",
-		"skill_desc": "Trong 5s biến nửa sân thành Hỏa Ngục: Hitbox rộng hết nửa sân, cầu dính lửa thiêu đốt đối thủ (-5 Thể lực, -5 Thăng bằng, -5 Accuracy)! Nạp Flow nhanh (+28 Flow/hit) để spam liên tục!"
+		"skill_name": "Đặc tính: Hỏa Ngục (Flow 100)",
+		"skill_desc": "• Hỏa Ngục (Shift/Skill - 5s): Hitbox rộng hết nửa sân nhà, mọi cú đánh tự động Perfect.\n• Cầu Lửa Thiêu Đốt: Không thể Đập khi bật skill; cầu lửa trừ 1.5 Thể lực, 1.5 Balance & 1.5 Accuracy địch.\n• Hỏa Diễm Tiết Chế: Đánh Perfect chỉ tăng 8 Flow (ít hơn người thường 15 Flow)."
 	},
 	"sara": {
 		"name": "SARA",
@@ -81,8 +81,8 @@ const CHAR_DATA = {
 		"agility": 96,
 		"control": 92,
 		"composure": 88,
-		"skill_name": "Glacial Frost Domain (Flow 105)",
-		"skill_desc": "Trong 10s đóng băng sàn đối phương (chậm 20% tốc độ), biến Hitbox Băng và đánh auto Perfect (0 Flow). Phím Space/Jump hóa thành Dịch chuyển tức thời tới đón cầu!"
+		"skill_name": "Đặc tính: Hàn Băng (Flow 105)",
+		"skill_desc": "• Hàn Băng Thần Vực (Shift/Skill - 10s): Đóng băng sàn địch (-20% tốc chạy).\n• Không Gian Băng Giá: Space/Jump hóa Dịch Chuyển; Hitbox Băng Auto-Perfect (0 Flow trong lúc bật skill).\n• Băng Toái Kích: Smash khi bật skill tạo vệt bông tuyết & trừ 15 Balance địch."
 	}
 }
 

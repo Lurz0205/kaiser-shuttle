@@ -36,6 +36,7 @@ var suspended_smash_pos: Vector2 = Vector2.ZERO
 var current_shot_type: String = "clear"
 var is_fire_ball: bool = false
 var fire_ball_owner: String = ""
+var is_sara_ice_smash: bool = false
 
 # Trajectory parameters
 var launch_from: Vector2 = Vector2(390.0, 515.0)
@@ -76,6 +77,7 @@ const TEX_TRAIL_SPEED: Texture2D = preload("res://assets/images/trails/trail_spe
 const TEX_TRAIL_MIRAGE: Texture2D = preload("res://assets/images/trails/trail_mirage_cyan.png")
 const TEX_LEAF_FUJI: Texture2D = preload("res://assets/images/trails/leaf_bamboo_fuji.png")
 const TEX_SWIRL_FUJI: Texture2D = preload("res://assets/images/trails/vortex_swirl_fuji.png")
+const TEX_FROST_CRYSTAL: Texture2D = preload("res://assets/images/particles/frost_crystal.png")
 
 # Visual Trail & Ground Shadow
 var trail_points: Array[Vector2] = []
@@ -93,6 +95,10 @@ var is_perfect: bool = false
 var fuji_h_control: float = 160.0
 var fuji_leaves: Array = []
 var fuji_leaf_spawn_timer: float = 0.0
+
+# Sara Ice Smash - Snowflake Trail System
+var sara_snowflakes: Array = []
+var sara_snow_spawn_timer: float = 0.0
 
 # Landing indicator node drawn on ground
 var landing_indicator: Node2D = null
@@ -201,6 +207,8 @@ func launch_to_target_2d(from_pt: Vector2, target_pt: Vector2, shot_type: String
 	var floor_y = t_res.floor_y
 	
 	is_suspended_in_smash_slowmo = false
+	is_fire_ball = false
+	is_sara_ice_smash = false
 	current_shot_type = shot_type
 	is_kill_smash = (shot_type == "kill_smash")
 	is_smash = (shot_type == "smash" or shot_type == "boom_smash" or shot_type == "kill_smash")
@@ -449,6 +457,7 @@ func predict_landing(_custom_pos: Vector3 = Vector3.ZERO, _custom_vel: Vector3 =
 
 func _physics_process(delta: float) -> void:
 	_update_fuji_leaves(delta)
+	_update_sara_snowflakes(delta)
 	
 	if is_suspended_in_smash_slowmo:
 		global_position = suspended_smash_pos + Vector2(randf_range(-1.0, 1.0), randf_range(-1.0, 1.0))
@@ -469,6 +478,13 @@ func _physics_process(delta: float) -> void:
 		if fuji_leaf_spawn_timer <= 0.0:
 			fuji_leaf_spawn_timer = 0.026
 			_spawn_fuji_leaf()
+	
+	# Sara Ice Smash - Đường bông tuyết bay theo cầu:
+	if is_sara_ice_smash:
+		sara_snow_spawn_timer -= delta
+		if sara_snow_spawn_timer <= 0.0:
+			sara_snow_spawn_timer = 0.022
+			_spawn_sara_snowflake()
 	
 	var t_res = tuning if tuning else DEFAULT_TUNING
 	var floor_y = t_res.floor_y
@@ -588,6 +604,10 @@ func _update_trail_styling() -> void:
 		trail.texture = TEX_TRAIL_LIGHTNING
 		trail.default_color = Color(3.8, 1.2, 0.2, 1.0) # Vệt lửa rực cháy đỏ cam
 		trail.width = 32.0
+	elif is_sara_ice_smash:
+		trail.texture = TEX_TRAIL_MIRAGE
+		trail.default_color = Color(0.55, 2.0, 3.8, 0.98) # Vệt băng tuyết xanh ngọc
+		trail.width = 28.0
 	elif is_boom_smash or tension_level == 2:
 		trail.texture = TEX_TRAIL_LIGHTNING
 		trail.default_color = Color(1.2, 1.1, 0.9, 1.0)
@@ -820,27 +840,71 @@ func _update_fuji_leaves(delta: float) -> void:
 
 
 func _on_fuji_leaf_draw() -> void:
-	if fuji_leaves.is_empty() or not leaf_trail or not TEX_LEAF_FUJI:
+	if not leaf_trail:
 		return
 		
-	var tex = TEX_LEAF_FUJI
-	var tex_w = float(tex.get_width())
-	var tex_h = float(tex.get_height())
-	var aspect = tex_w / max(1.0, tex_h)
-	
-	for lf in fuji_leaves:
-		var frac = clamp(lf["life"] / lf["max_life"], 0.0, 1.0)
-		var alpha = sin(frac * PI)
-		var pos = lf["pos"]
-		var rot = lf["rot"]
-		var sz = lf["size"] * (0.85 + 0.25 * frac)
-		var col = lf["col"]
-		col.a = alpha * 0.95
+	if not fuji_leaves.is_empty() and TEX_LEAF_FUJI:
+		var tex = TEX_LEAF_FUJI
+		var tex_w = float(tex.get_width())
+		var tex_h = float(tex.get_height())
+		var aspect = tex_w / max(1.0, tex_h)
 		
-		var w = sz * 2.4
-		var h = w / aspect
-		var xform = Transform2D(rot, pos)
-		leaf_trail.draw_set_transform_matrix(xform)
-		leaf_trail.draw_texture_rect(tex, Rect2(-w * 0.5, -h * 0.5, w, h), false, col)
+		for lf in fuji_leaves:
+			var frac = clamp(lf["life"] / lf["max_life"], 0.0, 1.0)
+			var alpha = sin(frac * PI)
+			var pos = lf["pos"]
+			var rot = lf["rot"]
+			var sz = lf["size"] * (0.85 + 0.25 * frac)
+			var col = lf["col"]
+			col.a = alpha * 0.95
+			
+			var w = sz * 2.4
+			var h = w / aspect
+			var xform = Transform2D(rot, pos)
+			leaf_trail.draw_set_transform_matrix(xform)
+			leaf_trail.draw_texture_rect(tex, Rect2(-w * 0.5, -h * 0.5, w, h), false, col)
 		
+	if not sara_snowflakes.is_empty() and TEX_FROST_CRYSTAL:
+		var c_tex = TEX_FROST_CRYSTAL
+		for sf in sara_snowflakes:
+			var frac = clamp(sf["life"] / sf["max_life"], 0.0, 1.0)
+			var alpha = sin(frac * PI)
+			var sz = sf["size"] * (0.75 + 0.35 * frac)
+			var col = Color(0.75, 2.2, 3.8, alpha * 0.95)
+			var xform = Transform2D(sf["rot"], sf["pos"])
+			leaf_trail.draw_set_transform_matrix(xform)
+			leaf_trail.draw_texture_rect(c_tex, Rect2(-sz, -sz, sz * 2.0, sz * 2.0), false, col)
+			
 	leaf_trail.draw_set_transform_matrix(Transform2D.IDENTITY)
+
+
+func _spawn_sara_snowflake() -> void:
+	for k in range(2):
+		var spawn_pos = global_position + Vector2(randf_range(-10.0, 10.0), randf_range(-10.0, 10.0))
+		var vel_back = -velocity.x * randf_range(0.04, 0.10)
+		sara_snowflakes.append({
+			"pos": spawn_pos,
+			"vel": Vector2(vel_back + randf_range(-28.0, 28.0), randf_range(-18.0, 38.0)),
+			"rot": randf_range(0.0, TAU),
+			"spin": randf_range(-5.0, 5.0),
+			"size": randf_range(9.0, 16.0),
+			"life": 0.65,
+			"max_life": 0.65
+		})
+	if leaf_trail:
+		leaf_trail.queue_redraw()
+
+
+func _update_sara_snowflakes(delta: float) -> void:
+	if sara_snowflakes.is_empty():
+		return
+	for i in range(sara_snowflakes.size() - 1, -1, -1):
+		var sf = sara_snowflakes[i]
+		sf["life"] -= delta
+		if sf["life"] <= 0.0:
+			sara_snowflakes.remove_at(i)
+			continue
+		sf["pos"] += sf["vel"] * delta
+		sf["rot"] += sf["spin"] * delta
+	if leaf_trail:
+		leaf_trail.queue_redraw()

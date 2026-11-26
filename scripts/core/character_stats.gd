@@ -59,10 +59,10 @@ func consume_flow() -> void:
 
 
 ## Hiệu ứng thiêu đốt khi đánh trả quả cầu lửa của Han Gitae (trừ nhẹ 5.0 mỗi loại chỉ số)
-func apply_fire_burn(stamina_loss: float = 5.0, balance_loss: float = 5.0, accuracy_loss: float = 5.0) -> void:
+func apply_fire_burn(stamina_loss: float = 1.5, _balance_loss: float = 1.5, accuracy_loss: float = 1.5) -> void:
 	stamina = max(0.0, stamina - stamina_loss)
 	accuracy = max(0.0, accuracy - accuracy_loss)
-	# Mất nhẹ 5 điểm thăng bằng và độ chính xác
+	# Mất nhẹ 1.5 điểm thể lực, thăng bằng và độ chính xác
 
 
 func reset_stamina() -> void:

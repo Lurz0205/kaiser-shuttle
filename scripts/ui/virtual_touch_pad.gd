@@ -154,40 +154,35 @@ func _process(delta: float) -> void:
 	else:
 		needs_redraw = true
 	
-	# Auto-release bảo vệ chống kẹt nút (tránh việc trình duyệt mobile nuốt sự kiện touchend)
+	# Auto-release bảo vệ chống kẹt nút (chỉ reset trạng thái visual pressed sau 0.14s, giữ touch_id đến khi nhả ngón tay để không spam lại trong _handle_drag)
 	if btn_slide_pressed:
 		_btn_slide_down_time += delta
 		if _btn_slide_down_time > 0.14:
 			btn_slide_pressed = false
-			btn_slide_touch_id = -1
 			needs_redraw = true
 			
 	if btn_j_pressed:
 		_btn_j_down_time += delta
 		if _btn_j_down_time > 0.14:
 			btn_j_pressed = false
-			btn_j_touch_id = -1
 			needs_redraw = true
 			
 	if btn_k_pressed:
 		_btn_k_down_time += delta
 		if _btn_k_down_time > 0.14:
 			btn_k_pressed = false
-			btn_k_touch_id = -1
 			needs_redraw = true
 			
 	if btn_l_pressed:
 		_btn_l_down_time += delta
 		if _btn_l_down_time > 0.14:
 			btn_l_pressed = false
-			btn_l_touch_id = -1
 			needs_redraw = true
 			
 	if btn_skill_pressed:
 		_btn_skill_down_time += delta
 		if _btn_skill_down_time > 0.14:
 			btn_skill_pressed = false
-			btn_skill_touch_id = -1
 			needs_redraw = true
 	
 	# Smooth button scale transitions
@@ -231,17 +226,26 @@ func _process(delta: float) -> void:
 	if needs_redraw:
 		queue_redraw()
 
+var _has_touch_input: bool = false
+
 func _input(event: InputEvent) -> void:
 	if not visible:
 		return
 		
 	if event is InputEventScreenTouch:
+		_has_touch_input = true
 		_handle_touch(event.index, event.pressed, event.position)
 	elif event is InputEventScreenDrag:
+		_has_touch_input = true
 		_handle_drag(event.index, event.position)
 	elif event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
+		# Chặn triệt để sự kiện chuột giả lập từ cảm ứng trên Mobile/Web (gây spam 2 lần & khóa di chuyển)
+		if _has_touch_input or event.device == InputEvent.DEVICE_ID_EMULATION:
+			return
 		_handle_touch(999, event.pressed, event.position)
 	elif event is InputEventMouseMotion and is_dragging_knob and track_touch_id == 999:
+		if _has_touch_input or event.device == InputEvent.DEVICE_ID_EMULATION:
+			return
 		_handle_drag(999, event.position)
 
 func _trigger_btn_slide(touch_id: int) -> void:
@@ -331,54 +335,54 @@ func _handle_touch(touch_id: int, is_down: bool, pos: Vector2) -> void:
 			_trigger_btn_l(touch_id)
 			return
 	else:
-		# Nhả ngón tay
-		if touch_id == track_touch_id or touch_id == 999:
+		# Nhả ngón tay (chỉ giải phóng đúng touch_id đã giữ nút đó, không cắt ngang ngón di chuyển!)
+		if touch_id == track_touch_id:
 			track_touch_id = -1
 			is_dragging_knob = false
 			if player and is_instance_valid(player):
 				player.touch_move_axis = 0.0
 			queue_redraw()
 			
-		if touch_id == btn_slide_touch_id or touch_id == 999:
+		if touch_id == btn_slide_touch_id:
 			btn_slide_touch_id = -1
 			btn_slide_pressed = false
 			queue_redraw()
 			
-		if touch_id == btn_j_touch_id or touch_id == 999:
+		if touch_id == btn_j_touch_id:
 			btn_j_touch_id = -1
 			btn_j_pressed = false
 			queue_redraw()
 			
-		if touch_id == btn_k_touch_id or touch_id == 999:
+		if touch_id == btn_k_touch_id:
 			btn_k_touch_id = -1
 			btn_k_pressed = false
 			queue_redraw()
 			
-		if touch_id == btn_skill_touch_id or touch_id == 999:
+		if touch_id == btn_skill_touch_id:
 			btn_skill_touch_id = -1
 			btn_skill_pressed = false
 			queue_redraw()
 			
-		if touch_id == btn_l_touch_id or touch_id == 999:
+		if touch_id == btn_l_touch_id:
 			btn_l_touch_id = -1
 			btn_l_pressed = false
 			queue_redraw()
 
 func _handle_drag(touch_id: int, pos: Vector2) -> void:
-	if touch_id == track_touch_id or (touch_id == 999 and is_dragging_knob):
+	if touch_id == track_touch_id:
 		_update_knob_drag(pos.x)
 		queue_redraw()
 	else:
-		# Hỗ trợ trượt ngón tay vào nút hành động (slide-to-press)
-		if not btn_slide_pressed and pos.distance_to(btn_slide_center) <= btn_slide_radius * 1.35:
+		# Hỗ trợ trượt ngón tay vào nút hành động (chỉ kích hoạt khi touch_id chưa giữ nút đó để chống spam khi giữ tay)
+		if btn_slide_touch_id == -1 and not btn_slide_pressed and pos.distance_to(btn_slide_center) <= btn_slide_radius * 1.35:
 			_trigger_btn_slide(touch_id)
-		elif not btn_j_pressed and pos.distance_to(btn_j_center) <= btn_j_radius * 1.35:
+		elif btn_j_touch_id == -1 and not btn_j_pressed and pos.distance_to(btn_j_center) <= btn_j_radius * 1.35:
 			_trigger_btn_j(touch_id)
-		elif not btn_k_pressed and pos.distance_to(btn_k_center) <= btn_k_radius * 1.35:
+		elif btn_k_touch_id == -1 and not btn_k_pressed and pos.distance_to(btn_k_center) <= btn_k_radius * 1.35:
 			_trigger_btn_k(touch_id)
-		elif not btn_skill_pressed and pos.distance_to(btn_skill_center) <= btn_skill_radius * 1.35:
+		elif btn_skill_touch_id == -1 and not btn_skill_pressed and pos.distance_to(btn_skill_center) <= btn_skill_radius * 1.35:
 			_trigger_btn_skill(touch_id)
-		elif not btn_l_pressed and pos.distance_to(btn_l_center) <= btn_l_radius * 1.35:
+		elif btn_l_touch_id == -1 and not btn_l_pressed and pos.distance_to(btn_l_center) <= btn_l_radius * 1.35:
 			_trigger_btn_l(touch_id)
 
 func _update_knob_drag(finger_x: float) -> void:

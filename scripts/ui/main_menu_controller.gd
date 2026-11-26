@@ -210,9 +210,9 @@ const CHAR_DATA = {
 		"agility": 78,
 		"control": 74,
 		"composure": 84,
-		"skill_name": "Golden Smash",
-		"skill_desc": "Đập sấm sét cắm sàn, ngưng đọng thời gian 1s, thế giới chuyển trắng đen!",
-		"passive": "Trạng thái Phấn Khích: Khi đầy Nộ, cú SMASH được cưỡng ép 100% PERFECT, sấm sét ngưng đọng thời gian!"
+		"skill_name": "Đặc tính: Lôi Thần (Flow 100)",
+		"skill_desc": "• Lôi Thần Phấn Khích: Đầy 100% Flow, cú Đập (Smash) cưỡng ép 100% Perfect.\n• Golden Boom Smash: Ngưng đọng 1.0s trắng đen, sét vàng bùng nổ; trừ 25% Thể lực & 40% Accuracy đối thủ.\n• Bước Nhảy Lôi Điện: Nhảy chỉ tốn 50% thể lực (2.0 thay vì 4.0).",
+		"passive": "Lôi Thần Phấn Khích & Golden Boom Smash: Đập sét ngưng đọng thời gian, phá hủy thể lực & độ chuẩn xác đối thủ!"
 	},
 	"fuji": {
 		"name": "FUJI",
@@ -228,9 +228,9 @@ const CHAR_DATA = {
 		"agility": 92,
 		"control": 99,
 		"composure": 90,
-		"skill_name": "Tsubame Gaeshi",
-		"skill_desc": "Cắt xoáy lốc xoáy lướt sát mép lưới, góc lượn gục hiểm hóc sát chân lưới! (Flow: 80)",
-		"passive": "Phong Thần S+: Bỏ nhỏ hóa Én Lượn lướt sà mép lưới, tích Flow cực nhanh chỉ cần 80 điểm để tung chiêu!"
+		"skill_name": "Đặc tính: Én Lượn (Flow 80)",
+		"skill_desc": "• Phong Thần Tinh Anh: Control tối đa 99, ngưỡng Flow rút ngắn còn 80.\n• Tsubame Gaeshi: Đủ 80 Flow, Bỏ nhỏ (Drop) hóa đường cầu xoáy lướt sà mép lưới (+15 Balance, +10 Accuracy).\n• Áp Lực Gió Xoáy: Địch đỡ cầu mất 20 Accuracy, 25 Balance và 30% bung cầu non.",
+		"passive": "Phong Thần Tinh Anh & Tsubame Gaeshi: Đường cầu lướt sà mép lưới cực hiểm hóc, tích Flow nhanh!"
 	},
 	"wall": {
 		"name": "ISABEL",
@@ -246,9 +246,9 @@ const CHAR_DATA = {
 		"agility": 88,
 		"control": 85,
 		"composure": 96,
-		"skill_name": "Mirage Shield",
-		"skill_desc": "Hóa giải toàn bộ cú đập smash của đối thủ, bung cầu cao sâu và hồi ngay 20% thể lực! (Flow: 90)",
-		"passive": "Khiên La Mã: Hóa giải hoàn toàn đòn smash khi đầy Nộ, bung sâu cuối sân & hồi ngay 20% thể lực!"
+		"skill_name": "Đặc tính: Thần Thuẫn (Flow 90)",
+		"skill_desc": "• Bức Tường Thép: Đủ 90 Flow tự động kích hoạt Mirage Counter khi đỡ Smash hoặc Cầu non.\n• Mirage Shield: Hóa giải hoàn toàn lực đập (slow-mo 1.55s), bung sâu cuối sân, hồi 20% Thể lực & +15 Accuracy.\n• Phản Chấn La Mã: Kẻ đập bị phản chấn mất 10% Thể lực & 30 Balance.",
+		"passive": "Bức Tường Thép & Mirage Shield: Hóa giải mọi cú Smash, hồi 20% thể lực & phản chấn đối thủ!"
 	},
 	"gitae": {
 		"name": "HAN GITAE",
@@ -264,9 +264,9 @@ const CHAR_DATA = {
 		"agility": 82,
 		"control": 78,
 		"composure": 94,
-		"skill_name": "Infernal Flame Realm",
-		"skill_desc": "Trong 5s biến nửa sân thành Hỏa Ngục: Hitbox rộng hết nửa sân, cầu dính lửa thiêu đốt đối thủ (-5 Thể lực, -5 Thăng bằng, -5 Accuracy)! Nạp Flow nhanh (+28 Flow/hit) để spam skill liên tục! (Flow: 100)",
-		"passive": "Hỏa Thần Cuồng Nộ: Khi kích hoạt skill, bao sân 100% không lo trượt cầu. Quả cầu lửa thiêu đốt phá vỡ bộ pháp đối phương!"
+		"skill_name": "Đặc tính: Hỏa Ngục (Flow 100)",
+		"skill_desc": "• Hỏa Ngục (Shift/Skill - 5s): Hitbox mở rộng toàn bộ nửa sân nhà, mọi cú đánh tự động Perfect.\n• Cầu Lửa Thiêu Đốt: Không thể Đập khi bật skill; cầu lửa trừ 1.5 Thể lực, 1.5 Balance & 1.5 Accuracy địch khi đỡ.\n• Hỏa Diễm Tiết Chế: Đánh Perfect chỉ tăng 8 Flow (ít hơn người thường 15 Flow).",
+		"passive": "Hỏa Ngục & Cầu Lửa Thiêu Đốt: Bao sân 100% trong 5s, thiêu đốt nhẹ mọi chỉ số đối phương!"
 	},
 	"sara": {
 		"name": "SARA",
@@ -282,9 +282,9 @@ const CHAR_DATA = {
 		"agility": 96,
 		"control": 92,
 		"composure": 88,
-		"skill_name": "Glacial Frost Domain",
-		"skill_desc": "Trong 10s đóng băng sàn đối phương (chậm 20% tốc độ), biến Hitbox Băng và đánh auto Perfect (0 Flow). Phím Space/Jump hóa thành Dịch chuyển tức thời tới đón cầu! (Flow: 105)",
-		"passive": "Hư Không Tốc Biến: Teleport thẳng tới vị trí đón cầu thuận lợi nhất, đóng băng kìm hãm bước chạy đối thủ!"
+		"skill_name": "Đặc tính: Hàn Băng (Flow 105)",
+		"skill_desc": "• Hàn Băng Thần Vực (Shift/Skill - 10s): Đóng băng sàn địch (-20% tốc chạy).\n• Không Gian Băng Giá: Space/Jump hóa Dịch Chuyển tới cầu; Hitbox Băng Auto-Perfect (0 Flow trong lúc bật skill).\n• Băng Toái Kích: Smash khi bật skill tạo vệt bông tuyết và trừ 15 Balance đối thủ.",
+		"passive": "Hàn Băng Thần Vực & Băng Toái Kích: Dịch chuyển tức thời, làm chậm địch 20% & đập cầu trừ 15 Balance!"
 	}
 }
 
@@ -2095,17 +2095,23 @@ func _update_roster_view() -> void:
 	v.add_child(HSeparator.new())
 	
 	var sk_t = Label.new()
-	sk_t.text = "Tuyệt kỹ: " + data["skill_name"]
+	sk_t.text = data["skill_name"]
 	sk_t.add_theme_font_size_override("font_size", 12)
 	sk_t.modulate = Color(1.0, 0.85, 0.3)
 	v.add_child(sk_t)
 	
+	var sk_scroll = ScrollContainer.new()
+	sk_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	sk_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	v.add_child(sk_scroll)
+	
 	var sk_d = Label.new()
 	sk_d.text = data["skill_desc"]
 	sk_d.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	sk_d.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	sk_d.add_theme_font_size_override("font_size", 10)
-	sk_d.modulate = Color(0.75, 0.82, 0.90)
-	v.add_child(sk_d)
+	sk_d.modulate = Color(0.82, 0.88, 0.96)
+	sk_scroll.add_child(sk_d)
 
 # ==========================================================
 # 8. SHOP & QUESTS PANELS
@@ -2722,21 +2728,25 @@ func _create_character_card(cid: String) -> PanelContainer:
 	vbox.add_child(HSeparator.new())
 	
 	var skill_title = Label.new()
-	skill_title.text = "Tuyệt kỹ: " + data["skill_name"]
-	skill_title.add_theme_font_size_override("font_size", 12)
+	skill_title.text = data["skill_name"]
+	skill_title.add_theme_font_size_override("font_size", 11)
 	skill_title.modulate = Color(1.0, 0.85, 0.35)
 	vbox.add_child(skill_title)
+	
+	var skill_scroll = ScrollContainer.new()
+	skill_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	skill_scroll.custom_minimum_size = Vector2(0, 74)
+	skill_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	skill_scroll.mouse_filter = Control.MOUSE_FILTER_PASS
+	vbox.add_child(skill_scroll)
 	
 	var skill_desc = Label.new()
 	skill_desc.text = data["skill_desc"]
 	skill_desc.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	skill_desc.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	skill_desc.add_theme_font_size_override("font_size", 10)
-	skill_desc.modulate = Color(0.75, 0.82, 0.90, 0.85)
-	vbox.add_child(skill_desc)
-	
-	var sp = Control.new()
-	sp.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	vbox.add_child(sp)
+	skill_desc.modulate = Color(0.80, 0.86, 0.94, 0.90)
+	skill_scroll.add_child(skill_desc)
 	
 	var b_row = HBoxContainer.new()
 	b_row.add_theme_constant_override("separation", 8)

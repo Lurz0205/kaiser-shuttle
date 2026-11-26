@@ -76,7 +76,7 @@ func _init() -> void:
 	assert(hit_st["is_perfect"] == true, "Gitae fire realm hits are perfect")
 	print("✓ 7. Han Gitae half-court hitbox confirmed")
 	
-	# Test Fire Ball burn penalty on opponent
+	# Test Fire Ball burn penalty on opponent (Nerfed to 1.5 per stat)
 	ai_rival.stats = isabel
 	shuttlecock.is_fire_ball = true
 	shuttlecock.fire_ball_owner = "player"
@@ -84,12 +84,12 @@ func _init() -> void:
 	var prev_opp_sta = ai_rival.stats.stamina
 	var prev_opp_acc = ai_rival.stats.accuracy
 	ai_rival._execute_hit("clear", {"can_hit": true, "zone": "underhand", "quality": 1.0, "is_perfect": true})
-	assert(prev_opp_acc - ai_rival.stats.accuracy == 5.0, "Opponent lost exactly 5 accuracy from fire ball")
-	assert(prev_opp_sta - ai_rival.stats.stamina >= 5.0, "Opponent lost at least 5 stamina from fire ball")
+	assert(abs((prev_opp_acc - ai_rival.stats.accuracy) - 1.5) < 0.01, "Opponent lost exactly 1.5 accuracy from fire ball")
+	assert(prev_opp_sta - ai_rival.stats.stamina >= 1.5, "Opponent lost at least 1.5 stamina from fire ball")
 	assert(shuttlecock.is_fire_ball == false, "Fire ball cleared after hit")
-	print("✓ 8. Fire Ball burn penalty correctly applied to opponent (-5 sta, -5 bal, -5 acc)")
+	print("✓ 8. Fire Ball burn penalty correctly nerfed to (-1.5 sta, -1.5 bal, -1.5 acc)")
 
-	# Test Sara 0 Flow and Gitae +28 Flow mechanics
+	# Test Sara 0 Flow, Sara Ice Smash, and Gitae +8 Flow mechanics
 	shuttlecock.global_position = Vector2(400.0, 300.0) # On Player's side
 	shuttlecock.is_active = true
 	shuttlecock.is_net_fault = false
@@ -101,13 +101,25 @@ func _init() -> void:
 	assert(player.stats.flow == 0.0, "Sara earns 0 flow during ice domain")
 	print("✓ 8b. Sara earns 0 flow during ice domain (auto-perfect doesn't farm flow)")
 
+	# Test Sara Ice Smash snowflake flag + 15 balance drain
+	shuttlecock.global_position = Vector2(400.0, 260.0)
+	player._execute_hit("smash", {"can_hit": true, "zone": "overhead", "quality": 1.0, "is_perfect": true})
+	assert(shuttlecock.is_sara_ice_smash == true, "Sara smash during ice domain sets is_sara_ice_smash")
+	ai_rival.balance = 100.0
+	shuttlecock.is_smash = true
+	shuttlecock.global_position = Vector2(800.0, 350.0)
+	ai_rival._execute_hit("clear", {"can_hit": true, "zone": "underhand", "quality": 1.0, "is_perfect": true})
+	assert(ai_rival.balance <= 90.0, "Opponent lost 15 balance from Sara Ice Smash")
+	print("✓ 8c. Sara Ice Smash snowflake trail flag & 15 balance drain confirmed")
+
+	shuttlecock.global_position = Vector2(400.0, 300.0)
 	player.stats = gitae
 	player.stats.flow = 0.0
 	player.is_fire_realm_active = true
 	player.is_ice_domain_active = false
 	player._execute_hit("clear", {"can_hit": true, "zone": "overhead", "quality": 1.0, "is_perfect": true})
-	assert(player.stats.flow == 28.0, "Han Gitae earns 28 flow per hit during fire realm")
-	print("✓ 8c. Han Gitae earns 28 flow per hit in fire realm to spam skill")
+	assert(player.stats.flow == 8.0, "Han Gitae nerfed: earns 8 flow per perfect hit")
+	print("✓ 8d. Han Gitae nerfed: earns 8 flow per perfect hit (less than normal 15)")
 	
 	# Test Sara active skill & teleport
 	player.stats = sara
