@@ -227,6 +227,15 @@ func _process(delta: float) -> void:
 		queue_redraw()
 
 var _has_touch_input: bool = false
+var _last_btn_fire_ms: Dictionary = {}
+
+func _can_fire_btn(btn_key: String, min_interval_ms: int = 55) -> bool:
+	var now = Time.get_ticks_msec()
+	var prev = int(_last_btn_fire_ms.get(btn_key, 0))
+	if now - prev < min_interval_ms:
+		return false
+	_last_btn_fire_ms[btn_key] = now
+	return true
 
 func _input(event: InputEvent) -> void:
 	if not visible:
@@ -249,6 +258,8 @@ func _input(event: InputEvent) -> void:
 		_handle_drag(999, event.position)
 
 func _trigger_btn_slide(touch_id: int) -> void:
+	if not _can_fire_btn("slide"):
+		return
 	btn_slide_touch_id = touch_id
 	btn_slide_pressed = true
 	_btn_slide_down_time = 0.0
@@ -258,6 +269,8 @@ func _trigger_btn_slide(touch_id: int) -> void:
 	queue_redraw()
 
 func _trigger_btn_j(touch_id: int) -> void:
+	if not _can_fire_btn("j"):
+		return
 	btn_j_touch_id = touch_id
 	btn_j_pressed = true
 	_btn_j_down_time = 0.0
@@ -267,6 +280,8 @@ func _trigger_btn_j(touch_id: int) -> void:
 	queue_redraw()
 
 func _trigger_btn_k(touch_id: int) -> void:
+	if not _can_fire_btn("k"):
+		return
 	btn_k_touch_id = touch_id
 	btn_k_pressed = true
 	_btn_k_down_time = 0.0
@@ -276,6 +291,8 @@ func _trigger_btn_k(touch_id: int) -> void:
 	queue_redraw()
 
 func _trigger_btn_l(touch_id: int) -> void:
+	if not _can_fire_btn("l"):
+		return
 	btn_l_touch_id = touch_id
 	btn_l_pressed = true
 	_btn_l_down_time = 0.0
@@ -291,6 +308,8 @@ func _trigger_btn_l(touch_id: int) -> void:
 	queue_redraw()
 
 func _trigger_btn_skill(touch_id: int) -> void:
+	if not _can_fire_btn("skill"):
+		return
 	btn_skill_touch_id = touch_id
 	btn_skill_pressed = true
 	_btn_skill_down_time = 0.0

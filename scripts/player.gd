@@ -863,10 +863,9 @@ func start_slide(dir: float = 1.0) -> void:
 
 
 func handle_touch_jump() -> void:
-	touch_jump_pressed = true
+	touch_jump_pressed = false
 	if is_ice_domain_active and (stats and (stats.character_id == "sara" or stats.special_skill_id == "ice_domain")):
 		teleport_to_shuttlecock()
-		touch_jump_pressed = false
 		return
 	if is_on_ground() and not is_serving_phase and not is_diving and not is_getting_up:
 		velocity.y = JUMP_FORCE
@@ -881,10 +880,10 @@ func handle_touch_skill() -> void:
 
 
 func handle_touch_action(shot_type: String) -> void:
+	touch_shot_pressed = ""
 	if shot_type == "skill":
 		activate_active_skill()
 		return
-	touch_shot_pressed = shot_type
 	if is_serving_phase and not is_server_turn:
 		return
 	if is_diving or is_getting_up:
