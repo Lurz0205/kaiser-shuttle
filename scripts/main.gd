@@ -41,10 +41,13 @@ var effects_overlay: Node2D = null
 
 const TEX_LEAF_FUJI: Texture2D = preload("res://assets/images/trails/leaf_bamboo_fuji.png")
 const TEX_SWIRL_FUJI: Texture2D = preload("res://assets/images/trails/vortex_swirl_fuji.png")
-const TEX_FIRE_EMBER: Texture2D = preload("res://assets/images/particles/fire_ember.png")
-const TEX_FLAME_MOTE: Texture2D = preload("res://assets/images/particles/flame_mote.png")
-const TEX_FROST_CRYSTAL: Texture2D = preload("res://assets/images/particles/frost_crystal.png")
-const TEX_ICE_SHARD: Texture2D = preload("res://assets/images/particles/ice_shard.png")
+const TEX_PARTICLES_ATLAS: Texture2D = preload("res://assets/images/particles/particles_atlas.png")
+const ATLAS_FIRE_EMBER := Rect2(0, 0, 128, 128)
+const ATLAS_FLAME_MOTE := Rect2(128, 0, 128, 128)
+const ATLAS_FROST_CRYSTAL := Rect2(256, 0, 128, 128)
+const ATLAS_ICE_SHARD := Rect2(0, 128, 128, 128)
+const ATLAS_SHOCKWAVE_RING := Rect2(128, 128, 128, 128)
+const ATLAS_PERFECT_BURST := Rect2(256, 128, 128, 128)
 
 var fire_realm_particles: Array = []
 var fire_spawn_accumulator: float = 0.0
@@ -883,7 +886,7 @@ func _on_teleport_triggered(from_pos: Vector2, to_pos: Vector2) -> void:
 	sara_tele_slowmo_active = true
 	sara_tele_slowmo_start_ticks = Time.get_ticks_msec()
 	if not fuji_slowmo_active and not aoi_shield_active and not impact_lightning_in_slowmo:
-		Engine.time_scale = 0.25
+		Engine.time_scale = 0.08
 	_redraw_effects()
 
 
@@ -3599,34 +3602,33 @@ func _on_effects_overlay_draw() -> void:
 	var is_web = OS.has_feature("web")
 	var use_aa = not is_web
 		
-	# 7. Ground Shockwave
-	if shockwave_alpha > 0.01:
+	# 7. Ground Shockwave (GPU Atlas Ring Texture)
+	if shockwave_alpha > 0.01 and TEX_PARTICLES_ATLAS:
 		var sw_col = Color(1.0, 0.95, 0.5, shockwave_alpha)
-		effects_overlay.draw_arc(Vector2(shockwave_pos.x, FLOOR_Y), shockwave_radius, 0, TAU, 12 if is_web else (16 if low_graphics_mode else 36), sw_col, 3.5, use_aa)
-		if not low_graphics_mode and not is_web:
-			effects_overlay.draw_arc(Vector2(shockwave_pos.x, FLOOR_Y), shockwave_radius * 0.7, 0, TAU, 28, Color(1.0, 1.0, 1.0, shockwave_alpha * 0.7), 2.5, true)
+		var sw_d = shockwave_radius * 2.2
+		effects_overlay.draw_texture_rect_region(
+			TEX_PARTICLES_ATLAS,
+			Rect2(shockwave_pos.x - sw_d * 0.5, FLOOR_Y - sw_d * 0.5, sw_d, sw_d),
+			ATLAS_SHOCKWAVE_RING,
+			sw_col
+		)
 		
-	# 8. Golden Anime Perfect Impact Burst (Rực rỡ, lấp lánh và biến mất sau 0.4s)
-	if perfect_burst_timer > 0.0:
+	# 8. Golden Anime Perfect Impact Burst (GPU Atlas Starburst Texture)
+	if perfect_burst_timer > 0.0 and TEX_PARTICLES_ATLAS:
 		var p_prog = 1.0 - (perfect_burst_timer / 0.40)
 		var burst_alpha = 1.0 - p_prog
-		var r_outer = 25.0 + p_prog * 80.0
-		var r_inner = 12.0 + p_prog * 40.0
+		var b_d = (30.0 + p_prog * 95.0) * 2.0
 		var col_burst = Color(perfect_burst_col.r, perfect_burst_col.g, perfect_burst_col.b, burst_alpha * 0.95)
-		
-		# Vòng hào quang sáng rực
-		effects_overlay.draw_arc(perfect_burst_pos, r_outer, 0, TAU, 12 if is_web else (16 if low_graphics_mode else 36), col_burst, 3.0, use_aa)
-		if not low_graphics_mode and not is_web:
-			effects_overlay.draw_arc(perfect_burst_pos, r_inner, 0, TAU, 28, Color(1.0, 1.0, 1.0, burst_alpha), 2.0, true)
-			# 8 tia chớp năng lượng phát tán theo các góc
-			for i in range(8):
-				var ang = (TAU / 8.0) * i + p_prog * 0.45
-				var dir = Vector2(cos(ang), sin(ang))
-				var p1 = perfect_burst_pos + dir * (r_inner * 0.6)
-				var p2 = perfect_burst_pos + dir * (r_outer * 1.15)
-				effects_overlay.draw_line(p1, p2, col_burst, 2.5, true)
+		effects_overlay.draw_set_transform(perfect_burst_pos, p_prog * 0.6, Vector2.ONE)
+		effects_overlay.draw_texture_rect_region(
+			TEX_PARTICLES_ATLAS,
+			Rect2(-b_d * 0.5, -b_d * 0.5, b_d, b_d),
+			ATLAS_PERFECT_BURST,
+			col_burst
+		)
+		effects_overlay.draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 	
-	# 9. Jump Takeoff Burst & Floor Dust Skid Effects (Hiệu ứng dậm nhảy mặt sàn)
+	# 9. Jump Takeoff Burst & Floor Dust Skid Effects (GPU Atlas Ring Texture)
 	for eff in jump_takeoff_effects:
 		var timer: float = eff["timer"]
 		var dur: float = eff["dur"]
@@ -3634,23 +3636,15 @@ func _on_effects_overlay_draw() -> void:
 		var p_pos: Vector2 = eff["pos"]
 		var alpha: float = (1.0 - prog) * 0.90
 		
-		# Vệt bụi quét sàn dạt sang 2 bên chân
-		var skid_len = 14.0 + prog * 48.0
-		var dust_col = Color(0.95, 0.95, 1.0, alpha * 0.75)
-		effects_overlay.draw_line(p_pos + Vector2(-8, -2), p_pos + Vector2(-skid_len, -2), dust_col, 2.0 * (1.0 - prog * 0.5), use_aa)
-		effects_overlay.draw_line(p_pos + Vector2(8, -2), p_pos + Vector2(skid_len, -2), dust_col, 2.0 * (1.0 - prog * 0.5), use_aa)
-		
-		if not low_graphics_mode and not is_web:
-			# Vòng nén sàn elip nở rộng sang 2 bên
-			var rx = 16.0 + prog * 58.0
-			var ry = 4.0 + prog * 9.0
-			var ring_col = Color(1.0, 0.95, 0.75, alpha * 0.85)
-			effects_overlay.draw_arc(p_pos, rx, 0, TAU, 24, ring_col, 2.5 * (1.0 - prog * 0.6), true)
-			# Tia khí đẩy bật nhảy vọt lên
-			for off_x in [-14.0, 0.0, 14.0]:
-				var y_start = p_pos.y - 4.0 - prog * 8.0
-				var y_end = y_start - (14.0 + prog * 28.0)
-				effects_overlay.draw_line(Vector2(p_pos.x + off_x, y_start), Vector2(p_pos.x + off_x, y_end), Color(1.0, 1.0, 1.0, alpha * 0.6), 2.0, true)
+		if TEX_PARTICLES_ATLAS:
+			var rx = (18.0 + prog * 60.0) * 2.0
+			var ry = (6.0 + prog * 14.0) * 2.0
+			effects_overlay.draw_texture_rect_region(
+				TEX_PARTICLES_ATLAS,
+				Rect2(p_pos.x - rx * 0.5, p_pos.y - ry * 0.5, rx, ry),
+				ATLAS_SHOCKWAVE_RING,
+				Color(1.0, 0.95, 0.78, alpha * 0.85)
+			)
 	
 	# 10. Fuji Emerald Gale Vortex (Hiệu ứng ngưng đọng slow-mo Cơn lốc xanh)
 	if fuji_slowmo_active:
@@ -3702,20 +3696,29 @@ func _on_effects_overlay_draw() -> void:
 				
 				effects_overlay.draw_set_transform_matrix(Transform2D.IDENTITY)
 	
-	# 11. Sara Teleport Frost Rings & Shatter (Vòng hào quang và tinh thể băng khi dịch chuyển)
+	# 11. Sara Teleport Frost Rings & Shatter (GPU Atlas)
 	for eff in teleport_effects:
 		var prog = clamp(1.0 - (eff["timer"] / eff["dur"]), 0.0, 1.0)
 		var alpha = (1.0 - prog) * 0.90
-		var r = 14.0 + prog * 44.0
-		effects_overlay.draw_arc(eff["pos"], r, 0, TAU, 24, Color(0.4, 2.4, 3.8, alpha), 2.5 * (1.0 - prog * 0.6), true)
-		if TEX_FROST_CRYSTAL:
-			var crys_sz = TEX_FROST_CRYSTAL.get_size()
-			var cr_scale = 0.28 + prog * 0.24
-			effects_overlay.draw_set_transform(eff["pos"], prog * 3.5, Vector2(cr_scale, cr_scale))
-			effects_overlay.draw_texture(TEX_FROST_CRYSTAL, -crys_sz * 0.5, Color(1.0, 2.4, 3.8, alpha * 0.85))
+		if TEX_PARTICLES_ATLAS:
+			var r_d = (18.0 + prog * 50.0) * 2.0
+			effects_overlay.draw_texture_rect_region(
+				TEX_PARTICLES_ATLAS,
+				Rect2(eff["pos"].x - r_d * 0.5, eff["pos"].y - r_d * 0.5, r_d, r_d),
+				ATLAS_SHOCKWAVE_RING,
+				Color(0.4, 2.4, 3.8, alpha)
+			)
+			var cr_d = (36.0 + prog * 30.0) * 1.5
+			effects_overlay.draw_set_transform(eff["pos"], prog * 3.5, Vector2.ONE)
+			effects_overlay.draw_texture_rect_region(
+				TEX_PARTICLES_ATLAS,
+				Rect2(-cr_d * 0.5, -cr_d * 0.5, cr_d, cr_d),
+				ATLAS_FROST_CRYSTAL,
+				Color(1.0, 2.4, 3.8, alpha * 0.88)
+			)
 			effects_overlay.draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 	
-	# 12. Han Gitae Infernal Flame Realm (Sân rực lửa bùng cháy & đốm lửa GPU texture bay từ sàn lên đỉnh màn hình)
+	# 12. Han Gitae Infernal Flame Realm (Sân rực lửa bùng cháy & đốm lửa GPU Atlas bay từ sàn lên đỉnh màn hình)
 	var gitae_side = ""
 	if player and player.is_fire_realm_active:
 		gitae_side = player.court_side
@@ -3726,25 +3729,23 @@ func _on_effects_overlay_draw() -> void:
 		var f_x1 = 40.0 if gitae_side == "player" else 640.0
 		var f_w = 600.0
 		var floor_y_val = 550.0
-		var time_f = Time.get_ticks_msec() / 1000.0
-		# Màn sương nhiệt đỏ rực sát sàn
 		effects_overlay.draw_rect(Rect2(f_x1, floor_y_val - 35.0, f_w, 45.0), Color(1.0, 0.35, 0.05, 0.18))
 		effects_overlay.draw_line(Vector2(f_x1, floor_y_val), Vector2(f_x1 + f_w, floor_y_val), Color(3.8, 1.4, 0.2, 0.90), 3.0, true)
 	
-	# Render GPU Texture Embers bay từ sàn lên ngút ngàn màn hình
-	for p in fire_realm_particles:
-		var p_prog = p["life"] / max(p["max_life"], 0.01)
-		var fade_in = clamp(p["life"] / 0.22, 0.0, 1.0)
-		var fade_out = clamp((1.0 - p_prog) / 0.28, 0.0, 1.0)
-		var alpha = fade_in * fade_out * 0.95
-		var tex = TEX_FIRE_EMBER if p["type"] == 0 else TEX_FLAME_MOTE
-		if tex:
-			var t_sz = tex.get_size()
-			effects_overlay.draw_set_transform(p["pos"], p["rot"], Vector2(p["scale"], p["scale"]))
-			effects_overlay.draw_texture(tex, -t_sz * 0.5, Color(1.0, 0.92, 0.65, alpha))
+	# Render GPU Atlas Embers bay từ sàn lên ngút ngàn màn hình
+	if TEX_PARTICLES_ATLAS:
+		for p in fire_realm_particles:
+			var p_prog = p["life"] / max(p["max_life"], 0.01)
+			var fade_in = clamp(p["life"] / 0.22, 0.0, 1.0)
+			var fade_out = clamp((1.0 - p_prog) / 0.28, 0.0, 1.0)
+			var alpha = fade_in * fade_out * 0.95
+			var region = ATLAS_FIRE_EMBER if p["type"] == 0 else ATLAS_FLAME_MOTE
+			var sz = 128.0 * p["scale"]
+			effects_overlay.draw_set_transform(p["pos"], p["rot"], Vector2.ONE)
+			effects_overlay.draw_texture_rect_region(TEX_PARTICLES_ATLAS, Rect2(-sz * 0.5, -sz * 0.5, sz, sz), region, Color(1.0, 0.92, 0.65, alpha))
 			effects_overlay.draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 	
-	# 13. Sara Glacial Frost Domain (Băng giá phủ sàn đối phương: Cột băng nhọn + Bông tuyết xoay lơ lửng)
+	# 13. Sara Glacial Frost Domain (GPU Atlas: Cột băng nhọn + Bông tuyết xoay lơ lửng)
 	var sara_opp_side = ""
 	if player and player.is_ice_domain_active:
 		sara_opp_side = "ai"
@@ -3757,34 +3758,28 @@ func _on_effects_overlay_draw() -> void:
 		var floor_y_val = 550.0
 		var time_ice = Time.get_ticks_msec() / 1000.0
 		var shimmer = 0.22 + 0.08 * sin(time_ice * 4.0)
-		# Màn băng lạnh phủ sàn
 		effects_overlay.draw_rect(Rect2(ice_x1, floor_y_val - 25.0, ice_w, 35.0), Color(0.25, 0.80, 1.35, shimmer))
 		effects_overlay.draw_line(Vector2(ice_x1, floor_y_val), Vector2(ice_x1 + ice_w, floor_y_val), Color(0.6, 2.5, 3.8, 0.85), 3.0, true)
 		
-		# Cụm chông băng nhọn (Ice Shard Spikes) mọc từ mặt đất nhô lên
-		if TEX_ICE_SHARD:
-			var shard_sz = TEX_ICE_SHARD.get_size()
+		if TEX_PARTICLES_ATLAS:
 			for i in range(14):
 				var sp_x = ice_x1 + 30.0 + i * 41.0 + sin(i * 3.7) * 8.0
-				var sp_scale_y = 0.35 + (sin(i * 2.1) * 0.5 + 0.5) * 0.40
-				var sp_scale_x = sp_scale_y * (0.85 if i % 2 == 0 else -0.85)
+				var sp_scale = 0.42 + (sin(i * 2.1) * 0.5 + 0.5) * 0.38
 				var sp_rot = sin(i * 1.7) * 0.15
 				var sp_alpha = 0.75 + 0.25 * sin(time_ice * 3.0 + i)
-				effects_overlay.draw_set_transform(Vector2(sp_x, floor_y_val), sp_rot, Vector2(sp_scale_x, sp_scale_y))
-				effects_overlay.draw_texture(TEX_ICE_SHARD, Vector2(-shard_sz.x * 0.5, -shard_sz.y), Color(0.85, 2.4, 3.8, sp_alpha))
+				var sp_sz = 128.0 * sp_scale
+				effects_overlay.draw_set_transform(Vector2(sp_x, floor_y_val), sp_rot, Vector2(1.0 if i % 2 == 0 else -1.0, 1.0))
+				effects_overlay.draw_texture_rect_region(TEX_PARTICLES_ATLAS, Rect2(-sp_sz * 0.5, -sp_sz, sp_sz, sp_sz), ATLAS_ICE_SHARD, Color(0.85, 2.4, 3.8, sp_alpha))
 				effects_overlay.draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
-		
-		# Bông tuyết băng giá 6 cánh (Frost Crystal Snowflakes) xoay nhẹ lơ lửng giữa không trung
-		if TEX_FROST_CRYSTAL:
-			var crys_sz = TEX_FROST_CRYSTAL.get_size()
+			
 			for i in range(10):
 				var cr_x = ice_x1 + fmod(i * 63.0 + time_ice * 20.0, ice_w)
 				var cr_y = floor_y_val - 40.0 - (i % 5) * 28.0 + sin(time_ice * 2.0 + i) * 6.0
 				var cr_rot = time_ice * (0.9 if i % 2 == 0 else -0.9) + i * 1.5
-				var cr_scale = 0.22 + (i % 3) * 0.07
+				var cr_sz = 128.0 * (0.22 + (i % 3) * 0.07)
 				var cr_alpha = 0.70 + 0.28 * sin(time_ice * 4.0 + i * 1.5)
-				effects_overlay.draw_set_transform(Vector2(cr_x, cr_y), cr_rot, Vector2(cr_scale, cr_scale))
-				effects_overlay.draw_texture(TEX_FROST_CRYSTAL, -crys_sz * 0.5, Color(0.70, 2.2, 3.8, cr_alpha))
+				effects_overlay.draw_set_transform(Vector2(cr_x, cr_y), cr_rot, Vector2.ONE)
+				effects_overlay.draw_texture_rect_region(TEX_PARTICLES_ATLAS, Rect2(-cr_sz * 0.5, -cr_sz * 0.5, cr_sz, cr_sz), ATLAS_FROST_CRYSTAL, Color(0.70, 2.2, 3.8, cr_alpha))
 				effects_overlay.draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 	
 	# 14. Floating Combat Text (Popup PERFECT bay nhẹ lên trên)

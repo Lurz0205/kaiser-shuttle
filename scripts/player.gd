@@ -228,18 +228,18 @@ static func _init_hitbox_styleboxes() -> void:
 	sb_dive_sw_hot.set_border_width_all(3)
 	sb_dive_sw_hot.set_corner_radius_all(2)
 	
-	# Sara Ice Hitbox Styleboxes
+	# Sara Ice Hitbox Styleboxes (Không cần ô Perfect vì toàn bộ hitbox đều Auto-Perfect)
 	sb_ice_hitbox = StyleBoxFlat.new()
-	sb_ice_hitbox.bg_color = Color(0.2, 0.75, 1.0, 0.16)
-	sb_ice_hitbox.border_color = Color(0.4, 2.4, 3.8, 0.90)
+	sb_ice_hitbox.bg_color = Color(0.18, 0.78, 1.0, 0.24)
+	sb_ice_hitbox.border_color = Color(0.55, 2.4, 3.8, 0.92)
 	sb_ice_hitbox.set_border_width_all(2)
-	sb_ice_hitbox.set_corner_radius_all(4)
+	sb_ice_hitbox.set_corner_radius_all(6)
 	
 	sb_ice_sweetspot = StyleBoxFlat.new()
-	sb_ice_sweetspot.bg_color = Color(0.4, 2.2, 3.8, 0.40)
-	sb_ice_sweetspot.border_color = Color(0.9, 2.8, 3.8, 1.0)
-	sb_ice_sweetspot.set_border_width_all(2)
-	sb_ice_sweetspot.set_corner_radius_all(4)
+	sb_ice_sweetspot.bg_color = Color(0.35, 0.95, 1.0, 0.44)
+	sb_ice_sweetspot.border_color = Color(0.95, 2.8, 3.8, 1.0)
+	sb_ice_sweetspot.set_border_width_all(3)
+	sb_ice_sweetspot.set_corner_radius_all(6)
 
 # Backward compatibility alias
 var pending_smash_target: Vector2 = Vector2.ZERO
@@ -1701,9 +1701,10 @@ func _process_ai(delta: float) -> void:
 # ==========================================================
 
 func get_hitbox_scale() -> float:
-	if stats:
-		return stats.get_hitbox_scale()
-	return 1.0
+	var base_scale = stats.get_hitbox_scale() if stats else 1.0
+	if is_ice_domain_active and (stats and (stats.character_id == "sara" or stats.special_skill_id == "ice_domain")):
+		return base_scale * 1.20 # Sara Ice Domain: +20% Hitbox size
+	return base_scale
 
 
 func get_overhead_box_local() -> Rect2:
@@ -2693,37 +2694,37 @@ func _draw() -> void:
 		var is_sara_ice = is_ice_domain_active and (stats and (stats.character_id == "sara" or stats.special_skill_id == "ice_domain"))
 		var ob_in = in_range and hit_status["zone"] == "overhead"
 		var ob_rect = get_overhead_box_local()
-		var ob_box = sb_ice_hitbox if is_sara_ice else (sb_overhead_active if ob_in else sb_overhead_idle)
+		var ob_box = (sb_ice_sweetspot if ob_in else sb_ice_hitbox) if is_sara_ice else (sb_overhead_active if ob_in else sb_overhead_idle)
 		draw_style_box(ob_box, ob_rect)
 		
-		# VÙNG ĐIỂM NGỌT PERFECT (HOÀN HẢO TRÊN CAO)
-		var sw_rect = get_overhead_perfect_box_local()
-		var sw_is_hot = ob_in and is_perfect
-		var sw_box = sb_ice_sweetspot if is_sara_ice else (sb_sweetspot_hot if sw_is_hot else sb_sweetspot_idle)
-		draw_style_box(sw_box, sw_rect)
+		# VÙNG ĐIỂM NGỌT PERFECT (Ẩn với Sara khi bật Ice Domain vì toàn bộ Hitbox đều Auto-Perfect)
+		if not is_sara_ice:
+			var sw_rect = get_overhead_perfect_box_local()
+			var sw_is_hot = ob_in and is_perfect
+			draw_style_box(sb_sweetspot_hot if sw_is_hot else sb_sweetspot_idle, sw_rect)
 		
 		if not is_in_air:
 			var ub_in = in_range and hit_status["zone"] == "underhand"
 			var ub_rect = get_underhand_box_local()
-			var ub_box = sb_ice_hitbox if is_sara_ice else (sb_underhand_active if ub_in else sb_underhand_idle)
+			var ub_box = (sb_ice_sweetspot if ub_in else sb_ice_hitbox) if is_sara_ice else (sb_underhand_active if ub_in else sb_underhand_idle)
 			draw_style_box(ub_box, ub_rect)
 			
-			var ub_sw_rect = get_underhand_perfect_box_local()
-			var ub_is_hot = ub_in and is_perfect
-			var ub_sw_box = sb_ice_sweetspot if is_sara_ice else (sb_underhand_sw_hot if ub_is_hot else sb_underhand_sw_idle)
-			draw_style_box(ub_sw_box, ub_sw_rect)
+			if not is_sara_ice:
+				var ub_sw_rect = get_underhand_perfect_box_local()
+				var ub_is_hot = ub_in and is_perfect
+				draw_style_box(sb_underhand_sw_hot if ub_is_hot else sb_underhand_sw_idle, ub_sw_rect)
 		
 		# HITBOX CỨU CẦU KHI BAY NGƯỜI (DIVE RESCUE HITBOX):
 		if is_diving:
 			var db_in = in_range and hit_status["zone"] == "dive"
 			var db_rect = get_dive_rescue_box_local()
-			var db_box = sb_ice_hitbox if is_sara_ice else (sb_dive_active if db_in else sb_dive_idle)
+			var db_box = (sb_ice_sweetspot if db_in else sb_ice_hitbox) if is_sara_ice else (sb_dive_active if db_in else sb_dive_idle)
 			draw_style_box(db_box, db_rect)
 			
-			var db_sw_rect = get_dive_rescue_perfect_box_local()
-			var db_is_hot = db_in and is_perfect
-			var db_sw_box = sb_ice_sweetspot if is_sara_ice else (sb_dive_sw_hot if db_is_hot else sb_dive_sw_idle)
-			draw_style_box(db_sw_box, db_sw_rect)
+			if not is_sara_ice:
+				var db_sw_rect = get_dive_rescue_perfect_box_local()
+				var db_is_hot = db_in and is_perfect
+				draw_style_box(sb_dive_sw_hot if db_is_hot else sb_dive_sw_idle, db_sw_rect)
 	
 	# ==========================================================
 	# 3. NHÂN VẬT KHỐI HÌNH HỌC VÀ KHỚP XOAY (ARTICULATED MANNEQUIN)
