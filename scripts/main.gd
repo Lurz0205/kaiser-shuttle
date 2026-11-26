@@ -41,6 +41,13 @@ var effects_overlay: Node2D = null
 
 const TEX_LEAF_FUJI: Texture2D = preload("res://assets/images/trails/leaf_bamboo_fuji.png")
 const TEX_SWIRL_FUJI: Texture2D = preload("res://assets/images/trails/vortex_swirl_fuji.png")
+const TEX_FIRE_EMBER: Texture2D = preload("res://assets/images/particles/fire_ember.png")
+const TEX_FLAME_MOTE: Texture2D = preload("res://assets/images/particles/flame_mote.png")
+const TEX_FROST_CRYSTAL: Texture2D = preload("res://assets/images/particles/frost_crystal.png")
+const TEX_ICE_SHARD: Texture2D = preload("res://assets/images/particles/ice_shard.png")
+
+var fire_realm_particles: Array = []
+var fire_spawn_accumulator: float = 0.0
 
 @onready var camera: Camera2D = $Camera2D
 @onready var player: BadmintonPlayer = $Player
@@ -831,6 +838,9 @@ func _on_jump_taken(takeoff_pos: Vector2, facing_dir: float) -> void:
 
 
 func _on_active_skill_activated(skill_id: String, _side: String) -> void:
+	if skill_id == "fire_realm":
+		fire_realm_particles.clear()
+		fire_spawn_accumulator = 0.0
 	_show_banner(SpecialSkills.get_skill_name(skill_id), SpecialSkills.get_skill_color(skill_id), true, 1.5)
 	_redraw_effects()
 
@@ -844,7 +854,7 @@ func _on_teleport_triggered(from_pos: Vector2, to_pos: Vector2) -> void:
 func _redraw_effects() -> void:
 	if not effects_overlay:
 		return
-	var has_gitae_fire = (player and player.is_fire_realm_active) or (ai_rival and ai_rival.is_fire_realm_active)
+	var has_gitae_fire = (player and player.is_fire_realm_active) or (ai_rival and ai_rival.is_fire_realm_active) or (fire_realm_particles.size() > 0)
 	var has_sara_ice = (player and player.is_ice_domain_active) or (ai_rival and ai_rival.is_ice_domain_active)
 	var has_effects = (shockwave_alpha > 0.01) or (perfect_burst_timer > 0.0) or (jump_takeoff_effects.size() > 0) or (teleport_effects.size() > 0) or fuji_slowmo_active or (floating_text_mgr and floating_text_mgr.items.size() > 0) or has_gitae_fire or has_sara_ice
 	effects_overlay.visible = has_effects
@@ -1923,10 +1933,45 @@ func _process(delta: float) -> void:
 		if need_redraw_tp:
 			_redraw_effects()
 			
-	# Redraw active skills court visuals (Han Gitae Fire Realm & Sara Ice Domain)
+	# Active skills court visuals & particles (Han Gitae Fire Realm & Sara Ice Domain)
 	var has_gitae_fire_eff = (player and player.is_fire_realm_active) or (ai_rival and ai_rival.is_fire_realm_active)
 	var has_sara_ice_eff = (player and player.is_ice_domain_active) or (ai_rival and ai_rival.is_ice_domain_active)
-	if has_gitae_fire_eff or has_sara_ice_eff:
+	
+	if has_gitae_fire_eff:
+		var gitae_side = player.court_side if (player and player.is_fire_realm_active) else (ai_rival.court_side if ai_rival else "player")
+		var f_x1 = 40.0 if gitae_side == "player" else 640.0
+		var f_w = 600.0
+		var floor_y = 550.0
+		
+		fire_spawn_accumulator += delta
+		while fire_spawn_accumulator >= 0.045:
+			fire_spawn_accumulator -= 0.045
+			if fire_realm_particles.size() < 55:
+				fire_realm_particles.append({
+					"pos": Vector2(randf_range(f_x1 + 15.0, f_x1 + f_w - 15.0), floor_y - randf_range(0.0, 10.0)),
+					"vel_y": randf_range(-190.0, -320.0),
+					"drift_x": randf_range(-25.0, 25.0),
+					"sway_freq": randf_range(2.0, 4.5),
+					"sway_phase": randf_range(0.0, TAU),
+					"life": 0.0,
+					"max_life": randf_range(2.4, 3.4),
+					"scale": randf_range(0.28, 0.52),
+					"type": randi() % 2,
+					"rot": randf_range(-0.5, 0.5)
+				})
+	
+	var i_p = fire_realm_particles.size() - 1
+	while i_p >= 0:
+		var p = fire_realm_particles[i_p]
+		p["life"] += delta
+		p["pos"].y += p["vel_y"] * delta
+		p["pos"].x += (p["drift_x"] + sin(p["life"] * p["sway_freq"] + p["sway_phase"]) * 30.0) * delta
+		p["rot"] += 0.8 * delta
+		if p["pos"].y < -30.0 or p["life"] >= p["max_life"]:
+			fire_realm_particles.remove_at(i_p)
+		i_p -= 1
+		
+	if has_gitae_fire_eff or has_sara_ice_eff or fire_realm_particles.size() > 0:
 		_redraw_effects()
 	
 	# Nishikawa Lightning update:
@@ -3595,14 +3640,20 @@ func _on_effects_overlay_draw() -> void:
 				
 				effects_overlay.draw_set_transform_matrix(Transform2D.IDENTITY)
 	
-	# 11. Sara Teleport Frost Rings (Vòng hào quang băng giá khi dịch chuyển)
+	# 11. Sara Teleport Frost Rings & Shatter (Vòng hào quang và tinh thể băng khi dịch chuyển)
 	for eff in teleport_effects:
 		var prog = clamp(1.0 - (eff["timer"] / eff["dur"]), 0.0, 1.0)
 		var alpha = (1.0 - prog) * 0.90
 		var r = 14.0 + prog * 44.0
 		effects_overlay.draw_arc(eff["pos"], r, 0, TAU, 24, Color(0.4, 2.4, 3.8, alpha), 2.5 * (1.0 - prog * 0.6), true)
+		if TEX_FROST_CRYSTAL:
+			var crys_sz = TEX_FROST_CRYSTAL.get_size()
+			var cr_scale = 0.28 + prog * 0.24
+			effects_overlay.draw_set_transform(eff["pos"], prog * 3.5, Vector2(cr_scale, cr_scale))
+			effects_overlay.draw_texture(TEX_FROST_CRYSTAL, -crys_sz * 0.5, Color(1.0, 2.4, 3.8, alpha * 0.85))
+			effects_overlay.draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 	
-	# 12. Han Gitae Infernal Flame Realm (Sân rực lửa bùng cháy & đốm lửa sáng bay lên)
+	# 12. Han Gitae Infernal Flame Realm (Sân rực lửa bùng cháy & đốm lửa GPU texture bay từ sàn lên đỉnh màn hình)
 	var gitae_side = ""
 	if player and player.is_fire_realm_active:
 		gitae_side = player.court_side
@@ -3615,17 +3666,23 @@ func _on_effects_overlay_draw() -> void:
 		var floor_y_val = 550.0
 		var time_f = Time.get_ticks_msec() / 1000.0
 		# Màn sương nhiệt đỏ rực sát sàn
-		effects_overlay.draw_rect(Rect2(f_x1, floor_y_val - 35.0, f_w, 45.0), Color(1.0, 0.35, 0.05, 0.15))
-		effects_overlay.draw_line(Vector2(f_x1, floor_y_val), Vector2(f_x1 + f_w, floor_y_val), Color(3.8, 1.4, 0.2, 0.85), 3.0, true)
-		# Đốm lửa sáng bay lên (rising embers)
-		for i in range(16):
-			var ember_x = f_x1 + fmod((i * 37.0 + time_f * 45.0), f_w)
-			var ember_y = floor_y_val - fmod((i * 23.0 + time_f * 70.0), 160.0)
-			var ember_r = 2.0 + sin(time_f * 5.0 + i) * 1.0
-			var ember_a = clamp(1.0 - (floor_y_val - ember_y) / 160.0, 0.0, 1.0)
-			effects_overlay.draw_circle(Vector2(ember_x, ember_y), ember_r, Color(3.8, 1.2, 0.2, ember_a * 0.85))
+		effects_overlay.draw_rect(Rect2(f_x1, floor_y_val - 35.0, f_w, 45.0), Color(1.0, 0.35, 0.05, 0.18))
+		effects_overlay.draw_line(Vector2(f_x1, floor_y_val), Vector2(f_x1 + f_w, floor_y_val), Color(3.8, 1.4, 0.2, 0.90), 3.0, true)
 	
-	# 13. Sara Glacial Frost Domain (Băng giá phủ sàn đối phương làm chậm 20%)
+	# Render GPU Texture Embers bay từ sàn lên ngút ngàn màn hình
+	for p in fire_realm_particles:
+		var p_prog = p["life"] / max(p["max_life"], 0.01)
+		var fade_in = clamp(p["life"] / 0.22, 0.0, 1.0)
+		var fade_out = clamp((1.0 - p_prog) / 0.28, 0.0, 1.0)
+		var alpha = fade_in * fade_out * 0.95
+		var tex = TEX_FIRE_EMBER if p["type"] == 0 else TEX_FLAME_MOTE
+		if tex:
+			var t_sz = tex.get_size()
+			effects_overlay.draw_set_transform(p["pos"], p["rot"], Vector2(p["scale"], p["scale"]))
+			effects_overlay.draw_texture(tex, -t_sz * 0.5, Color(1.0, 0.92, 0.65, alpha))
+			effects_overlay.draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+	
+	# 13. Sara Glacial Frost Domain (Băng giá phủ sàn đối phương: Cột băng nhọn + Bông tuyết xoay lơ lửng)
 	var sara_opp_side = ""
 	if player and player.is_ice_domain_active:
 		sara_opp_side = "ai"
@@ -3637,14 +3694,36 @@ func _on_effects_overlay_draw() -> void:
 		var ice_w = 600.0
 		var floor_y_val = 550.0
 		var time_ice = Time.get_ticks_msec() / 1000.0
-		var shimmer = 0.20 + 0.08 * sin(time_ice * 4.0)
-		effects_overlay.draw_rect(Rect2(ice_x1, floor_y_val - 20.0, ice_w, 28.0), Color(0.3, 0.8, 1.3, shimmer))
-		effects_overlay.draw_line(Vector2(ice_x1, floor_y_val), Vector2(ice_x1 + ice_w, floor_y_val), Color(0.5, 2.4, 3.8, 0.80), 2.5, true)
-		for i in range(12):
-			var sp_x = ice_x1 + fmod(i * 51.0, ice_w)
-			var sp_y = floor_y_val - 4.0 + sin(time_ice * 3.0 + i) * 3.0
-			var sp_a = 0.4 + 0.5 * sin(time_ice * 6.0 + i * 2.0)
-			effects_overlay.draw_circle(Vector2(sp_x, sp_y), 2.5, Color(0.8, 2.5, 3.8, sp_a))
+		var shimmer = 0.22 + 0.08 * sin(time_ice * 4.0)
+		# Màn băng lạnh phủ sàn
+		effects_overlay.draw_rect(Rect2(ice_x1, floor_y_val - 25.0, ice_w, 35.0), Color(0.25, 0.80, 1.35, shimmer))
+		effects_overlay.draw_line(Vector2(ice_x1, floor_y_val), Vector2(ice_x1 + ice_w, floor_y_val), Color(0.6, 2.5, 3.8, 0.85), 3.0, true)
+		
+		# Cụm chông băng nhọn (Ice Shard Spikes) mọc từ mặt đất nhô lên
+		if TEX_ICE_SHARD:
+			var shard_sz = TEX_ICE_SHARD.get_size()
+			for i in range(14):
+				var sp_x = ice_x1 + 30.0 + i * 41.0 + sin(i * 3.7) * 8.0
+				var sp_scale_y = 0.35 + (sin(i * 2.1) * 0.5 + 0.5) * 0.40
+				var sp_scale_x = sp_scale_y * (0.85 if i % 2 == 0 else -0.85)
+				var sp_rot = sin(i * 1.7) * 0.15
+				var sp_alpha = 0.75 + 0.25 * sin(time_ice * 3.0 + i)
+				effects_overlay.draw_set_transform(Vector2(sp_x, floor_y_val), sp_rot, Vector2(sp_scale_x, sp_scale_y))
+				effects_overlay.draw_texture(TEX_ICE_SHARD, Vector2(-shard_sz.x * 0.5, -shard_sz.y), Color(0.85, 2.4, 3.8, sp_alpha))
+				effects_overlay.draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+		
+		# Bông tuyết băng giá 6 cánh (Frost Crystal Snowflakes) xoay nhẹ lơ lửng giữa không trung
+		if TEX_FROST_CRYSTAL:
+			var crys_sz = TEX_FROST_CRYSTAL.get_size()
+			for i in range(10):
+				var cr_x = ice_x1 + fmod(i * 63.0 + time_ice * 20.0, ice_w)
+				var cr_y = floor_y_val - 40.0 - (i % 5) * 28.0 + sin(time_ice * 2.0 + i) * 6.0
+				var cr_rot = time_ice * (0.9 if i % 2 == 0 else -0.9) + i * 1.5
+				var cr_scale = 0.22 + (i % 3) * 0.07
+				var cr_alpha = 0.70 + 0.28 * sin(time_ice * 4.0 + i * 1.5)
+				effects_overlay.draw_set_transform(Vector2(cr_x, cr_y), cr_rot, Vector2(cr_scale, cr_scale))
+				effects_overlay.draw_texture(TEX_FROST_CRYSTAL, -crys_sz * 0.5, Color(0.70, 2.2, 3.8, cr_alpha))
+				effects_overlay.draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 	
 	# 14. Floating Combat Text (Popup PERFECT bay nhẹ lên trên)
 	if floating_text_mgr:

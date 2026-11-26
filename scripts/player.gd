@@ -149,6 +149,8 @@ static var sb_dive_idle: StyleBoxFlat = null
 static var sb_dive_active: StyleBoxFlat = null
 static var sb_dive_sw_idle: StyleBoxFlat = null
 static var sb_dive_sw_hot: StyleBoxFlat = null
+static var sb_ice_hitbox: StyleBoxFlat = null
+static var sb_ice_sweetspot: StyleBoxFlat = null
 
 static func _init_hitbox_styleboxes() -> void:
 	if sb_overhead_idle != null:
@@ -224,6 +226,19 @@ static func _init_hitbox_styleboxes() -> void:
 	sb_dive_sw_hot.border_color = Color(1.0, 0.95, 0.45, 1.0)
 	sb_dive_sw_hot.set_border_width_all(3)
 	sb_dive_sw_hot.set_corner_radius_all(2)
+	
+	# Sara Ice Hitbox Styleboxes
+	sb_ice_hitbox = StyleBoxFlat.new()
+	sb_ice_hitbox.bg_color = Color(0.2, 0.75, 1.0, 0.16)
+	sb_ice_hitbox.border_color = Color(0.4, 2.4, 3.8, 0.90)
+	sb_ice_hitbox.set_border_width_all(2)
+	sb_ice_hitbox.set_corner_radius_all(4)
+	
+	sb_ice_sweetspot = StyleBoxFlat.new()
+	sb_ice_sweetspot.bg_color = Color(0.4, 2.2, 3.8, 0.40)
+	sb_ice_sweetspot.border_color = Color(0.9, 2.8, 3.8, 1.0)
+	sb_ice_sweetspot.set_border_width_all(2)
+	sb_ice_sweetspot.set_corner_radius_all(4)
 
 # Backward compatibility alias
 var pending_smash_target: Vector2 = Vector2.ZERO
@@ -433,11 +448,13 @@ func _physics_process(delta: float) -> void:
 		fire_realm_timer -= delta
 		if fire_realm_timer <= 0.0:
 			is_fire_realm_active = false
+		queue_redraw()
 	
 	if is_ice_domain_active:
 		ice_domain_timer -= delta
 		if ice_domain_timer <= 0.0:
 			is_ice_domain_active = false
+		queue_redraw()
 	
 	if opponent_player and opponent_player.is_ice_domain_active:
 		ice_slow_active = true
@@ -1845,6 +1862,8 @@ func get_hit_status() -> Dictionary:
 	if ob_box.grow(SHUTTLE_RADIUS).has_point(s_pt):
 		var perf_box = get_overhead_perfect_box_global()
 		var is_perf = perf_box.grow(10.0).has_point(s_pt)
+		if is_ice_domain_active and (stats and (stats.character_id == "sara" or stats.special_skill_id == "ice_domain")):
+			is_perf = true
 		var quality = 1.0 if is_perf else 0.75
 		return {"can_hit": true, "zone": "overhead", "quality": quality, "is_perfect": is_perf}
 	
@@ -1854,6 +1873,8 @@ func get_hit_status() -> Dictionary:
 	if ub_box.grow(SHUTTLE_RADIUS).has_point(s_pt):
 		var perf_box = get_underhand_perfect_box_global()
 		var is_perf = perf_box.grow(10.0).has_point(s_pt)
+		if is_ice_domain_active and (stats and (stats.character_id == "sara" or stats.special_skill_id == "ice_domain")):
+			is_perf = true
 		var quality = 1.0 if is_perf else 0.80
 		var zone_type = "overhead" if is_air else "underhand"
 		return {"can_hit": true, "zone": zone_type, "quality": quality, "is_perfect": is_perf}
@@ -1896,7 +1917,14 @@ func _execute_dive_rescue(hit_status: Dictionary = {}) -> void:
 	var cur_acc = stats.accuracy if stats else 100.0
 	var cur_sta = stats.stamina if stats else 100.0
 	if stats:
-		stats.add_flow(20.0)
+		if is_ice_domain_active and (stats.character_id == "sara" or stats.special_skill_id == "ice_domain"):
+			# SARA: Cú đánh trong lúc bật skill KHÔNG tính vào flow
+			pass
+		elif is_fire_realm_active and (stats.character_id == "gitae" or stats.special_skill_id == "fire_realm"):
+			# HAN GITAE: Nạp Flow cực nhanh (+28.0 Flow)
+			stats.add_flow(28.0)
+		else:
+			stats.add_flow(20.0)
 	
 	# Đánh giá độ chuẩn xác cú bay người cứu cầu:
 	# Cứu cầu luôn là bỏ nhỏ:
@@ -1990,11 +2018,11 @@ func _execute_hit(shot_type: String, hit_status: Dictionary = {}) -> void:
 	if is_wall_auto_counter:
 		shot_type = "mirage_counter"
 	
-	# ĐỠ QUẢ CẦU LỬA CỦA HAN GITAE (BỊ PHẠT THỂ LỰC, THĂNG BẰNG VÀ ĐỘ CHÍNH XÁC):
+	# ĐỠ QUẢ CẦU LỬA CỦA HAN GITAE (BỊ PHẠT NHẸ 5 THỂ LỰC, 5 THĂNG BẰNG, 5 ACCURACY):
 	var is_opp_fire_ball = shuttlecock and shuttlecock.is_fire_ball and shuttlecock.fire_ball_owner != court_side
 	if is_opp_fire_ball:
 		if stats:
-			stats.apply_fire_burn(25.0, 30.0, 25.0)
+			stats.apply_fire_burn(5.0, 5.0, 5.0)
 		shuttlecock.is_fire_ball = false
 	
 	# HAN GITAE INFERNAL FLAME REALM: KHÔNG CHO ĐẬP, CHỈ CHO DROP VÀ PHÔNG CẦU (CLEAR):
@@ -2460,10 +2488,16 @@ func _execute_hit(shot_type: String, hit_status: Dictionary = {}) -> void:
 	var is_any_smash = (actual_shot == "smash" or actual_shot == "boom_smash" or actual_shot == "kill_smash")
 	var is_jump_smash_shot = (is_air or actual_shot == "kill_smash") and is_any_smash
 	
-	# Tích lũy Flow (Hưng Phấn / Nộ): Perfect +15 Flow, Cú đánh thường +3 Flow:
+	# Tích lũy Flow (Hưng Phấn / Nộ):
 	var is_flow_special_shot = (actual_shot == "boom_smash" or actual_shot == "mirage_counter" or actual_shot == "tsubame_gaeshi")
 	if stats and not is_flow_special_shot:
-		if is_perfect:
+		if is_ice_domain_active and (stats.character_id == "sara" or stats.special_skill_id == "ice_domain"):
+			# SARA: Cú đánh auto Perfect trong lúc bật skill KHÔNG tính vào flow
+			pass
+		elif is_fire_realm_active and (stats.character_id == "gitae" or stats.special_skill_id == "fire_realm"):
+			# HAN GITAE: Nạp Flow cực nhanh (+28.0 Flow) vì đánh auto Perfect, có thể spam skill liên tục
+			stats.add_flow(28.0)
+		elif is_perfect:
 			stats.add_flow(15.0)
 		else:
 			stats.add_flow(3.0)
@@ -2633,33 +2667,40 @@ func _draw() -> void:
 	# 2. KHUNG HỘP HITBOX & VÙNG PERFECT RÕ RÀNG (GPU StyleBoxes co dãn linh hoạt, 0% CPU lag)
 	if show_debug_hitboxes and not is_ai and not is_remote_puppet:
 		_init_hitbox_styleboxes()
+		var is_sara_ice = is_ice_domain_active and (stats and (stats.character_id == "sara" or stats.special_skill_id == "ice_domain"))
 		var ob_in = in_range and hit_status["zone"] == "overhead"
 		var ob_rect = get_overhead_box_local()
-		draw_style_box(sb_overhead_active if ob_in else sb_overhead_idle, ob_rect)
+		var ob_box = sb_ice_hitbox if is_sara_ice else (sb_overhead_active if ob_in else sb_overhead_idle)
+		draw_style_box(ob_box, ob_rect)
 		
 		# VÙNG ĐIỂM NGỌT PERFECT (HOÀN HẢO TRÊN CAO)
 		var sw_rect = get_overhead_perfect_box_local()
 		var sw_is_hot = ob_in and is_perfect
-		draw_style_box(sb_sweetspot_hot if sw_is_hot else sb_sweetspot_idle, sw_rect)
+		var sw_box = sb_ice_sweetspot if is_sara_ice else (sb_sweetspot_hot if sw_is_hot else sb_sweetspot_idle)
+		draw_style_box(sw_box, sw_rect)
 		
 		if not is_in_air:
 			var ub_in = in_range and hit_status["zone"] == "underhand"
 			var ub_rect = get_underhand_box_local()
-			draw_style_box(sb_underhand_active if ub_in else sb_underhand_idle, ub_rect)
+			var ub_box = sb_ice_hitbox if is_sara_ice else (sb_underhand_active if ub_in else sb_underhand_idle)
+			draw_style_box(ub_box, ub_rect)
 			
 			var ub_sw_rect = get_underhand_perfect_box_local()
 			var ub_is_hot = ub_in and is_perfect
-			draw_style_box(sb_underhand_sw_hot if ub_is_hot else sb_underhand_sw_idle, ub_sw_rect)
+			var ub_sw_box = sb_ice_sweetspot if is_sara_ice else (sb_underhand_sw_hot if ub_is_hot else sb_underhand_sw_idle)
+			draw_style_box(ub_sw_box, ub_sw_rect)
 		
 		# HITBOX CỨU CẦU KHI BAY NGƯỜI (DIVE RESCUE HITBOX):
 		if is_diving:
 			var db_in = in_range and hit_status["zone"] == "dive"
 			var db_rect = get_dive_rescue_box_local()
-			draw_style_box(sb_dive_active if db_in else sb_dive_idle, db_rect)
+			var db_box = sb_ice_hitbox if is_sara_ice else (sb_dive_active if db_in else sb_dive_idle)
+			draw_style_box(db_box, db_rect)
 			
 			var db_sw_rect = get_dive_rescue_perfect_box_local()
 			var db_is_hot = db_in and is_perfect
-			draw_style_box(sb_dive_sw_hot if db_is_hot else sb_dive_sw_idle, db_sw_rect)
+			var db_sw_box = sb_ice_sweetspot if is_sara_ice else (sb_dive_sw_hot if db_is_hot else sb_dive_sw_idle)
+			draw_style_box(db_sw_box, db_sw_rect)
 	
 	# ==========================================================
 	# 3. NHÂN VẬT KHỐI HÌNH HỌC VÀ KHỚP XOAY (ARTICULATED MANNEQUIN)
@@ -2959,3 +3000,35 @@ func _draw_textured_player(
 		draw_set_transform(hand_racket, rak_ang, Vector2(s_rak * facing, s_rak))
 		draw_texture(tex_racket, Vector2(-48.0, -200.0))
 		draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+
+	# 4. THANH THỜI LƯỢNG KĨ NĂNG CHỦ ĐỘNG TRÊN ĐẦU (ACTIVE SKILL DURATION BAR)
+	var has_active_skill = is_fire_realm_active or is_ice_domain_active
+	if has_active_skill:
+		var bar_w = 46.0
+		var bar_h = 6.0
+		var bar_x = -bar_w * 0.5
+		var bar_y = head_pos.y - 48.0
+		
+		var skill_ratio = 0.0
+		var bar_fill_col = Color.WHITE
+		var bar_border_col = Color.WHITE
+		
+		if is_fire_realm_active:
+			skill_ratio = clamp(fire_realm_timer / 5.0, 0.0, 1.0)
+			bar_fill_col = Color(1.0, 0.45, 0.10, 0.95)
+			bar_border_col = Color(1.0, 0.85, 0.20, 0.90)
+		elif is_ice_domain_active:
+			skill_ratio = clamp(ice_domain_timer / 10.0, 0.0, 1.0)
+			bar_fill_col = Color(0.20, 0.85, 1.0, 0.95)
+			bar_border_col = Color(0.70, 0.95, 1.0, 0.90)
+		
+		# Khung nền đen mờ
+		draw_rect(Rect2(bar_x - 2.0, bar_y - 2.0, bar_w + 4.0, bar_h + 4.0), Color(0.04, 0.06, 0.10, 0.85), true)
+		draw_rect(Rect2(bar_x - 2.0, bar_y - 2.0, bar_w + 4.0, bar_h + 4.0), bar_border_col, false, 1.2)
+		
+		# Thanh ruột tụt dần theo thời gian
+		var fill_w = bar_w * skill_ratio
+		if fill_w > 0.0:
+			draw_rect(Rect2(bar_x, bar_y, fill_w, bar_h), bar_fill_col, true)
+			# Đốm sáng đầu thanh dẫn đường
+			draw_circle(Vector2(bar_x + fill_w, bar_y + bar_h * 0.5), 2.2, Color.WHITE)

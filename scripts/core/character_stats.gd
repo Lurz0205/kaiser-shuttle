@@ -58,12 +58,11 @@ func consume_flow() -> void:
 	is_special_primed = false
 
 
-## Hiệu ứng thiêu đốt khi đánh trả quả cầu lửa của Han Gitae
-func apply_fire_burn(stamina_loss: float = 25.0, balance_loss: float = 30.0, accuracy_loss: float = 25.0) -> void:
+## Hiệu ứng thiêu đốt khi đánh trả quả cầu lửa của Han Gitae (trừ nhẹ 5.0 mỗi loại chỉ số)
+func apply_fire_burn(stamina_loss: float = 5.0, balance_loss: float = 5.0, accuracy_loss: float = 5.0) -> void:
 	stamina = max(0.0, stamina - stamina_loss)
 	accuracy = max(0.0, accuracy - accuracy_loss)
-	# Mất thăng bằng tức thì gây chao đảo và giật lùi
-	# (accuracy tụt dẫn đến thu hẹp hitbox và tăng nguy cơ đánh hỏng)
+	# Mất nhẹ 5 điểm thăng bằng và độ chính xác
 
 
 func reset_stamina() -> void:

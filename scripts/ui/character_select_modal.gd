@@ -69,7 +69,7 @@ const CHAR_DATA = {
 		"control": 78,
 		"composure": 94,
 		"skill_name": "Infernal Flame Realm (Flow 100)",
-		"skill_desc": "Trong 5s biến nửa sân thành Hỏa Ngục: Hitbox rộng hết nửa sân, cầu dính lửa thiêu đốt đối thủ (-25 Thể lực, -30 Thăng bằng, -25 Accuracy)!"
+		"skill_desc": "Trong 5s biến nửa sân thành Hỏa Ngục: Hitbox rộng hết nửa sân, cầu dính lửa thiêu đốt đối thủ (-5 Thể lực, -5 Thăng bằng, -5 Accuracy)! Nạp Flow nhanh (+28 Flow/hit) để spam liên tục!"
 	},
 	"sara": {
 		"name": "SARA",
@@ -82,7 +82,7 @@ const CHAR_DATA = {
 		"control": 92,
 		"composure": 88,
 		"skill_name": "Glacial Frost Domain (Flow 105)",
-		"skill_desc": "Trong 10s đóng băng sàn đối phương (chậm 20% tốc độ). Phím Space/Jump hóa thành Dịch chuyển tức thời tới đón cầu trên không hoặc mặt đất!"
+		"skill_desc": "Trong 10s đóng băng sàn đối phương (chậm 20% tốc độ), biến Hitbox Băng và đánh auto Perfect (0 Flow). Phím Space/Jump hóa thành Dịch chuyển tức thời tới đón cầu!"
 	}
 }
 
@@ -184,13 +184,18 @@ func _build_ui() -> void:
 	lbl_subtitle.modulate = Color(0.7, 0.8, 0.9, 0.8)
 	root_vbox.add_child(lbl_subtitle)
 	
-	# Cards Row (HBox)
-	var cards_row = HBoxContainer.new()
-	cards_row.alignment = BoxContainer.ALIGNMENT_CENTER
-	cards_row.add_theme_constant_override("separation", 16)
-	root_vbox.add_child(cards_row)
+	# Scrollable Cards Row (Hỗ trợ mở rộng không giới hạn nhân vật)
+	var scroll = ScrollContainer.new()
+	scroll.custom_minimum_size = Vector2(930, 330)
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
+	scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	root_vbox.add_child(scroll)
 	
-	for char_id in ["nishikawa", "fuji", "wall"]:
+	var cards_row = HBoxContainer.new()
+	cards_row.add_theme_constant_override("separation", 16)
+	scroll.add_child(cards_row)
+	
+	for char_id in CHAR_DATA.keys():
 		var card = _create_character_card(char_id)
 		cards_row.add_child(card)
 		card_nodes[char_id] = card
@@ -229,7 +234,7 @@ func _build_ui() -> void:
 func _create_character_card(char_id: String) -> PanelContainer:
 	var data = CHAR_DATA[char_id]
 	var p = PanelContainer.new()
-	p.custom_minimum_size = Vector2(290, 310)
+	p.custom_minimum_size = Vector2(270, 310)
 	
 	var m = MarginContainer.new()
 	m.add_theme_constant_override("margin_left", 12)

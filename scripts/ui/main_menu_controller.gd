@@ -265,7 +265,7 @@ const CHAR_DATA = {
 		"control": 78,
 		"composure": 94,
 		"skill_name": "Infernal Flame Realm",
-		"skill_desc": "Trong 5s biến nửa sân thành Hỏa Ngục: Hitbox rộng hết nửa sân, cầu dính lửa thiêu đốt đối thủ (-25 Thể lực, -30 Thăng bằng, -25 Accuracy khi đánh trả)! (Flow: 100)",
+		"skill_desc": "Trong 5s biến nửa sân thành Hỏa Ngục: Hitbox rộng hết nửa sân, cầu dính lửa thiêu đốt đối thủ (-5 Thể lực, -5 Thăng bằng, -5 Accuracy)! Nạp Flow nhanh (+28 Flow/hit) để spam skill liên tục! (Flow: 100)",
 		"passive": "Hỏa Thần Cuồng Nộ: Khi kích hoạt skill, bao sân 100% không lo trượt cầu. Quả cầu lửa thiêu đốt phá vỡ bộ pháp đối phương!"
 	},
 	"sara": {
@@ -283,7 +283,7 @@ const CHAR_DATA = {
 		"control": 92,
 		"composure": 88,
 		"skill_name": "Glacial Frost Domain",
-		"skill_desc": "Trong 10s đóng băng sàn đối phương (chậm 20% tốc độ). Phím Space/Jump hóa thành Dịch chuyển tức thời tới đón cầu trên không hoặc mặt đất! (Flow: 105)",
+		"skill_desc": "Trong 10s đóng băng sàn đối phương (chậm 20% tốc độ), biến Hitbox Băng và đánh auto Perfect (0 Flow). Phím Space/Jump hóa thành Dịch chuyển tức thời tới đón cầu! (Flow: 105)",
 		"passive": "Hư Không Tốc Biến: Teleport thẳng tới vị trí đón cầu thuận lợi nhất, đóng băng kìm hãm bước chạy đối thủ!"
 	}
 }
@@ -1449,14 +1449,20 @@ func _build_match_setup_panel() -> void:
 	setup_title.modulate = Color(1.0, 0.85, 0.3)
 	setup_vbox.add_child(setup_title)
 	
-	# Character Cards
+	# Scrollable Character Cards Row (Hỗ trợ mở rộng không giới hạn nhân vật)
+	var cards_scroll = ScrollContainer.new()
+	cards_scroll.custom_minimum_size = Vector2(1000, 310)
+	cards_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
+	cards_scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	cards_scroll.mouse_filter = Control.MOUSE_FILTER_PASS
+	setup_vbox.add_child(cards_scroll)
+	
 	var cards_row = HBoxContainer.new()
-	cards_row.alignment = BoxContainer.ALIGNMENT_CENTER
 	cards_row.add_theme_constant_override("separation", 14)
 	cards_row.mouse_filter = Control.MOUSE_FILTER_PASS
-	setup_vbox.add_child(cards_row)
+	cards_scroll.add_child(cards_row)
 	
-	for cid in ["nishikawa", "fuji", "wall"]:
+	for cid in CHAR_DATA.keys():
 		var card = _create_character_card(cid)
 		cards_row.add_child(card)
 		card_nodes[cid] = card
@@ -1680,7 +1686,7 @@ func _build_pvp_panel() -> void:
 	cfg_row.add_child(name_box)
 	cfg_row.add_child(VSeparator.new())
 	
-	# Character selector
+	# Character selector (Scrollable - hỗ trợ danh sách tướng mở rộng)
 	var char_box = HBoxContainer.new()
 	char_box.add_theme_constant_override("separation", 6)
 	var lbl_c = Label.new()
@@ -1688,10 +1694,21 @@ func _build_pvp_panel() -> void:
 	lbl_c.add_theme_font_size_override("font_size", 12)
 	lbl_c.modulate = Color(0.75, 0.82, 0.90)
 	char_box.add_child(lbl_c)
-	for cid in ["nishikawa", "fuji", "wall"]:
+	
+	var char_scroll = ScrollContainer.new()
+	char_scroll.custom_minimum_size = Vector2(320, 34)
+	char_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
+	char_scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	char_box.add_child(char_scroll)
+	
+	var char_btn_row = HBoxContainer.new()
+	char_btn_row.add_theme_constant_override("separation", 6)
+	char_scroll.add_child(char_btn_row)
+	
+	for cid in CHAR_DATA.keys():
 		var b = _create_clean_button(CHAR_DATA[cid]["name"], CHAR_DATA[cid]["color"], Vector2(96, 30), 11)
 		b.pressed.connect(func(): _select_pvp_char(cid))
-		char_box.add_child(b)
+		char_btn_row.add_child(b)
 		pvp_char_btns[cid] = b
 	cfg_row.add_child(char_box)
 	cfg_row.add_child(VSeparator.new())

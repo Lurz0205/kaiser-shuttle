@@ -84,10 +84,30 @@ func _init() -> void:
 	var prev_opp_sta = ai_rival.stats.stamina
 	var prev_opp_acc = ai_rival.stats.accuracy
 	ai_rival._execute_hit("clear", {"can_hit": true, "zone": "underhand", "quality": 1.0, "is_perfect": true})
-	assert(ai_rival.stats.stamina < prev_opp_sta, "Opponent lost stamina from fire ball")
-	assert(ai_rival.stats.accuracy < prev_opp_acc, "Opponent lost accuracy from fire ball")
+	assert(prev_opp_acc - ai_rival.stats.accuracy == 5.0, "Opponent lost exactly 5 accuracy from fire ball")
+	assert(prev_opp_sta - ai_rival.stats.stamina >= 5.0, "Opponent lost at least 5 stamina from fire ball")
 	assert(shuttlecock.is_fire_ball == false, "Fire ball cleared after hit")
-	print("✓ 8. Fire Ball burn penalty correctly applied to opponent (-25 sta, -30 bal, -25 acc)")
+	print("✓ 8. Fire Ball burn penalty correctly applied to opponent (-5 sta, -5 bal, -5 acc)")
+
+	# Test Sara 0 Flow and Gitae +28 Flow mechanics
+	shuttlecock.global_position = Vector2(400.0, 300.0) # On Player's side
+	shuttlecock.is_active = true
+	shuttlecock.is_net_fault = false
+	player.stats = sara
+	player.stats.flow = 0.0
+	player.is_ice_domain_active = true
+	player.is_fire_realm_active = false
+	player._execute_hit("clear", {"can_hit": true, "zone": "overhead", "quality": 1.0, "is_perfect": true})
+	assert(player.stats.flow == 0.0, "Sara earns 0 flow during ice domain")
+	print("✓ 8b. Sara earns 0 flow during ice domain (auto-perfect doesn't farm flow)")
+
+	player.stats = gitae
+	player.stats.flow = 0.0
+	player.is_fire_realm_active = true
+	player.is_ice_domain_active = false
+	player._execute_hit("clear", {"can_hit": true, "zone": "overhead", "quality": 1.0, "is_perfect": true})
+	assert(player.stats.flow == 28.0, "Han Gitae earns 28 flow per hit during fire realm")
+	print("✓ 8c. Han Gitae earns 28 flow per hit in fire realm to spam skill")
 	
 	# Test Sara active skill & teleport
 	player.stats = sara
