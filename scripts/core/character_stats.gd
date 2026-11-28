@@ -396,7 +396,7 @@ static func create_fuji() -> Resource:
 	s.agility = 91.0
 	s.control = 99.0
 	s.composure = 88.0
-	s.max_flow = 80.0
+	s.max_flow = 70.0
 	return s
 
 static func create_wall() -> Resource:
@@ -409,7 +409,7 @@ static func create_wall() -> Resource:
 	s.agility = 90.0
 	s.control = 93.0
 	s.composure = 99.0
-	s.max_flow = 90.0
+	s.max_flow = 75.0
 	return s
 
 static func create_gitae() -> Resource:

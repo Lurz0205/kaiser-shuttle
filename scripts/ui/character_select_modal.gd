@@ -42,8 +42,8 @@ const CHAR_DATA = {
 		"agility": 92,
 		"control": 99,
 		"composure": 90,
-		"skill_name": "Đặc tính: Én Lượn (Flow 80)",
-		"skill_desc": "• Phong Thần Tinh Anh: Control 99, ngưỡng Flow còn 80.\n• Tsubame Gaeshi: Đủ 80 Flow, Drop hóa cầu xoáy lướt sà mép lưới (+15 Balance, +10 Accuracy).\n• Áp Lực Gió Xoáy: Địch đỡ mất 20 Accuracy, 25 Balance & 30% bung cầu non."
+		"skill_name": "Đặc tính: Én Lượn (Flow 70)",
+		"skill_desc": "• Phong Thần Tinh Anh: Control 99, ngưỡng Flow còn 70.\n• Tsubame Gaeshi: Đủ 70 Flow, Drop hóa cầu xoáy lướt sà mép lưới (+15 Balance, +10 Accuracy) & +12% tốc độ 3s.\n• Áp Lực Gió Xoáy: Địch đỡ mất 25 Accuracy, 30 Balance & 40% bung cầu non."
 	},
 	"wall": {
 		"name": "ISABEL",
@@ -55,8 +55,8 @@ const CHAR_DATA = {
 		"agility": 88,
 		"control": 85,
 		"composure": 96,
-		"skill_name": "Đặc tính: Thần Thuẫn (Flow 90)",
-		"skill_desc": "• Bức Tường Thép: Đủ 90 Flow tự động kích hoạt Mirage Counter khi đỡ Smash/Cầu non.\n• Mirage Shield: Hóa giải lực đập (slow-mo 1.55s), bung sâu cuối sân, hồi 20% Thể lực & +15 Accuracy.\n• Phản Chấn La Mã: Kẻ đập mất 10% Thể lực & 30 Balance."
+		"skill_name": "Đặc tính: Thần Thuẫn (Flow 75)",
+		"skill_desc": "• Bức Tường Thép: Đủ 75 Flow tự động Mirage Counter khi đỡ Smash/Drop/Cầu non; đứng dậy nhanh 30%.\n• Mirage Shield: Hóa giải lực đập (slow-mo 1.55s), bung sâu cuối sân, hồi 25% Thể lực & +20 Accuracy.\n• Phản Chấn La Mã: Kẻ đập mất 15% Thể lực & 35 Balance."
 	},
 	"gitae": {
 		"name": "HAN GITAE",

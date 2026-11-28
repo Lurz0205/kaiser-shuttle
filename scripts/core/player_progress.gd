@@ -73,6 +73,14 @@ static var quests: Dictionary = {
 	"dive_saves": {"prog": 0, "target": 5, "claimed": false, "gold": 200, "gems": 10, "title": "Thực hiện 5 pha bay người cứu cầu thành công"},
 }
 static var cups_won: Dictionary = {"rookie": 0, "national": 0, "world": 0}
+static var unlocked_trails: Array = ["default"]
+static var equipped_trail: String = "default"
+
+const SHOP_TRAILS := {
+	"lightning": {"name": "Vệt Cầu Lôi Quang", "desc": "Hiệu ứng vệt cầu tia chớp vàng rực rỡ.", "cost": 300, "color": Color(1.0, 0.85, 0.25)},
+	"frost":     {"name": "Vệt Cầu Băng Tuyết", "desc": "Hiệu ứng vệt cầu băng xanh ngọc mát lạnh.", "cost": 350, "color": Color(0.35, 0.85, 1.0)},
+	"flame":     {"name": "Vệt Cầu Hỏa Diệm", "desc": "Hiệu ứng vệt cầu lửa cam đỏ rực cháy.", "cost": 400, "color": Color(1.0, 0.42, 0.15)},
+}
 
 
 static func ensure_loaded() -> void:
@@ -107,6 +115,18 @@ static func ensure_loaded() -> void:
 				if cw is Dictionary:
 					for cup_id in cups_won.keys():
 						cups_won[cup_id] = int(cw.get(cup_id, 0))
+				var tr = parsed.get("trails", ["default"])
+				if tr is Array:
+					unlocked_trails = []
+					for t in tr:
+						var ts = str(t)
+						if not unlocked_trails.has(ts):
+							unlocked_trails.append(ts)
+					if not unlocked_trails.has("default"):
+						unlocked_trails.append("default")
+				var eq_t = str(parsed.get("equipped_trail", "default"))
+				if unlocked_trails.has(eq_t):
+					equipped_trail = eq_t
 				return
 	if loaded_ok:
 		gold_coins = int(cfg.get_value("wallet", "gold", gold_coins))
@@ -119,6 +139,18 @@ static func ensure_loaded() -> void:
 			quests[qid]["claimed"] = bool(cfg.get_value("quests", qid + "_claimed", false))
 		for cup_id in cups_won.keys():
 			cups_won[cup_id] = int(cfg.get_value("cups", cup_id, 0))
+		var cfg_tr = cfg.get_value("shop", "trails", ["default"])
+		if cfg_tr is Array:
+			unlocked_trails = []
+			for t in cfg_tr:
+				var ts = str(t)
+				if not unlocked_trails.has(ts):
+					unlocked_trails.append(ts)
+			if not unlocked_trails.has("default"):
+				unlocked_trails.append("default")
+		var cfg_eq = str(cfg.get_value("shop", "equipped_trail", "default"))
+		if unlocked_trails.has(cfg_eq):
+			equipped_trail = cfg_eq
 
 
 static func save() -> void:
@@ -134,6 +166,8 @@ static func save() -> void:
 		cfg.set_value("quests", qid + "_claimed", quests[qid]["claimed"])
 	for cup_id in cups_won.keys():
 		cfg.set_value("cups", cup_id, cups_won[cup_id])
+	cfg.set_value("shop", "trails", unlocked_trails)
+	cfg.set_value("shop", "equipped_trail", equipped_trail)
 	cfg.save(SAVE_PATH)
 	if OS.has_feature("web"):
 		var payload = {
@@ -141,7 +175,9 @@ static func save() -> void:
 			"gems": gems,
 			"levels": stat_levels,
 			"quests": quests,
-			"cups": cups_won
+			"cups": cups_won,
+			"trails": unlocked_trails,
+			"equipped_trail": equipped_trail
 		}
 		var json_str = JSON.stringify(payload).replace("'", "\\'")
 		JavaScriptBridge.eval("localStorage.setItem('kaiser_progress_v1', '%s');" % json_str)
@@ -221,3 +257,31 @@ static func record_cup_win(cup_id: String) -> void:
 	if cups_won.has(cup_id):
 		cups_won[cup_id] = int(cups_won[cup_id]) + 1
 		save()
+
+
+static func buy_or_equip_trail(trail_id: String) -> bool:
+	ensure_loaded()
+	if trail_id == "default" or trail_id in unlocked_trails:
+		equipped_trail = trail_id
+		save()
+		return true
+	if not SHOP_TRAILS.has(trail_id):
+		return false
+	var cost = int(SHOP_TRAILS[trail_id]["cost"])
+	if gold_coins < cost:
+		return false
+	gold_coins -= cost
+	unlocked_trails.append(trail_id)
+	equipped_trail = trail_id
+	save()
+	return true
+
+
+static func exchange_gems_for_gold(gem_cost: int = 10, gold_gain: int = 250) -> bool:
+	ensure_loaded()
+	if gems < gem_cost:
+		return false
+	gems -= gem_cost
+	gold_coins += gold_gain
+	save()
+	return true

@@ -251,9 +251,9 @@ const CHAR_DATA = {
 		"agility": 91,
 		"control": 99,
 		"composure": 88,
-		"skill_name": "Đặc tính: Én Lượn (Flow 80)",
-		"skill_desc": "• Phong Thần Tinh Anh: Control tối đa 99, ngưỡng Flow rút ngắn còn 80.\n• Tsubame Gaeshi: Đủ 80 Flow, Bỏ nhỏ (Drop) hóa đường cầu xoáy lướt sà mép lưới (+15 Balance, +10 Accuracy).\n• Áp Lực Gió Xoáy: Địch đỡ cầu mất 20 Accuracy, 25 Balance và 30% bung cầu non.",
-		"passive": "Phong Thần Tinh Anh & Tsubame Gaeshi: Đường cầu lướt sà mép lưới cực hiểm hóc, tích Flow nhanh!"
+		"skill_name": "Đặc tính: Én Lượn (Flow 70)",
+		"skill_desc": "• Phong Thần Tinh Anh: Control tối đa 99, ngưỡng Flow rút ngắn còn 70.\n• Tsubame Gaeshi: Đủ 70 Flow, Drop hóa cầu xoáy lướt sà mép lưới (+15 Balance, +10 Accuracy) & tăng 12% tốc độ trong 3s.\n• Áp Lực Gió Xoáy: Địch đỡ cầu mất 25 Accuracy, 30 Balance và 40% bung cầu non.",
+		"passive": "Phong Thần Tinh Anh & Tsubame Gaeshi: Đường cầu lướt mép lưới, tăng 12% tốc độ 3s, tích Flow nhanh!"
 	},
 	"wall": {
 		"name": "ISABEL",
@@ -270,9 +270,9 @@ const CHAR_DATA = {
 		"agility": 90,
 		"control": 93,
 		"composure": 99,
-		"skill_name": "Đặc tính: Thần Thuẫn (Flow 90)",
-		"skill_desc": "• Bức Tường Thép: Đủ 90 Flow tự động kích hoạt Mirage Counter khi đỡ Smash hoặc Cầu non.\n• Mirage Shield: Hóa giải hoàn toàn lực đập (slow-mo 1.55s), bung sâu cuối sân, hồi 20% Thể lực & +15 Accuracy.\n• Phản Chấn La Mã: Kẻ đập bị phản chấn mất 10% Thể lực & 30 Balance.",
-		"passive": "Bức Tường Thép & Mirage Shield: Hóa giải mọi cú Smash, hồi 20% thể lực & phản chấn đối thủ!"
+		"skill_name": "Đặc tính: Thần Thuẫn (Flow 75)",
+		"skill_desc": "• Bức Tường Thép: Đủ 75 Flow tự động Mirage Counter khi đỡ Smash, Drop hoặc Cầu non; đứng dậy sau lăn cứu nhanh hơn 30%.\n• Mirage Shield: Hóa giải hoàn toàn lực đập (slow-mo 1.55s), bung sâu cuối sân, hồi 25% Thể lực & +20 Accuracy.\n• Phản Chấn La Mã: Kẻ đập bị phản chấn mất 15% Thể lực & 35 Balance.",
+		"passive": "Bức Tường Thép & Mirage Shield: Đứng dậy nhanh 30%, phản đòn Smash/Drop/Cầu non & hồi 25% thể lực!"
 	},
 	"gitae": {
 		"name": "HAN GITAE",
@@ -436,7 +436,10 @@ func switch_state(new_state: MenuState) -> void:
 		roster_panel.visible = (new_state == MenuState.ROSTER)
 		if roster_panel.visible:
 			_update_roster_view()
-	if shop_panel: shop_panel.visible = (new_state == MenuState.SHOP)
+	if shop_panel:
+		shop_panel.visible = (new_state == MenuState.SHOP)
+		if shop_panel.visible:
+			_refresh_shop_ui()
 	if quests_panel:
 		quests_panel.visible = (new_state == MenuState.QUESTS)
 		if quests_panel.visible:
@@ -1367,16 +1370,18 @@ func _build_match_select_panel() -> void:
 			switch_state(MenuState.MATCH_SETUP)
 	))
 	
-	# 3. Training Card (Studio Gold Padlock Icon)
+	# 3. Training Card (Unlocked Practice Mode)
 	cards_row.add_child(_create_mode_card_tex(
 		"SÂN TẬP LUYỆN",
 		"TẬP LUYỆN KỸ NĂNG",
-		TEX_PADLOCK,
+		TEX_SHUTTLECOCK,
 		Color(0.40, 0.70, 0.95),
-		"Luyện phát cầu, tập smash chuẩn nhịp\nvà di chuyển linh hoạt trên sân.",
-		"SẮP RA MẮT",
-		true,
-		func(): pass
+		"Luyện phát cầu, tập smash chuẩn nhịp\nvà làm quen kỹ năng trước AI Dễ (21 điểm).",
+		"TẬP NGAY",
+		false,
+		func():
+			if Time.get_ticks_msec() < _state_switch_cooldown_until: return
+			start_match_requested.emit(selected_player_id, "wall", 0, 21, 1)
 	))
 	
 	# 4. Story Mode Card (Studio Gold Padlock Icon)
@@ -2284,13 +2289,70 @@ func _build_shop_panel() -> void:
 	shop_panel.add_child(scroll)
 	
 	var row = HBoxContainer.new()
+	row.name = "ShopRow"
 	row.add_theme_constant_override("separation", 20)
 	row.mouse_filter = Control.MOUSE_FILTER_PASS
 	scroll.add_child(row)
+	_refresh_shop_ui()
+
+
+func _refresh_shop_ui() -> void:
+	if not shop_panel: return
+	var row = shop_panel.find_child("ShopRow", true, false)
+	if not row: return
+	for c in row.get_children():
+		c.queue_free()
+	PlayerProgress.ensure_loaded()
 	
-	row.add_child(_create_mode_card_tex("CHIÊU MỘ CẦU THỦ", "GACHA", TEX_PADLOCK, Color(1.0, 0.82, 0.25), "Kiểm tra năng lực cầu thủ\nvà chiêu mộ tân binh BWF.", "CHƯA MỞ", true, func(): pass))
-	row.add_child(_create_mode_card_tex("CỬA HÀNG BÓNG", "SHOP", TEX_PADLOCK, Color(0.3, 0.9, 0.6), "Mua cầu lông thi đấu\nvà vé tham dự giải vô địch.", "CHƯA MỞ", true, func(): pass))
-	row.add_child(_create_mode_card_tex("CỬA HÀNG TRANG PHỤC", "SKINS", TEX_PADLOCK, Color(0.35, 0.75, 1.0), "Trang phục thi đấu BWF\nvà vợt huyền thoại giới hạn.", "CHƯA MỞ", true, func(): pass))
+	var is_def = (PlayerProgress.equipped_trail == "default")
+	row.add_child(_create_mode_card_tex(
+		"VỆT CẦU CHUẨN",
+		"HIỆU ỨNG MẶC ĐỊNH",
+		TEX_SHUTTLECOCK,
+		Color(0.85, 0.90, 1.0),
+		"Vệt cầu trắng tinh khiết tiêu chuẩn\ncủa giải đấu Kaiser Shuttle.",
+		"ĐANG DÙNG" if is_def else "TRANG BỊ",
+		is_def,
+		func():
+			PlayerProgress.buy_or_equip_trail("default")
+			refresh_progression_ui()
+			_refresh_shop_ui()
+	))
+	
+	for tid in ["lightning", "frost", "flame"]:
+		var info = PlayerProgress.SHOP_TRAILS[tid]
+		var owned = (tid in PlayerProgress.unlocked_trails)
+		var equipped = (PlayerProgress.equipped_trail == tid)
+		var btn_txt = "ĐANG DÙNG" if equipped else ("TRANG BỊ" if owned else ("MUA %d XU" % int(info["cost"])))
+		var disabled = equipped or (not owned and PlayerProgress.gold_coins < int(info["cost"]))
+		row.add_child(_create_mode_card_tex(
+			str(info["name"]).to_upper(),
+			"HIỆU ỨNG VỆT CẦU",
+			TEX_SHUTTLECOCK,
+			info["color"],
+			str(info["desc"]) + ("\n(Đã sở hữu)" if owned else ("\nGiá mở khóa: %d Xu" % int(info["cost"]))),
+			btn_txt,
+			disabled,
+			func():
+				if PlayerProgress.buy_or_equip_trail(tid):
+					refresh_progression_ui()
+					_refresh_shop_ui()
+		))
+	
+	var can_ex = PlayerProgress.gems >= 10
+	row.add_child(_create_mode_card_tex(
+		"QUY ĐỔI ĐÁ QUÝ",
+		"10 ĐÁ -> +250 XU",
+		TEX_COIN,
+		Color(0.35, 0.85, 1.0),
+		"Đổi 10 Đá quý lấy 250 Xu vàng\nđể nâng cấp chỉ số hoặc mua vệt cầu.",
+		"ĐỔI 10 ĐÁ" if can_ex else "THIẾU ĐÁ",
+		not can_ex,
+		func():
+			if PlayerProgress.exchange_gems_for_gold(10, 250):
+				refresh_progression_ui()
+				_refresh_shop_ui()
+	))
 
 func _build_quests_panel() -> void:
 	quests_panel = Control.new()

@@ -21,12 +21,12 @@ func _init() -> void:
 	print("✓ 1. Nishikawa (BUFFED) max_flow = %f, Power = %f" % [nishi.max_flow, nishi.power])
 	
 	var fuji = CharacterStats.create_fuji()
-	assert(fuji.max_flow == 80.0, "Fuji max_flow should be 80")
+	assert(fuji.max_flow == 70.0, "Fuji max_flow should be 70")
 	assert(fuji.control >= 99.0, "Fuji is S+ tier")
 	print("✓ 2. Fuji (S+) max_flow = %f, Control = %f" % [fuji.max_flow, fuji.control])
 	
 	var isabel = CharacterStats.create_wall()
-	assert(isabel.max_flow == 90.0, "Isabel max_flow should be 90")
+	assert(isabel.max_flow == 75.0, "Isabel max_flow should be 75")
 	print("✓ 3. Isabel max_flow = %f" % isabel.max_flow)
 	
 	var gitae = CharacterStats.create_gitae()

@@ -3,6 +3,7 @@ class_name BadmintonPlayer
 
 const AIPressureModel = preload("res://scripts/ai/ai_pressure_model.gd")
 const CharacterStats = preload("res://scripts/core/character_stats.gd")
+const PlayerProgress = preload("res://scripts/core/player_progress.gd")
 
 signal shot_hit(shot_type: String, is_smash: bool, quality: float, is_perfect: bool, is_jump_shot: bool, contact_pos: Vector2)
 signal shot_whiffed()
@@ -112,6 +113,7 @@ var is_ice_domain_active: bool = false
 var ice_domain_timer: float = 0.0
 var ice_slow_active: bool = false
 var sara_smash_slow_stacks: int = 0
+var fuji_wind_boost_timer: float = 0.0
 var prev_shift_pressed: bool = false
 var prev_jump_input: bool = false
 var is_swinging: bool = false
@@ -465,6 +467,8 @@ func _physics_process(delta: float) -> void:
 	else:
 		ice_slow_active = false
 		sara_smash_slow_stacks = 0
+	if fuji_wind_boost_timer > 0.0:
+		fuji_wind_boost_timer = max(0.0, fuji_wind_boost_timer - delta)
 	
 	if is_remote_puppet:
 		if has_net_target:
@@ -522,6 +526,8 @@ func _physics_process(delta: float) -> void:
 			velocity.x *= 0.80 # Băng tuyết làm chậm 20% tốc độ di chuyển
 		if sara_smash_slow_stacks > 0:
 			velocity.x *= max(0.30, 1.0 - float(sara_smash_slow_stacks) * 0.05) # -5% tốc độ cộng dồn mỗi cú Smash của Sara
+		if fuji_wind_boost_timer > 0.0:
+			velocity.x *= 1.12 # Fuji Wind Gale: +12% tốc độ áp sát lưới sau Tsubame Gaeshi
 		stats.update_accuracy(delta, balance, current_tension_level)
 	
 	# TỰ ĐỘNG CỨU CẦU KHI BAY NGƯỜI (AUTOMATIC DIVE RESCUE):
@@ -967,6 +973,8 @@ func _process_player_input(delta: float) -> void:
 			var sta = stats.stamina if stats else 100.0
 			# Thể lực thấp làm giảm tốc độ đứng dậy [0.22s khi sung mãn -> 0.68s khi cạn thể lực]:
 			get_up_duration = lerp(0.68, 0.22, clamp(sta / 80.0, 0.0, 1.0))
+			if stats and (stats.character_id == "wall" or stats.special_skill_id == "mirage_counter"):
+				get_up_duration *= 0.70 # Isabel Iron Footwork: đứng dậy nhanh hơn 30%
 	elif is_getting_up:
 		get_up_timer += delta
 		velocity.x = move_toward(velocity.x, 0.0, delta * 900.0)
@@ -2020,12 +2028,13 @@ func _execute_hit(shot_type: String, hit_status: Dictionary = {}) -> void:
 		hit_status["is_perfect"] = true
 		hit_status["quality"] = 1.0
 	
-	# NỘI TẠI THE WALL / AOI (MIRAGE COUNTER):
-	# Khi đỡ cầu Smash hoặc Cầu Non (Chance Ball) lúc đầy Flow (Flow >= 100):
-	# Cưỡng ép kích hoạt tuyệt kỹ Mirage Counter (dù bấm Smash, Drop hay Clear)!
+	# NỘI TẠI THE WALL / ISABEL (MIRAGE COUNTER - BUFFED):
+	# Khi đỡ Smash, Cầu non (Chance Ball) hoặc Drop sát lưới lúc đầy Flow (Flow >= 75):
+	# Cưỡng ép kích hoạt tuyệt kỹ Mirage Counter!
 	var is_incoming_smash = shuttlecock and (shuttlecock.is_smash or shuttlecock.is_boom_smash or shuttlecock.is_kill_smash or shuttlecock.current_shot_type == "smash" or shuttlecock.current_shot_type == "boom_smash" or shuttlecock.current_shot_type == "kill_smash")
 	var is_incoming_chance = shuttlecock and (shuttlecock.is_weak_return or shuttlecock.current_shot_type == "weak_return")
-	var is_wall_auto_counter = is_incoming_smash and stats and (stats.character_id == "wall" or stats.special_skill_id == "mirage_counter") and stats.can_use_special()
+	var is_incoming_drop = shuttlecock and (shuttlecock.current_shot_type == "drop" or shuttlecock.is_jump_drop)
+	var is_wall_auto_counter = (is_incoming_smash or is_incoming_chance or is_incoming_drop) and stats and (stats.character_id == "wall" or stats.special_skill_id == "mirage_counter") and stats.can_use_special()
 	if is_wall_auto_counter:
 		shot_type = "mirage_counter"
 	
@@ -2131,11 +2140,11 @@ func _execute_hit(shot_type: String, hit_status: Dictionary = {}) -> void:
 					stats.accuracy = max(0.0, stats.accuracy * 0.60) # Trừ 40% accuracy đang có
 				balance = max(10.0, balance - 35.0)
 		elif is_wall_auto_counter or shot_type == "mirage_counter":
-			# Đánh vào Isabel có skill (Mirage Counter) với smash thường:
-			# Kẻ tấn công bị phản chấn: trừ 10% tổng thể lực (10.0), trừ 30 balance. KHÔNG giảm cũng KHÔNG được bù accuracy:
+			# Đánh vào Isabel có skill (Mirage Counter):
+			# Kẻ tấn công bị phản chấn: trừ 15% tổng thể lực (15.0), trừ 35 balance.
 			if opponent_player and opponent_player.stats:
-				opponent_player.stats.consume_stamina_action(10.0) # 10% tổng thể lực
-				opponent_player.balance = max(25.0, opponent_player.balance - 30.0)
+				opponent_player.stats.consume_stamina_action(15.0)
+				opponent_player.balance = max(20.0, opponent_player.balance - 35.0)
 		elif is_kill:
 			if is_perfect or quality >= 0.85:
 				if opponent_player:
@@ -2177,8 +2186,8 @@ func _execute_hit(shot_type: String, hit_status: Dictionary = {}) -> void:
 	var is_incoming_tsubame = not is_incoming_smash and shuttlecock and (shuttlecock.current_shot_type == "tsubame_gaeshi" or shuttlecock.is_tsubame_gaeshi)
 	if is_incoming_tsubame and shot_type != "mirage_counter":
 		if stats:
-			stats.accuracy = max(5.0, stats.accuracy - 20.0) # Trừ 20.0 accuracy (thay vì 10.0)
-		balance = max(20.0, balance - 25.0)
+			stats.accuracy = max(5.0, stats.accuracy - 25.0) # Buff Fuji: trừ 25 accuracy
+		balance = max(15.0, balance - 30.0) # Buff Fuji: trừ 30 balance
 		
 		var is_diving_or_sliding = is_diving or is_sliding
 		if not is_diving_or_sliding:
@@ -2187,7 +2196,7 @@ func _execute_hit(shot_type: String, hit_status: Dictionary = {}) -> void:
 				var acc_p = clamp((50.0 - stats.accuracy) / 50.0, 0.0, 1.0) if stats.accuracy < 50.0 else 0.0
 				var sta_p = clamp((35.0 - stats.stamina) / 35.0, 0.0, 1.0) if stats.stamina < 35.0 else 0.0
 				weak_extra = (acc_p * 0.25) + (sta_p * 0.25)
-			var chance_ball_rate = 0.30 + weak_extra
+			var chance_ball_rate = 0.40 + weak_extra # Buff Fuji: 40% chance ball rate
 			if randf() < chance_ball_rate:
 				shot_type = "weak_return"
 		else:
@@ -2273,6 +2282,7 @@ func _execute_hit(shot_type: String, hit_status: Dictionary = {}) -> void:
 		if is_fuji and stats.can_use_special():
 			actual_shot = "tsubame_gaeshi"
 			target_x = 705.0 if facing > 0 else 575.0
+			fuji_wind_boost_timer = 3.0 # Buff Fuji: +12% tốc độ áp sát lưới trong 3s
 			if stats:
 				stats.consume_flow()
 				balance = min(100.0, balance + 15.0)
@@ -2321,12 +2331,12 @@ func _execute_hit(shot_type: String, hit_status: Dictionary = {}) -> void:
 		# Bung sâu cao vút về đáy sân đối phương:
 		target_x = 1110.0 if facing > 0 else 170.0
 		if stats:
-			# Hồi phục 20% thể lực từ khiên Mirage Counter:
-			stats.stamina = min(stats.max_stamina_cap, stats.stamina + 20.0)
+			# Hồi phục 25% thể lực & +20 Accuracy từ khiên Mirage Counter (Buff Isabel):
+			stats.stamina = min(stats.max_stamina_cap, stats.stamina + 25.0)
 			# Chỉ khi chống đỡ cú Smash Sấm Sét (Boom Smash) của Nishikawa thì accuracy mới bị khóa giảm, còn smash thường vẫn hồi phục accuracy:
 			var is_nishi_smash = is_incoming_smash and shuttlecock and (shuttlecock.is_boom_smash or shuttlecock.current_shot_type == "boom_smash")
 			if not is_nishi_smash:
-				stats.accuracy = min(100.0, stats.accuracy + 15.0)
+				stats.accuracy = min(100.0, stats.accuracy + 20.0)
 			stats.consume_flow()
 	elif shot_type == "smash":
 		if is_chance_ball:
@@ -2561,6 +2571,7 @@ func _execute_hit(shot_type: String, hit_status: Dictionary = {}) -> void:
 		shot_hit.emit(actual_shot, is_any_smash, quality, is_perfect, (is_air or actual_shot == "kill_smash"), from_2d)
 		return
 	
+	shuttlecock.custom_trail_id = PlayerProgress.equipped_trail if (not is_ai and not is_remote_puppet) else "default"
 	shuttlecock.launch_to_target_2d(from_2d, Vector2(target_x, current_ground_y), actual_shot, err_offset_x, is_perfect, is_jump_smash_shot, current_tension_mult, current_tension_level)
 	if is_fire_realm_active:
 		shuttlecock.is_fire_ball = true
@@ -2577,6 +2588,7 @@ func execute_pending_special() -> void:
 		shuttlecock.is_suspended_in_smash_slowmo = false
 		shuttlecock.is_active = true
 		shuttlecock.last_hitter = court_side
+		shuttlecock.custom_trail_id = PlayerProgress.equipped_trail if (not is_ai and not is_remote_puppet) else "default"
 		shuttlecock.launch_to_target_2d(
 			pending_special_from,
 			pending_special_target,

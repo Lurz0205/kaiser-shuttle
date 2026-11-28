@@ -37,6 +37,7 @@ var current_shot_type: String = "clear"
 var is_fire_ball: bool = false
 var fire_ball_owner: String = ""
 var is_sara_ice_smash: bool = false
+var custom_trail_id: String = "default"
 
 # Trajectory parameters
 var launch_from: Vector2 = Vector2(390.0, 515.0)
@@ -629,9 +630,23 @@ func _update_trail_styling() -> void:
 		trail.default_color = Color(1.2, 0.9, 0.6, 0.95)
 		trail.width = 26.0
 	else:
-		trail.texture = TEX_TRAIL_SPEED
-		trail.default_color = Color(1.0, 1.0, 1.0, 0.85)
-		trail.width = 18.0
+		match custom_trail_id:
+			"lightning":
+				trail.texture = TEX_TRAIL_LIGHTNING
+				trail.default_color = Color(1.0, 0.85, 0.25, 0.92)
+				trail.width = 22.0
+			"frost":
+				trail.texture = TEX_TRAIL_MIRAGE
+				trail.default_color = Color(0.45, 0.85, 1.0, 0.92)
+				trail.width = 22.0
+			"flame":
+				trail.texture = TEX_TRAIL_LIGHTNING
+				trail.default_color = Color(1.0, 0.42, 0.15, 0.95)
+				trail.width = 24.0
+			_:
+				trail.texture = TEX_TRAIL_SPEED
+				trail.default_color = Color(1.0, 1.0, 1.0, 0.85)
+				trail.width = 18.0
 
 
 func _update_trail() -> void:
