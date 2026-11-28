@@ -44,6 +44,8 @@ var match_dive_save_count: int = 0
 var is_tournament_match: bool = false
 var tournament_cup_id: String = ""
 var tournament_round_idx: int = 0
+var is_story_match: bool = false
+var story_chapter_idx: int = 0
 var is_training_mode: bool = false
 var training_launcher_timer: float = 0.0
 var training_launcher_node: Node2D = null
@@ -276,6 +278,8 @@ func _ready() -> void:
 		main_menu.start_match_requested.connect(_on_menu_start_match)
 	if main_menu.has_signal("start_tournament_match_requested") and not main_menu.start_tournament_match_requested.is_connected(_on_menu_start_tournament_match):
 		main_menu.start_tournament_match_requested.connect(_on_menu_start_tournament_match)
+	if main_menu.has_signal("start_story_match_requested") and not main_menu.start_story_match_requested.is_connected(_on_menu_start_story_match):
+		main_menu.start_story_match_requested.connect(_on_menu_start_story_match)
 	if not main_menu.start_pvp_match_requested.is_connected(_on_menu_start_pvp_match):
 		main_menu.start_pvp_match_requested.connect(_on_menu_start_pvp_match)
 	if not main_menu.spectate_room_requested.is_connected(_on_menu_spectate_room):
@@ -953,6 +957,7 @@ func _toggle_character_select() -> void:
 
 
 func _on_menu_start_tournament_match(cup_id: String, round_idx: int, p_id: String, r_id: String, diff: int, target_points: int) -> void:
+	is_story_match = false
 	is_tournament_match = true
 	tournament_cup_id = cup_id
 	tournament_round_idx = round_idx
@@ -960,10 +965,20 @@ func _on_menu_start_tournament_match(cup_id: String, round_idx: int, p_id: Strin
 	is_tournament_match = true
 
 
+func _on_menu_start_story_match(ch_idx: int, p_id: String, r_id: String, diff: int, target_points: int) -> void:
+	is_tournament_match = false
+	is_story_match = true
+	story_chapter_idx = ch_idx
+	_on_menu_start_match(p_id, r_id, diff, target_points, 1)
+	is_story_match = true
+
+
 func _on_menu_start_match(p_id: String, r_id: String, diff: int, target_points: int = 11, match_sets: int = 1) -> void:
 	if not is_tournament_match:
 		tournament_cup_id = ""
 		tournament_round_idx = 0
+	if not is_story_match:
+		story_chapter_idx = 0
 	is_pvp_active = false
 	is_training_mode = (r_id == "training_machine")
 	training_launcher_timer = 0.0
@@ -3675,6 +3690,16 @@ func _show_match_over_dialog(champ: String) -> void:
 		else:
 			reward_gold = 40
 			tourney_note = "DỪNG BƯỚC TẠI VÒNG %d" % [tournament_round_idx + 1]
+	elif is_story_match and story_chapter_idx >= 0 and story_chapter_idx < PlayerProgress.STORY_CHAPTERS.size():
+		var ch = PlayerProgress.STORY_CHAPTERS[story_chapter_idx]
+		if player_won:
+			var first_clr = PlayerProgress.complete_story_chapter(story_chapter_idx)
+			reward_gold = int(ch["reward_gold"]) if first_clr else int(int(ch["reward_gold"]) * 0.4)
+			reward_gems = int(ch["reward_gems"]) if first_clr else 2
+			tourney_note = "HOÀN THÀNH CHƯƠNG %d/5!" % [story_chapter_idx + 1]
+		else:
+			reward_gold = 35
+			tourney_note = "THỬ THÁCH CHƯƠNG %d THẤT BẠI" % [story_chapter_idx + 1]
 	else:
 		var diff_idx = ai_rival.ai_difficulty if ai_rival else 1
 		var win_gold = 80 if diff_idx == 0 else (140 if diff_idx == 1 else 220)
@@ -3699,6 +3724,9 @@ func _show_match_over_dialog(champ: String) -> void:
 		else:
 			if btn_again_node:
 				btn_again_node.text = "ĐẤU LẠI GIẢI"
+	elif is_story_match and player_won and story_chapter_idx < PlayerProgress.STORY_CHAPTERS.size() - 1:
+		if btn_again_node:
+			btn_again_node.text = "CHƯƠNG TIẾP THEO (%d/%d)" % [story_chapter_idx + 2, PlayerProgress.STORY_CHAPTERS.size()]
 	else:
 		if btn_again_node:
 			btn_again_node.text = "CHƠI LẠI (PLAY AGAIN)"
@@ -3721,6 +3749,14 @@ func _on_match_over_play_again() -> void:
 		var rnd = rounds[tournament_round_idx]
 		var p_cid = player.character_id if player else "nishikawa"
 		_on_menu_start_tournament_match(tournament_cup_id, tournament_round_idx, p_cid, rnd["char"], rnd["diff"], rnd["pts"])
+		return
+	if is_story_match and story_chapter_idx >= 0 and story_chapter_idx < PlayerProgress.STORY_CHAPTERS.size():
+		var player_won = (sets_won_player > sets_won_ai) or (total_match_sets == 1 and score_player > score_ai)
+		if player_won and story_chapter_idx < PlayerProgress.STORY_CHAPTERS.size() - 1:
+			story_chapter_idx += 1
+		var ch = PlayerProgress.STORY_CHAPTERS[story_chapter_idx]
+		var p_cid = player.character_id if player else "nishikawa"
+		_on_menu_start_story_match(story_chapter_idx, p_cid, ch["char"], ch["diff"], ch["pts"])
 		return
 	match_perfect_count = 0
 	match_smash_count = 0
@@ -3751,6 +3787,8 @@ func _on_match_over_to_menu() -> void:
 	is_tournament_match = false
 	tournament_cup_id = ""
 	tournament_round_idx = 0
+	is_story_match = false
+	story_chapter_idx = 0
 	_return_to_lobby_and_stop_match()
 
 

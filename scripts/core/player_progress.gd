@@ -73,8 +73,17 @@ static var quests: Dictionary = {
 	"dive_saves": {"prog": 0, "target": 5, "claimed": false, "gold": 200, "gems": 10, "title": "Thực hiện 5 pha bay người cứu cầu thành công"},
 }
 static var cups_won: Dictionary = {"rookie": 0, "national": 0, "world": 0}
+static var story_unlocked_idx: int = 0
 static var unlocked_trails: Array = ["default"]
 static var equipped_trail: String = "default"
+
+const STORY_CHAPTERS := [
+	{"id": 0, "title": "CHƯƠNG 1: TÂN BINH LA MÃ",      "char": "wall",      "diff": 0, "pts": 11, "reward_gold": 150, "reward_gems": 5,  "desc": "Chạm trán Isabel — Nữ hoàng phòng thủ tại vòng loại mở màn.", "color": Color(0.30, 0.75, 1.0)},
+	{"id": 1, "title": "CHƯƠNG 2: CƠN LỐC XANH",        "char": "fuji",      "diff": 1, "pts": 11, "reward_gold": 250, "reward_gems": 10, "desc": "Đối đầu Tsubame Gaeshi của Fuji tại vòng bảng quốc gia.",     "color": Color(0.25, 0.90, 0.55)},
+	{"id": 2, "title": "CHƯƠNG 3: LÔI THẦN THỨC TỈNH",  "char": "nishikawa", "diff": 1, "pts": 15, "reward_gold": 350, "reward_gems": 15, "desc": "Chặn đứng những cú Golden Boom Smash của Nishikawa.",          "color": Color(1.0, 0.84, 0.25)},
+	{"id": 3, "title": "CHƯƠNG 4: BÃO LỬA HỎA NGỤC",    "char": "gitae",     "diff": 2, "pts": 15, "reward_gold": 500, "reward_gems": 25, "desc": "Vượt qua Hỏa Ngục bao sân 7s của Han Gitae ở bán kết.",      "color": Color(1.0, 0.42, 0.15)},
+	{"id": 4, "title": "CHƯƠNG 5: NỮ HOÀNG HÀN BĂNG",   "char": "sara",      "diff": 2, "pts": 21, "reward_gold": 800, "reward_gems": 50, "desc": "Chung kết thế giới: Phá giải Không Gian Băng Giá của Sara!",  "color": Color(0.45, 0.88, 1.0)},
+]
 
 const SHOP_TRAILS := {
 	"sakura":      {"name": "Vệt Hoa Anh Đào", "desc": "Hiệu ứng vệt cầu sắc hồng Sakura thanh lịch.", "cost": 300, "color": Color(1.0, 0.55, 0.78)},
@@ -127,6 +136,7 @@ static func ensure_loaded() -> void:
 				var eq_t = str(parsed.get("equipped_trail", "default"))
 				if unlocked_trails.has(eq_t):
 					equipped_trail = eq_t
+				story_unlocked_idx = clampi(int(parsed.get("story_idx", 0)), 0, STORY_CHAPTERS.size() - 1)
 				return
 	if loaded_ok:
 		gold_coins = int(cfg.get_value("wallet", "gold", gold_coins))
@@ -151,6 +161,7 @@ static func ensure_loaded() -> void:
 		var cfg_eq = str(cfg.get_value("shop", "equipped_trail", "default"))
 		if unlocked_trails.has(cfg_eq):
 			equipped_trail = cfg_eq
+		story_unlocked_idx = clampi(int(cfg.get_value("story", "unlocked_idx", 0)), 0, STORY_CHAPTERS.size() - 1)
 
 
 static func save() -> void:
@@ -168,6 +179,7 @@ static func save() -> void:
 		cfg.set_value("cups", cup_id, cups_won[cup_id])
 	cfg.set_value("shop", "trails", unlocked_trails)
 	cfg.set_value("shop", "equipped_trail", equipped_trail)
+	cfg.set_value("story", "unlocked_idx", story_unlocked_idx)
 	cfg.save(SAVE_PATH)
 	if OS.has_feature("web"):
 		var payload = {
@@ -177,7 +189,8 @@ static func save() -> void:
 			"quests": quests,
 			"cups": cups_won,
 			"trails": unlocked_trails,
-			"equipped_trail": equipped_trail
+			"equipped_trail": equipped_trail,
+			"story_idx": story_unlocked_idx
 		}
 		var json_str = JSON.stringify(payload).replace("'", "\\'")
 		JavaScriptBridge.eval("localStorage.setItem('kaiser_progress_v1', '%s');" % json_str)
@@ -257,6 +270,15 @@ static func record_cup_win(cup_id: String) -> void:
 	if cups_won.has(cup_id):
 		cups_won[cup_id] = int(cups_won[cup_id]) + 1
 		save()
+
+
+static func complete_story_chapter(ch_idx: int) -> bool:
+	ensure_loaded()
+	var is_first_clear = (ch_idx >= story_unlocked_idx)
+	if ch_idx + 1 > story_unlocked_idx and ch_idx + 1 < STORY_CHAPTERS.size():
+		story_unlocked_idx = ch_idx + 1
+		save()
+	return is_first_clear
 
 
 static func buy_or_equip_trail(trail_id: String) -> bool:

@@ -54,6 +54,7 @@ const PlayerProgress = preload("res://scripts/core/player_progress.gd")
 
 signal start_match_requested(player_char: String, rival_char: String, difficulty: int, target_points: int, match_sets: int)
 signal start_tournament_match_requested(cup_id: String, round_idx: int, player_char: String, rival_char: String, difficulty: int, target_points: int)
+signal start_story_match_requested(chapter_idx: int, player_char: String, rival_char: String, difficulty: int, target_points: int)
 signal start_pvp_match_requested(room_code: String, is_host: bool, player_char: String, target_points: int, match_sets: int, first_server: String, opponent_char: String, player_name: String, opponent_name: String)
 signal spectate_room_requested(room_code: String)
 signal touch_toggle_requested(enabled: bool)
@@ -73,6 +74,7 @@ enum MenuState {
 	SHOP,           # Cửa hàng
 	QUESTS,         # Nhiệm vụ hàng ngày
 	TOURNAMENT,     # Chế độ Giải đấu (Tournament Cup)
+	STORY,          # Chế độ Cốt truyện (Story Mode 5 chương)
 	SETTINGS        # Cài đặt chuyên sâu
 }
 
@@ -128,6 +130,7 @@ var roster_panel: Control
 var shop_panel: Control
 var quests_panel: Control
 var tournament_panel: Control
+var story_panel: Control
 var settings_panel: Control
 var lbl_gold_pill: Label = null
 var lbl_gem_pill: Label = null
@@ -413,7 +416,7 @@ func switch_state(new_state: MenuState) -> void:
 	
 	if global_tint:
 		# Màn hình Title và Sảnh chờ chính giữ 100% độ sáng, sắc nét nguyên bản, không bị phủ màng mờ
-		global_tint.visible = (new_state in [MenuState.ROSTER, MenuState.SHOP, MenuState.SETTINGS, MenuState.QUESTS, MenuState.MATCH_SETUP, MenuState.PVP_LOBBY])
+		global_tint.visible = (new_state in [MenuState.ROSTER, MenuState.SHOP, MenuState.SETTINGS, MenuState.QUESTS, MenuState.MATCH_SETUP, MenuState.PVP_LOBBY, MenuState.TOURNAMENT, MenuState.STORY])
 	
 	# Visibility map
 	if title_panel: title_panel.visible = (new_state == MenuState.TITLE)
@@ -446,6 +449,10 @@ func switch_state(new_state: MenuState) -> void:
 		tournament_panel.visible = (new_state == MenuState.TOURNAMENT)
 		if tournament_panel.visible:
 			_refresh_tournament_ui()
+	if story_panel:
+		story_panel.visible = (new_state == MenuState.STORY)
+		if story_panel.visible:
+			_refresh_story_ui()
 	if settings_panel: settings_panel.visible = (new_state == MenuState.SETTINGS)
 	refresh_progression_ui()
 	
@@ -582,6 +589,7 @@ func _build_ui() -> void:
 	_build_shop_panel()
 	_build_quests_panel()
 	_build_tournament_panel()
+	_build_story_panel()
 	
 	# ----------------------------------------------------
 	# 8. SETTINGS PANEL (The Spike Stepped Bars)
@@ -1193,7 +1201,7 @@ void vertex() {
 	sb_ms.corner_radius_bottom_left = 6
 	mode_summary.add_theme_stylebox_override("panel", sb_ms)
 	var ms_lbl = Label.new()
-	ms_lbl.text = "  Cốt Truyện: Vòng Loại BWF  -  Chương 1 - 6"
+	ms_lbl.text = "  Cốt Truyện: Vòng Loại BWF  -  Chương 1 - 5"
 	ms_lbl.add_theme_font_size_override("font_size", 11)
 	ms_lbl.modulate = Color(0.80, 0.85, 0.92)
 	mode_summary.add_child(ms_lbl)
@@ -1386,16 +1394,18 @@ func _build_match_select_panel() -> void:
 			start_match_requested.emit(selected_player_id, "training_machine", 0, 999, 1)
 	))
 	
-	# 4. Story Mode Card (Studio Gold Padlock Icon)
+	# 4. Story Mode Card (Unlocked 5-Chapter Story)
 	cards_row.add_child(_create_mode_card_tex(
 		"CỐT TRUYỆN THIẾU NIÊN",
 		"HÀNH TRÌNH VÔ ĐỊCH",
-		TEX_PADLOCK,
+		CustomIcon.IconType.BOOK_STORY,
 		Color(0.85, 0.50, 1.0),
-		"Hành trình từ giải phong trào đến đỉnh cao thế giới.\nChinh phục các chặng đua kịch tính.",
-		"SẮP RA MẮT",
-		true,
-		func(): pass
+		"Hành trình 5 chương từ giải phong trào đến đỉnh cao thế giới.\nChinh phục từng đối thủ để nhận thưởng lớn!",
+		"CHINH PHỤC",
+		false,
+		func():
+			if Time.get_ticks_msec() < _state_switch_cooldown_until: return
+			switch_state(MenuState.STORY)
 	))
 	
 	# 5. Tournament Cup Card (MỞ KHÓA)
@@ -2457,6 +2467,106 @@ func refresh_progression_ui() -> void:
 		lbl_gold_pill.text = str(PlayerProgress.gold_coins)
 	if lbl_gem_pill:
 		lbl_gem_pill.text = str(PlayerProgress.gems) + " ĐÁ"
+
+
+func _build_story_panel() -> void:
+	story_panel = Control.new()
+	story_panel.custom_minimum_size = Vector2(1280, 720)
+	story_panel.size = Vector2(1280, 720)
+	story_panel.position = Vector2.ZERO
+	story_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	story_panel.visible = false
+	add_child(story_panel)
+	
+	var back_btn = _create_clean_button("<  QUAY LẠI CHỌN CHẾ ĐỘ", Color(0.75, 0.82, 0.92), Vector2(210, 36), 12)
+	back_btn.position = Vector2(30, 80)
+	back_btn.pressed.connect(func(): switch_state(MenuState.MATCH_SELECT))
+	story_panel.add_child(back_btn)
+	
+	var s_box = _create_spike_translucent_panel(Vector2(1060, 520), 12, Color(0.70, 0.45, 0.95, 0.55))
+	s_box.position = Vector2(110, 125)
+	s_box.mouse_filter = Control.MOUSE_FILTER_PASS
+	story_panel.add_child(s_box)
+	
+	var m = MarginContainer.new()
+	m.add_theme_constant_override("margin_left", 24)
+	m.add_theme_constant_override("margin_top", 20)
+	m.add_theme_constant_override("margin_right", 24)
+	m.add_theme_constant_override("margin_bottom", 20)
+	s_box.add_child(m)
+	
+	var sv = VBoxContainer.new()
+	sv.name = "StoryVBox"
+	sv.add_theme_constant_override("separation", 12)
+	m.add_child(sv)
+	_refresh_story_ui()
+
+
+func _refresh_story_ui() -> void:
+	if not story_panel:
+		return
+	var sv = story_panel.find_child("StoryVBox", true, false) as VBoxContainer
+	if not sv:
+		return
+	for c in sv.get_children():
+		c.queue_free()
+		
+	PlayerProgress.ensure_loaded()
+	var hdr = Label.new()
+	hdr.text = "CỐT TRUYỆN THIẾU NIÊN (HÀNH TRÌNH 5 CHƯƠNG) — VẬN ĐỘNG VIÊN: %s" % CHAR_DATA[selected_player_id]["name"]
+	hdr.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	hdr.add_theme_font_size_override("font_size", 17)
+	hdr.modulate = Color(0.85, 0.55, 1.0)
+	sv.add_child(hdr)
+	
+	for i in range(PlayerProgress.STORY_CHAPTERS.size()):
+		var ch = PlayerProgress.STORY_CHAPTERS[i]
+		var unlocked = (i <= PlayerProgress.story_unlocked_idx)
+		var cleared = (i < PlayerProgress.story_unlocked_idx)
+		var col: Color = ch["color"]
+		
+		var row_panel = _create_spike_translucent_panel(Vector2(980, 74), 8, Color(col.r, col.g, col.b, 0.45 if unlocked else 0.18))
+		sv.add_child(row_panel)
+		
+		var rm = MarginContainer.new()
+		rm.add_theme_constant_override("margin_left", 16)
+		rm.add_theme_constant_override("margin_right", 16)
+		rm.add_theme_constant_override("margin_top", 10)
+		rm.add_theme_constant_override("margin_bottom", 10)
+		row_panel.add_child(rm)
+		
+		var rh = HBoxContainer.new()
+		rh.add_theme_constant_override("separation", 16)
+		rm.add_child(rh)
+		
+		var info_v = VBoxContainer.new()
+		info_v.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		info_v.add_theme_constant_override("separation", 3)
+		rh.add_child(info_v)
+		
+		var title_lbl = Label.new()
+		title_lbl.text = "%s   %s" % [ch["title"], "(ĐÃ HOÀN THÀNH)" if cleared else ("" if unlocked else "(CHƯA MỞ)")]
+		title_lbl.add_theme_font_size_override("font_size", 13)
+		title_lbl.modulate = col if unlocked else Color(0.55, 0.60, 0.68)
+		info_v.add_child(title_lbl)
+		
+		var opp_name = CHAR_DATA[ch["char"]]["name"]
+		var diff_str = "DỄ" if int(ch["diff"]) == 0 else ("TRUNG BÌNH" if int(ch["diff"]) == 1 else "ĐỈNH CAO")
+		var sub_lbl = Label.new()
+		sub_lbl.text = "%s  |  Đối thủ: %s (%s, %dđ)  |  Thưởng: +%d Xu, +%d Đá" % [ch["desc"], opp_name, diff_str, int(ch["pts"]), int(ch["reward_gold"]), int(ch["reward_gems"])]
+		sub_lbl.add_theme_font_size_override("font_size", 11)
+		sub_lbl.modulate = Color(0.84, 0.88, 0.94) if unlocked else Color(0.45, 0.50, 0.58)
+		info_v.add_child(sub_lbl)
+		
+		var btn_txt = "CHƠI LẠI" if cleared else ("THÁCH ĐẤU" if unlocked else "ĐANG KHÓA")
+		var btn = _create_clean_button(btn_txt, col if unlocked else Color(0.4, 0.45, 0.52), Vector2(140, 40), 12)
+		btn.disabled = not unlocked
+		var idx_cap = i
+		btn.pressed.connect(func():
+			var c_data = PlayerProgress.STORY_CHAPTERS[idx_cap]
+			start_story_match_requested.emit(idx_cap, selected_player_id, c_data["char"], int(c_data["diff"]), int(c_data["pts"]))
+		)
+		rh.add_child(btn)
 
 
 func _build_tournament_panel() -> void:
