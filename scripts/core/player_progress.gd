@@ -77,9 +77,9 @@ static var unlocked_trails: Array = ["default"]
 static var equipped_trail: String = "default"
 
 const SHOP_TRAILS := {
-	"lightning": {"name": "Vệt Cầu Lôi Quang", "desc": "Hiệu ứng vệt cầu tia chớp vàng rực rỡ.", "cost": 300, "color": Color(1.0, 0.85, 0.25)},
-	"frost":     {"name": "Vệt Cầu Băng Tuyết", "desc": "Hiệu ứng vệt cầu băng xanh ngọc mát lạnh.", "cost": 350, "color": Color(0.35, 0.85, 1.0)},
-	"flame":     {"name": "Vệt Cầu Hỏa Diệm", "desc": "Hiệu ứng vệt cầu lửa cam đỏ rực cháy.", "cost": 400, "color": Color(1.0, 0.42, 0.15)},
+	"sakura":      {"name": "Vệt Hoa Anh Đào", "desc": "Hiệu ứng vệt cầu sắc hồng Sakura thanh lịch.", "cost": 300, "color": Color(1.0, 0.55, 0.78)},
+	"royal_gold":  {"name": "Vệt Hoàng Kim",   "desc": "Hiệu ứng vệt cầu ánh kim sang trọng.", "cost": 450, "color": Color(1.0, 0.84, 0.30)},
+	"neon_violet": {"name": "Vệt Tử Quang",    "desc": "Hiệu ứng vệt cầu tím Neon rực rỡ.", "cost": 600, "color": Color(0.75, 0.38, 1.0)},
 }
 
 
@@ -285,3 +285,21 @@ static func exchange_gems_for_gold(gem_cost: int = 10, gold_gain: int = 250) -> 
 	gold_coins += gold_gain
 	save()
 	return true
+
+
+static func open_supply_box(gold_cost: int = 200) -> Dictionary:
+	ensure_loaded()
+	if gold_coins < gold_cost:
+		return {"ok": false}
+	gold_coins -= gold_cost
+	var roll = randf()
+	var bonus_gold = 0
+	var bonus_gems = 0
+	if roll < 0.50:
+		bonus_gold = randi_range(120, 350)
+		gold_coins += bonus_gold
+	else:
+		bonus_gems = randi_range(6, 18)
+		gems += bonus_gems
+	save()
+	return {"ok": true, "gold": bonus_gold, "gems": bonus_gems}

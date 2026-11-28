@@ -44,6 +44,9 @@ var match_dive_save_count: int = 0
 var is_tournament_match: bool = false
 var tournament_cup_id: String = ""
 var tournament_round_idx: int = 0
+var is_training_mode: bool = false
+var training_launcher_timer: float = 0.0
+var training_launcher_node: Node2D = null
 var floating_text_mgr: FloatingTextManager = FloatingTextManager.new()
 var effects_overlay: Node2D = null
 
@@ -753,6 +756,10 @@ func _return_to_lobby_and_stop_match() -> void:
 		net_manager.disconnect_peer()
 		is_pvp_active = false
 	is_spectator = false
+	is_training_mode = false
+	training_launcher_timer = 0.0
+	if training_launcher_node:
+		training_launcher_node.visible = false
 	
 	# 1. Đặt MatchState về LOBBY_IDLE
 	current_state = MatchState.LOBBY_IDLE
@@ -781,6 +788,7 @@ func _return_to_lobby_and_stop_match() -> void:
 		if player.has_method("reset_state"):
 			player.reset_state()
 	if ai_rival:
+		ai_rival.visible = true
 		ai_rival.velocity = Vector2.ZERO
 		ai_rival.global_position = Vector2(900.0, FLOOR_Y)
 		ai_rival.can_hit = false
@@ -957,6 +965,8 @@ func _on_menu_start_match(p_id: String, r_id: String, diff: int, target_points: 
 		tournament_cup_id = ""
 		tournament_round_idx = 0
 	is_pvp_active = false
+	is_training_mode = (r_id == "training_machine")
+	training_launcher_timer = 0.0
 	match_perfect_count = 0
 	match_smash_count = 0
 	match_dive_save_count = 0
@@ -1001,50 +1011,133 @@ func _on_menu_start_match(p_id: String, r_id: String, diff: int, target_points: 
 		player.move_speed_x = lerp(207.0, 238.5, (player.stats.agility - 40.0) / 59.0)
 		
 	if ai_rival:
-		ai_rival.set_physics_process(true)
-		ai_rival.character_id = r_id
-		match r_id:
-			"nishikawa": ai_rival.stats = CharacterStats.create_nishikawa()
-			"fuji": ai_rival.stats = CharacterStats.create_fuji()
-			"wall": ai_rival.stats = CharacterStats.create_wall()
-			"gitae": ai_rival.stats = CharacterStats.create_gitae()
-			"sara": ai_rival.stats = CharacterStats.create_sara()
-			_: ai_rival.stats = CharacterStats.create_wall()
-		ai_rival.move_speed_x = lerp(207.0, 238.5, (ai_rival.stats.agility - 40.0) / 59.0)
-		if ai_rival.stats:
-			ai_rival.stats.reset_stamina()
-			ai_rival.stats.reset_torque()
-		ai_rival.reset_in_match_learning()
-		set_ai_difficulty(diff)
+		if is_training_mode:
+			ai_rival.visible = false
+			ai_rival.set_physics_process(false)
+			ai_rival.global_position = Vector2(2000.0, FLOOR_Y)
+			_ensure_training_launcher()
+			training_launcher_node.visible = true
+		else:
+			if training_launcher_node:
+				training_launcher_node.visible = false
+			ai_rival.visible = true
+			ai_rival.set_physics_process(true)
+			ai_rival.character_id = r_id
+			match r_id:
+				"nishikawa": ai_rival.stats = CharacterStats.create_nishikawa()
+				"fuji": ai_rival.stats = CharacterStats.create_fuji()
+				"wall": ai_rival.stats = CharacterStats.create_wall()
+				"gitae": ai_rival.stats = CharacterStats.create_gitae()
+				"sara": ai_rival.stats = CharacterStats.create_sara()
+				_: ai_rival.stats = CharacterStats.create_wall()
+			ai_rival.move_speed_x = lerp(207.0, 238.5, (ai_rival.stats.agility - 40.0) / 59.0)
+			if ai_rival.stats:
+				ai_rival.stats.reset_stamina()
+				ai_rival.stats.reset_torque()
+			ai_rival.reset_in_match_learning()
+			set_ai_difficulty(diff)
 		
 	# Cập nhật tên huy hiệu trên HUD
 	if label_player_badge and player and player.stats:
 		label_player_badge.text = player.stats.character_name.to_upper()
-	if label_rival_badge and ai_rival and ai_rival.stats:
-		label_rival_badge.text = ai_rival.stats.character_name.to_upper()
+	if label_rival_badge:
+		if is_training_mode:
+			label_rival_badge.text = "MÁY BUNG CẦU"
+		elif ai_rival and ai_rival.stats:
+			label_rival_badge.text = ai_rival.stats.character_name.to_upper()
 		
 	# Khởi tạo bảng điểm BWF chuẩn truyền hình
 	if bwf_scoreboard:
 		bwf_scoreboard.reset_scoreboard(total_match_sets)
 		var p_name = p_id.to_upper()
-		var r_name = r_id.to_upper()
+		var r_name = "MÁY BUNG CẦU" if is_training_mode else r_id.to_upper()
 		if player and player.stats:
 			p_name = player.stats.character_name.split("(")[0].strip_edges().to_upper()
-		if ai_rival and ai_rival.stats:
+		if not is_training_mode and ai_rival and ai_rival.stats:
 			r_name = ai_rival.stats.character_name.split("(")[0].strip_edges().to_upper()
 		var flag_p1 = "KR" if p_id == "gitae" else ("SE" if p_id == "sara" else ("JP" if p_id == "nishikawa" or p_id == "fuji" else "DK"))
-		var flag_p2 = "KR" if r_id == "gitae" else ("SE" if r_id == "sara" else ("DK" if r_id == "wall" else "JP"))
+		var flag_p2 = "VN" if is_training_mode else ("KR" if r_id == "gitae" else ("SE" if r_id == "sara" else ("DK" if r_id == "wall" else "JP")))
 		bwf_scoreboard.set_players(p_name, r_name, flag_p1, flag_p2)
 		bwf_scoreboard.update_current_score(0, 0)
 		bwf_scoreboard.set_server(false)
 		
-	# Reset điểm và bắt đầu giao cầu
+	# Reset điểm và bắt đầu giao cầu (hoặc bật máy bung cầu nếu là Sân tập Smash)
 	_update_scoreboard()
-	_setup_serve("player")
-	_play_umpire_opening_call("player")
+	if is_training_mode:
+		current_state = MatchState.RALLY
+		is_serve_in_progress = false
+		is_point_transition_active = false
+		if player:
+			player.global_position = Vector2(360.0, FLOOR_Y)
+			player.is_serving_phase = false
+			player.can_hit = true
+		if shuttlecock:
+			shuttlecock.is_active = false
+			shuttlecock.visible = false
+		training_launcher_timer = 0.65
+		_show_banner("SÂN TẬP SMASH! MÁY ĐANG BUNG CẦU...", Color(0.4, 0.85, 1.0))
+	else:
+		_setup_serve("player")
+		_play_umpire_opening_call("player")
 		
 	# Bật hoặc tắt nhạc nền trận đấu theo thiết lập (bắt đầu lại bài nhạc từ đầu)
 	_apply_match_bgm(true)
+
+
+func _ensure_training_launcher() -> void:
+	if training_launcher_node and is_instance_valid(training_launcher_node):
+		return
+	training_launcher_node = Node2D.new()
+	training_launcher_node.name = "TrainingLauncher"
+	training_launcher_node.position = Vector2(1010.0, FLOOR_Y)
+	training_launcher_node.z_index = 15
+	
+	var stand = Polygon2D.new()
+	stand.polygon = PackedVector2Array([-22, 0, 22, 0, 14, -46, -14, -46])
+	stand.color = Color(0.18, 0.24, 0.34, 1.0)
+	training_launcher_node.add_child(stand)
+	
+	var barrel = Polygon2D.new()
+	barrel.polygon = PackedVector2Array([-26, -54, 10, -70, 16, -56, -20, -40])
+	barrel.color = Color(0.28, 0.72, 0.96, 1.0)
+	training_launcher_node.add_child(barrel)
+	
+	var lbl = Label.new()
+	lbl.text = "MÁY BUNG CẦU"
+	lbl.position = Vector2(-50, -96)
+	lbl.add_theme_font_size_override("font_size", 11)
+	lbl.modulate = Color(0.45, 0.88, 1.0, 0.95)
+	training_launcher_node.add_child(lbl)
+	add_child(training_launcher_node)
+
+
+func _launch_training_shuttle() -> void:
+	if not is_training_mode or not shuttlecock:
+		return
+	current_state = MatchState.RALLY
+	is_point_transition_active = false
+	is_serve_in_progress = false
+	if player:
+		player.can_hit = true
+		player.is_serving_phase = false
+	var target_x = randf_range(165.0, 440.0)
+	shuttlecock.visible = true
+	shuttlecock.is_active = true
+	shuttlecock.is_net_fault = false
+	shuttlecock.is_fire_ball = false
+	shuttlecock.is_sara_ice_smash = false
+	shuttlecock.custom_trail_id = "default"
+	shuttlecock.last_hitter = "ai"
+	shuttlecock.launch_to_target_2d(
+		Vector2(986.0, FLOOR_Y - 62.0),
+		Vector2(target_x, FLOOR_Y),
+		"clear",
+		0.0,
+		true,
+		false,
+		1.0,
+		0
+	)
 
 
 func _on_menu_settings_updated(sq: bool, bgm_en: bool = true, bgm_vol: float = 0.20, low_gfx: bool = false) -> void:
@@ -1081,6 +1174,10 @@ func _on_menu_start_pvp_match(room_code: String, is_host: bool, local_char: Stri
 	is_pvp_active = true
 	is_pvp_host = is_host
 	is_spectator = false
+	is_training_mode = false
+	training_launcher_timer = 0.0
+	if training_launcher_node:
+		training_launcher_node.visible = false
 	pvp_room_code = room_code
 	pvp_local_char = local_char
 	pvp_local_player_name = local_player_name.strip_edges().to_upper() if not local_player_name.strip_edges().is_empty() else "PLAYER"
@@ -1337,6 +1434,10 @@ func _show_spectator_banner() -> void:
 
 func _on_spectator_leave() -> void:
 	is_spectator = false
+	is_training_mode = false
+	training_launcher_timer = 0.0
+	if training_launcher_node:
+		training_launcher_node.visible = false
 	is_pvp_active = false
 	if net_manager:
 		net_manager.disconnect_peer()
@@ -1913,6 +2014,14 @@ func _update_difficulty_buttons() -> void:
 func _process(delta: float) -> void:
 	if current_state == MatchState.LOBBY_IDLE or (main_menu and main_menu.visible):
 		return
+	
+	if is_training_mode:
+		if player and player.stats:
+			player.stats.current_stamina = player.stats.max_stamina
+		if training_launcher_timer > 0.0:
+			training_launcher_timer -= delta
+			if training_launcher_timer <= 0.0:
+				_launch_training_shuttle()
 		
 	# Performance Debug HUD (FPS & Draw Calls)
 	_debug_perf_timer += delta
@@ -3157,6 +3266,19 @@ func _confirm_shuttlecock_landed(pos: Vector2, p_is_serve: bool = false) -> void
 	if is_pvp_active and not is_pvp_host:
 		return
 	
+	if is_training_mode:
+		is_point_transition_active = false
+		is_serve_in_progress = false
+		current_state = MatchState.RALLY
+		if shuttlecock and shuttlecock.last_hitter == "player" and pos.x > NET_X and pos.x <= RIGHT_OUT_X:
+			score_player += 1
+			_update_scoreboard()
+			_show_landing_callout(pos, "SMASH!", "TRÚNG SÂN!")
+		else:
+			_show_landing_callout(pos, "FEED", "CHUẨN BỊ CẦU MỚI")
+		training_launcher_timer = 0.55
+		return
+	
 	var point_winner = ""
 	var reason = ""
 	
@@ -3240,6 +3362,13 @@ func _on_shuttlecock_hit_net() -> void:
 	_show_landing_callout(shuttlecock.global_position, "FAULT", "CẦU MẮC LƯỚI")
 	
 	if is_pvp_active and not is_pvp_host:
+		return
+	
+	if is_training_mode:
+		is_serve_in_progress = false
+		is_point_transition_active = false
+		current_state = MatchState.RALLY
+		training_launcher_timer = 0.55
 		return
 	
 	if is_serve_in_progress:

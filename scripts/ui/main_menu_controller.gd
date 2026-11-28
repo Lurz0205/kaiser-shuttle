@@ -18,13 +18,11 @@ var global_bg: TextureRect = null
 var global_tint: ColorRect = null
 
 # Studio Pre-rendered High-Quality Icons (0% Vector CPU lag, 100% Anti-Aliased)
-const TEX_SHUTTLECOCK = preload("res://assets/icons/icon_shuttlecock_gold.png")
 const TEX_PADLOCK = preload("res://assets/icons/icon_padlock_gold.png")
 const TEX_COIN = preload("res://assets/icons/icon_coin_gold.png")
 const TEX_AVATAR = preload("res://assets/icons/icon_avatar_pro.png")
 const TEX_PVP = preload("res://assets/icons/icon_duel_pvp.png")
 const TEX_VS_AI = preload("res://assets/icons/icon_vs_ai.png")
-const TEX_TROPHY = preload("res://assets/icons/icon_trophy_gold.png")
 const TEX_GEAR = preload("res://assets/icons/icon_gear_silver.png")
 
 # Top Profile Avatar (Clean Default Studio Avatar)
@@ -780,7 +778,7 @@ func _build_top_bar() -> void:
 	row.add_child(gold_pill)
 	
 	# 2. Gems Pill
-	var gem_pill = _create_currency_pill_tex(TEX_TROPHY, str(PlayerProgress.gems) + " ĐÁ", Color(0.45, 0.85, 1.0))
+	var gem_pill = _create_currency_pill_tex(CustomIcon.IconType.STAR, str(PlayerProgress.gems) + " ĐÁ", Color(0.45, 0.85, 1.0))
 	lbl_gem_pill = gem_pill.find_child("AmountLbl", true, false) as Label
 	row.add_child(gem_pill)
 	
@@ -843,7 +841,7 @@ func _build_top_bar() -> void:
 	tabs_row.add_child(btn_settings)
 	row.add_child(tabs_row)
 
-func _create_currency_pill_tex(tex: Texture2D, amount_str: String, col: Color) -> PanelContainer:
+func _create_currency_pill_tex(icon_src: Variant, amount_str: String, col: Color) -> PanelContainer:
 	var p = PanelContainer.new()
 	p.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	var sb = StyleBoxFlat.new()
@@ -870,7 +868,11 @@ func _create_currency_pill_tex(tex: Texture2D, amount_str: String, col: Color) -
 	h.add_theme_constant_override("separation", 6)
 	m.add_child(h)
 	
-	var icon = _create_tex_icon(tex, Vector2(22, 22))
+	var icon: Control
+	if icon_src is Texture2D:
+		icon = _create_tex_icon(icon_src, Vector2(22, 22))
+	else:
+		icon = CustomIcon.new(int(icon_src), Vector2(20, 20), col)
 	h.add_child(icon)
 	
 	var lbl = Label.new()
@@ -1370,18 +1372,18 @@ func _build_match_select_panel() -> void:
 			switch_state(MenuState.MATCH_SETUP)
 	))
 	
-	# 3. Training Card (Unlocked Practice Mode)
+	# 3. Training Card (Smash Launcher Machine)
 	cards_row.add_child(_create_mode_card_tex(
-		"SÂN TẬP LUYỆN",
-		"TẬP LUYỆN KỸ NĂNG",
-		TEX_SHUTTLECOCK,
+		"SÂN TẬP SMASH",
+		"MÁY BUNG CẦU TỰ ĐỘNG",
+		CustomIcon.IconType.TARGET_TRAINING,
 		Color(0.40, 0.70, 0.95),
-		"Luyện phát cầu, tập smash chuẩn nhịp\nvà làm quen kỹ năng trước AI Dễ (21 điểm).",
+		"Máy tự động bung cầu liên tục từ giữa sân tới cuối sân\nđể luyện nhảy đập (Jump Smash) chuẩn nhịp.",
 		"TẬP NGAY",
 		false,
 		func():
 			if Time.get_ticks_msec() < _state_switch_cooldown_until: return
-			start_match_requested.emit(selected_player_id, "wall", 0, 21, 1)
+			start_match_requested.emit(selected_player_id, "training_machine", 0, 999, 1)
 	))
 	
 	# 4. Story Mode Card (Studio Gold Padlock Icon)
@@ -1400,7 +1402,7 @@ func _build_match_select_panel() -> void:
 	cards_row.add_child(_create_mode_card_tex(
 		"GIẢI ĐẤU VÔ ĐỊCH",
 		"CÚP THẾ GIỚI",
-		TEX_TROPHY,
+		CustomIcon.IconType.TROPHY,
 		Color(1.0, 0.65, 0.25),
 		"Đấu loại trực tiếp qua 3 hạng giải:\nPhong Trào, Quốc Gia & Kaiser Thế Giới!",
 		"ĐÃ MỞ KHÓA",
@@ -1410,7 +1412,7 @@ func _build_match_select_panel() -> void:
 			switch_state(MenuState.TOURNAMENT)
 	))
 
-func _create_mode_card_tex(title: String, tag: String, tex: Texture2D, col: Color, desc: String, status_str: String, is_locked: bool, on_click: Callable) -> PanelContainer:
+func _create_mode_card_tex(title: String, tag: String, icon_src: Variant, col: Color, desc: String, status_str: String, is_locked: bool, on_click: Callable) -> PanelContainer:
 	var p = _create_spike_translucent_panel(Vector2(250, 480), 14, Color(col.r, col.g, col.b, 0.50))
 	p.mouse_filter = Control.MOUSE_FILTER_PASS
 	
@@ -1442,7 +1444,11 @@ func _create_mode_card_tex(title: String, tag: String, tex: Texture2D, col: Colo
 	var ic_stage = CenterContainer.new()
 	ic_stage.custom_minimum_size = Vector2(210, 180)
 	var ic_size = Vector2(120, 120) if not is_locked else Vector2(84, 84)
-	var icon = _create_tex_icon(tex, ic_size)
+	var icon: Control
+	if icon_src is Texture2D:
+		icon = _create_tex_icon(icon_src, ic_size)
+	else:
+		icon = CustomIcon.new(int(icon_src), ic_size, col)
 	ic_stage.add_child(icon)
 	v.add_child(ic_stage)
 	
@@ -2304,40 +2310,21 @@ func _refresh_shop_ui() -> void:
 		c.queue_free()
 	PlayerProgress.ensure_loaded()
 	
-	var is_def = (PlayerProgress.equipped_trail == "default")
+	var can_gacha = PlayerProgress.gold_coins >= 200
 	row.add_child(_create_mode_card_tex(
-		"VỆT CẦU CHUẨN",
-		"HIỆU ỨNG MẶC ĐỊNH",
-		TEX_SHUTTLECOCK,
-		Color(0.85, 0.90, 1.0),
-		"Vệt cầu trắng tinh khiết tiêu chuẩn\ncủa giải đấu Kaiser Shuttle.",
-		"ĐANG DÙNG" if is_def else "TRANG BỊ",
-		is_def,
+		"HỘP TIẾP TẾ GACHA",
+		"THỬ VẬN MAY TÀI NGUYÊN",
+		CustomIcon.IconType.STAR,
+		Color(1.0, 0.82, 0.25),
+		"Mở hộp với 200 Xu để nhận ngẫu nhiên\n+120~350 Xu hoặc +6~18 Đá quý!",
+		"MỞ 200 XU" if can_gacha else "THIẾU XU",
+		not can_gacha,
 		func():
-			PlayerProgress.buy_or_equip_trail("default")
-			refresh_progression_ui()
-			_refresh_shop_ui()
+			var res = PlayerProgress.open_supply_box(200)
+			if res.get("ok", false):
+				refresh_progression_ui()
+				_refresh_shop_ui()
 	))
-	
-	for tid in ["lightning", "frost", "flame"]:
-		var info = PlayerProgress.SHOP_TRAILS[tid]
-		var owned = (tid in PlayerProgress.unlocked_trails)
-		var equipped = (PlayerProgress.equipped_trail == tid)
-		var btn_txt = "ĐANG DÙNG" if equipped else ("TRANG BỊ" if owned else ("MUA %d XU" % int(info["cost"])))
-		var disabled = equipped or (not owned and PlayerProgress.gold_coins < int(info["cost"]))
-		row.add_child(_create_mode_card_tex(
-			str(info["name"]).to_upper(),
-			"HIỆU ỨNG VỆT CẦU",
-			TEX_SHUTTLECOCK,
-			info["color"],
-			str(info["desc"]) + ("\n(Đã sở hữu)" if owned else ("\nGiá mở khóa: %d Xu" % int(info["cost"]))),
-			btn_txt,
-			disabled,
-			func():
-				if PlayerProgress.buy_or_equip_trail(tid):
-					refresh_progression_ui()
-					_refresh_shop_ui()
-		))
 	
 	var can_ex = PlayerProgress.gems >= 10
 	row.add_child(_create_mode_card_tex(
@@ -2353,6 +2340,41 @@ func _refresh_shop_ui() -> void:
 				refresh_progression_ui()
 				_refresh_shop_ui()
 	))
+	
+	var is_def = (PlayerProgress.equipped_trail == "default")
+	row.add_child(_create_mode_card_tex(
+		"VỆT CẦU CHUẨN",
+		"TRANG BỊ MẶC ĐỊNH",
+		CustomIcon.IconType.SHUTTLECOCK,
+		Color(0.85, 0.90, 1.0),
+		"Vệt cầu trắng tinh khiết tiêu chuẩn\ncủa giải đấu Kaiser Shuttle.",
+		"ĐANG DÙNG" if is_def else "TRANG BỊ",
+		is_def,
+		func():
+			PlayerProgress.buy_or_equip_trail("default")
+			refresh_progression_ui()
+			_refresh_shop_ui()
+	))
+	
+	for tid in ["sakura", "royal_gold", "neon_violet"]:
+		var info = PlayerProgress.SHOP_TRAILS[tid]
+		var owned = (tid in PlayerProgress.unlocked_trails)
+		var equipped = (PlayerProgress.equipped_trail == tid)
+		var btn_txt = "ĐANG DÙNG" if equipped else ("TRANG BỊ" if owned else ("MUA %d XU" % int(info["cost"])))
+		var disabled = equipped or (not owned and PlayerProgress.gold_coins < int(info["cost"]))
+		row.add_child(_create_mode_card_tex(
+			str(info["name"]).to_upper(),
+			"VỆT CẦU THỜI TRANG",
+			CustomIcon.IconType.SHUTTLECOCK,
+			info["color"],
+			str(info["desc"]) + ("\n(Đã sở hữu)" if owned else ("\nGiá mở khóa: %d Xu" % int(info["cost"]))),
+			btn_txt,
+			disabled,
+			func():
+				if PlayerProgress.buy_or_equip_trail(tid):
+					refresh_progression_ui()
+					_refresh_shop_ui()
+		))
 
 func _build_quests_panel() -> void:
 	quests_panel = Control.new()

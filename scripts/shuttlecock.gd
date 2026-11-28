@@ -631,17 +631,17 @@ func _update_trail_styling() -> void:
 		trail.width = 26.0
 	else:
 		match custom_trail_id:
-			"lightning":
-				trail.texture = TEX_TRAIL_LIGHTNING
-				trail.default_color = Color(1.0, 0.85, 0.25, 0.92)
+			"sakura":
+				trail.texture = TEX_TRAIL_SPEED
+				trail.default_color = Color(1.0, 0.55, 0.78, 0.92)
 				trail.width = 22.0
-			"frost":
-				trail.texture = TEX_TRAIL_MIRAGE
-				trail.default_color = Color(0.45, 0.85, 1.0, 0.92)
+			"royal_gold":
+				trail.texture = TEX_TRAIL_SPEED
+				trail.default_color = Color(1.0, 0.84, 0.30, 0.95)
 				trail.width = 22.0
-			"flame":
-				trail.texture = TEX_TRAIL_LIGHTNING
-				trail.default_color = Color(1.0, 0.42, 0.15, 0.95)
+			"neon_violet":
+				trail.texture = TEX_TRAIL_SPEED
+				trail.default_color = Color(0.75, 0.38, 1.0, 0.95)
 				trail.width = 24.0
 			_:
 				trail.texture = TEX_TRAIL_SPEED
