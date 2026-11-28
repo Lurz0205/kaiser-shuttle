@@ -36,6 +36,14 @@ var perfect_burst_pos: Vector2 = Vector2.ZERO
 var perfect_burst_timer: float = 0.0
 var perfect_burst_col: Color = Color(1.0, 0.9, 0.2)
 const FloatingTextManager = preload("res://scripts/ui/floating_text_manager.gd")
+const PlayerProgress = preload("res://scripts/core/player_progress.gd")
+
+var match_perfect_count: int = 0
+var match_smash_count: int = 0
+var match_dive_save_count: int = 0
+var is_tournament_match: bool = false
+var tournament_cup_id: String = ""
+var tournament_round_idx: int = 0
 var floating_text_mgr: FloatingTextManager = FloatingTextManager.new()
 var effects_overlay: Node2D = null
 
@@ -263,6 +271,8 @@ func _ready() -> void:
 	main_menu.set_network_manager(net_manager)
 	if not main_menu.start_match_requested.is_connected(_on_menu_start_match):
 		main_menu.start_match_requested.connect(_on_menu_start_match)
+	if main_menu.has_signal("start_tournament_match_requested") and not main_menu.start_tournament_match_requested.is_connected(_on_menu_start_tournament_match):
+		main_menu.start_tournament_match_requested.connect(_on_menu_start_tournament_match)
 	if not main_menu.start_pvp_match_requested.is_connected(_on_menu_start_pvp_match):
 		main_menu.start_pvp_match_requested.connect(_on_menu_start_pvp_match)
 	if not main_menu.spectate_room_requested.is_connected(_on_menu_spectate_room):
@@ -934,8 +944,22 @@ func _toggle_character_select() -> void:
 		main_menu.visible = true
 
 
+func _on_menu_start_tournament_match(cup_id: String, round_idx: int, p_id: String, r_id: String, diff: int, target_points: int) -> void:
+	is_tournament_match = true
+	tournament_cup_id = cup_id
+	tournament_round_idx = round_idx
+	_on_menu_start_match(p_id, r_id, diff, target_points, 1)
+	is_tournament_match = true
+
+
 func _on_menu_start_match(p_id: String, r_id: String, diff: int, target_points: int = 11, match_sets: int = 1) -> void:
+	if not is_tournament_match:
+		tournament_cup_id = ""
+		tournament_round_idx = 0
 	is_pvp_active = false
+	match_perfect_count = 0
+	match_smash_count = 0
+	match_dive_save_count = 0
 	if main_menu and not main_menu.pvp_player_name.is_empty():
 		pvp_local_player_name = main_menu.pvp_player_name.strip_edges().to_upper()
 	target_match_points = target_points
@@ -970,10 +994,11 @@ func _on_menu_start_match(p_id: String, r_id: String, diff: int, target_points: 
 			"gitae": player.stats = CharacterStats.create_gitae()
 			"sara": player.stats = CharacterStats.create_sara()
 			_: player.stats = CharacterStats.create_nishikawa()
-		player.move_speed_x = lerp(207.0, 238.5, (player.stats.agility - 40.0) / 59.0)
 		if player.stats:
+			player.stats.apply_player_upgrades()
 			player.stats.reset_stamina()
 			player.stats.reset_torque()
+		player.move_speed_x = lerp(207.0, 238.5, (player.stats.agility - 40.0) / 59.0)
 		
 	if ai_rival:
 		ai_rival.set_physics_process(true)
@@ -2126,22 +2151,12 @@ func _update_stats_display() -> void:
 		return
 		
 	var speed_val = current_shot_max_speed
-	var p_jump = max(FLOOR_Y - player.global_position.y, 0.0) / 45.0
-	var ai_jump = max(FLOOR_Y - ai_rival.global_position.y, 0.0) / 45.0
-	var jump_height_m = max(p_jump, ai_jump)
-	
-	var tension_str = ""
-	if rally_tension and rally_tension.tension_level > 0:
-		tension_str = "   |   %s" % rally_tension.get_status_text()
-	
+	label_spike_stats.text = "%.0f KM/H" % speed_val
 	if shuttlecock.is_boom_smash:
-		label_spike_stats.text = "%.0f km/h  |  %.2fm%s  [GOLDEN BOOM!]" % [speed_val, jump_height_m, tension_str]
 		label_spike_stats.modulate = Color(3.8, 2.5, 0.4, 1.0)
 	elif shuttlecock.is_kill_smash:
-		label_spike_stats.text = "%.0f km/h  |  %.2fm%s  [KILL SMASH]" % [speed_val, jump_height_m, tension_str]
 		label_spike_stats.modulate = Color(3.5, 1.5, 0.3, 1.0)
 	else:
-		label_spike_stats.text = "%.0f km/h  |  %.2fm%s  [SMASH]" % [speed_val, jump_height_m, tension_str]
 		label_spike_stats.modulate = Color(3.0, 1.8, 0.3, 1.0)
 
 
@@ -2432,6 +2447,16 @@ func _on_shot_hit(shot_type: String, is_smash: bool, quality: float, is_perfect:
 	
 	# Cập nhật Dynamic Rally Tension 2.0 (Heat Meter System)
 	var is_actual_smash = (shot_type == "smash" or shot_type == "kill_smash" or shot_type == "boom_smash")
+	if hitter == "player":
+		if is_perfect:
+			match_perfect_count += 1
+		if is_actual_smash:
+			match_smash_count += 1
+			if is_perfect:
+				PlayerProgress.add_quest_progress("perfect_smashes", 1)
+		if player and (player.is_diving or player.is_sliding):
+			match_dive_save_count += 1
+			PlayerProgress.add_quest_progress("dive_saves", 1)
 	var tension_lvl = 0
 	var tension_mult = 1.0
 	if rally_tension:
@@ -2523,7 +2548,8 @@ func _on_shot_hit(shot_type: String, is_smash: bool, quality: float, is_perfect:
 		var base_spd = 126.0 if is_kill else 99.4 # Giảm 70% (180 -> 126, 142 -> 99.4)
 		var floor_prox = clamp((contact_pos.y - 360.0) / 220.0, 0.0, 1.0)
 		var low_smash_boost = 1.0 + floor_prox * 0.10 # Cầu càng gần sân thì đập càng nhanh hơn tí
-		current_shot_max_speed = (base_spd + (quality * 7.0) + randf_range(-4.2, 4.2)) * tension_mult * torque_mult * low_smash_boost
+		var nishi_spark_mult = 1.10 if (hitter_node and hitter_node.stats and (hitter_node.stats.character_id == "nishikawa" or hitter_node.stats.special_skill_id == "golden_smash")) else 1.0
+		current_shot_max_speed = (base_spd + (quality * 7.0) + randf_range(-4.2, 4.2)) * tension_mult * torque_mult * low_smash_boost * nishi_spark_mult
 		
 		# Screen shake & impact flash theo lực đập thông thường:
 		shake_amount = 22.0 if is_kill else 14.0
@@ -3493,9 +3519,60 @@ func _show_match_over_dialog(champ: String) -> void:
 			lbl_score_res.text = "%d   -   %d" % [score_player, score_ai]
 		else:
 			lbl_score_res.text = "TỈ SỐ SET: %d   -   %d" % [sets_won_player, sets_won_ai]
+	
+	# Tính thưởng Xu & Đá quý sau trận + Tiến trình Giải đấu
+	var player_won = (champ == _get_p1_display_name())
+	var reward_gold = 0
+	var reward_gems = 0
+	var tourney_note = ""
+	if is_pvp_active:
+		reward_gold = 220 if player_won else 60
+		reward_gems = 5 if player_won else 0
+		if player_won:
+			PlayerProgress.add_quest_progress("pvp_wins", 1)
+	elif is_tournament_match and PlayerProgress.CUPS.has(tournament_cup_id):
+		var cup = PlayerProgress.CUPS[tournament_cup_id]
+		var rounds = cup["rounds"]
+		if player_won:
+			if tournament_round_idx >= rounds.size() - 1:
+				reward_gold = int(cup["reward_gold"])
+				reward_gems = int(cup["reward_gems"])
+				PlayerProgress.record_cup_win(tournament_cup_id)
+				tourney_note = "VÔ ĐỊCH %s!" % cup["name"]
+			else:
+				reward_gold = 120 + tournament_round_idx * 40
+				reward_gems = 5
+				tourney_note = "VƯỢT QUA VÒNG %d/%d!" % [tournament_round_idx + 1, rounds.size()]
+		else:
+			reward_gold = 40
+			tourney_note = "DỪNG BƯỚC TẠI VÒNG %d" % [tournament_round_idx + 1]
+	else:
+		var diff_idx = ai_rival.ai_difficulty if ai_rival else 1
+		var win_gold = 80 if diff_idx == 0 else (140 if diff_idx == 1 else 220)
+		reward_gold = (win_gold + match_perfect_count * 5) if player_won else 35
+		reward_gems = (3 if diff_idx == 2 else 1) if player_won else 0
+		
+	PlayerProgress.add_rewards(reward_gold, reward_gems)
+	if main_menu and main_menu.has_method("refresh_progression_ui"):
+		main_menu.refresh_progression_ui()
+	
 	if lbl_sub:
-		var mode_str = "1 SET" if total_match_sets == 1 else "BEST OF 3 SETS"
-		lbl_sub.text = "THỂ THỨC: %s (CHẠM %d ĐIỂM) | BWF RULES" % [mode_str, target_match_points]
+		var gem_txt = "  |  +%d ĐÁ" % reward_gems if reward_gems > 0 else ""
+		var extra = ("\n" + tourney_note) if not tourney_note.is_empty() else ""
+		lbl_sub.text = "THƯỞNG: +%d XU%s   |   PERFECT: %d   |   SMASH: %d%s" % [reward_gold, gem_txt, match_perfect_count, match_smash_count, extra]
+		
+	var btn_again_node = match_over_dialog.find_child("Button", true, false) as Button
+	if is_tournament_match and player_won and PlayerProgress.CUPS.has(tournament_cup_id):
+		var rounds = PlayerProgress.CUPS[tournament_cup_id]["rounds"]
+		if tournament_round_idx < rounds.size() - 1:
+			if btn_again_node:
+				btn_again_node.text = "VÒNG TIẾP THEO (%d/%d)" % [tournament_round_idx + 2, rounds.size()]
+		else:
+			if btn_again_node:
+				btn_again_node.text = "ĐẤU LẠI GIẢI"
+	else:
+		if btn_again_node:
+			btn_again_node.text = "CHƠI LẠI (PLAY AGAIN)"
 		
 	match_over_dialog.visible = true
 	if virtual_touch_pad:
@@ -3505,6 +3582,20 @@ func _show_match_over_dialog(champ: String) -> void:
 func _on_match_over_play_again() -> void:
 	if match_over_dialog:
 		match_over_dialog.visible = false
+	if is_tournament_match and PlayerProgress.CUPS.has(tournament_cup_id):
+		var rounds = PlayerProgress.CUPS[tournament_cup_id]["rounds"]
+		var player_won = (sets_won_player > sets_won_ai) or (total_match_sets == 1 and score_player > score_ai)
+		if player_won and tournament_round_idx < rounds.size() - 1:
+			tournament_round_idx += 1
+		else:
+			tournament_round_idx = 0
+		var rnd = rounds[tournament_round_idx]
+		var p_cid = player.character_id if player else "nishikawa"
+		_on_menu_start_tournament_match(tournament_cup_id, tournament_round_idx, p_cid, rnd["char"], rnd["diff"], rnd["pts"])
+		return
+	match_perfect_count = 0
+	match_smash_count = 0
+	match_dive_save_count = 0
 	current_set_index = 0
 	sets_won_player = 0
 	sets_won_ai = 0
@@ -3528,6 +3619,9 @@ func _on_match_over_play_again() -> void:
 
 
 func _on_match_over_to_menu() -> void:
+	is_tournament_match = false
+	tournament_cup_id = ""
+	tournament_round_idx = 0
 	_return_to_lobby_and_stop_match()
 
 

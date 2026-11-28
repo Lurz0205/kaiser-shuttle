@@ -8,10 +8,17 @@ func _init() -> void:
 	var CharacterStats = load("res://scripts/core/character_stats.gd")
 	var SpecialSkills = load("res://scripts/mechanics/special_skills.gd")
 	
-	# 1. Test Stats & Max Flow
+	# 1. Test Stats & Max Flow (Balanced 360 Total across all characters!)
+	var PlayerProgress = load("res://scripts/core/player_progress.gd")
+	for cid in PlayerProgress.MAX_STATS.keys():
+		var st = PlayerProgress.MAX_STATS[cid]
+		var tot = int(st["power"]) + int(st["agility"]) + int(st["control"]) + int(st["composure"])
+		assert(tot == 360, "Max total stats for %s should be 360, got %d" % [cid, tot])
+	print("✓ 0. All 5 characters balanced to exact 360 MAX total stats")
+	
 	var nishi = CharacterStats.create_nishikawa()
-	assert(nishi.max_flow == 100.0, "Nishikawa max_flow should be 100")
-	print("✓ 1. Nishikawa max_flow = %f" % nishi.max_flow)
+	assert(nishi.max_flow == 85.0, "Nishikawa buffed max_flow should be 85")
+	print("✓ 1. Nishikawa (BUFFED) max_flow = %f, Power = %f" % [nishi.max_flow, nishi.power])
 	
 	var fuji = CharacterStats.create_fuji()
 	assert(fuji.max_flow == 80.0, "Fuji max_flow should be 80")

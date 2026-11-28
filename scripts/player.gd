@@ -1246,17 +1246,22 @@ func _process_ai(delta: float) -> void:
 			ai_has_reacted = true
 	
 	# AI KÍCH HOẠT TUYỆT KỸ CHỦ ĐỘNG (HAN GITAE & SARA):
-	if stats and stats.can_use_special():
+	if stats and stats.can_use_special() and shuttlecock and shuttlecock.is_active:
 		if stats.character_id == "gitae" or stats.special_skill_id == "fire_realm":
-			if shuttlecock and shuttlecock.velocity.x > 0.0:
+			# Gitae AI bật Hỏa Ngục khi cầu bay sang sân mình hoặc bị dồn xa cầu
+			if shuttlecock.velocity.x > 0.0 or abs(s_pos.x - global_position.x) > 130.0:
 				activate_active_skill()
 		elif stats.character_id == "sara" or stats.special_skill_id == "ice_domain":
-			if shuttlecock and shuttlecock.velocity.x > 0.0:
+			# Sara AI bật Hàn Băng ngay khi rally đang diễn ra để làm chậm đối thủ
+			if shuttlecock.velocity.x > 0.0 or s_pos.x > 520.0:
 				activate_active_skill()
 	
-	# SARA AI TELEPORT TRONG ICE DOMAIN KHI Ở XA CẦU:
+	# SARA AI TELEPORT THÔNG MINH TRONG ICE DOMAIN:
 	if is_ice_domain_active and (stats and (stats.character_id == "sara" or stats.special_skill_id == "ice_domain")):
-		if abs(s_pos.x - global_position.x) > 130.0 and s_pos.x > 670.0 and s_pos.x < 1140.0:
+		var net_x_ai = tuning.net_x if tuning else 640.0
+		var tele_dist_thresh = 165.0 if ai_difficulty == 0 else (120.0 if ai_difficulty == 1 else 90.0)
+		var can_tele_x = (s_pos.x >= net_x_ai - 60.0 and s_pos.x <= 1140.0)
+		if can_tele_x and abs(s_pos.x - global_position.x) > tele_dist_thresh and randf() < (0.12 if ai_difficulty == 0 else (0.35 if ai_difficulty == 1 else 0.85)):
 			teleport_to_shuttlecock()
 	
 	# 3. KHI CẦU ĐANG BAY VỀ PHÍA SÂN AI: DI CHUYỂN ĐÓN ĐIỂM RƠI THEO ĐỘ KHÓ
@@ -2089,6 +2094,9 @@ func _execute_hit(shot_type: String, hit_status: Dictionary = {}) -> void:
 			# SARA ICE SMASH: Cú đập trong lúc bật skill làm đối thủ mất 20 Balance và -5% tốc độ di chuyển (cộng dồn)
 			balance = max(0.0, balance - 20.0)
 			sara_smash_slow_stacks += 1
+		elif opponent_player and opponent_player.stats and (opponent_player.stats.character_id == "nishikawa" or opponent_player.stats.special_skill_id == "golden_smash"):
+			# NISHIKAWA BUFF (Spark Passive): Mọi cú Smash thường của Nishikawa đều bào thêm 5 Balance đối thủ
+			balance = max(0.0, balance - 5.0)
 		var is_kill = shuttlecock and (shuttlecock.is_kill_smash or shuttlecock.current_shot_type == "kill_smash")
 		var is_golden_boom_smash = shuttlecock and (shuttlecock.is_boom_smash or shuttlecock.current_shot_type == "boom_smash")
 		

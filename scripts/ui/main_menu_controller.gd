@@ -52,8 +52,10 @@ const TEX_SKILL_FROST = preload("res://assets/icons/skills/skill_frost_spike.png
 
 # Liquid Glass WebGL-inspired Shader
 const SHADER_LIQUID_GLASS = preload("res://shaders/liquid_glass.gdshader")
+const PlayerProgress = preload("res://scripts/core/player_progress.gd")
 
 signal start_match_requested(player_char: String, rival_char: String, difficulty: int, target_points: int, match_sets: int)
+signal start_tournament_match_requested(cup_id: String, round_idx: int, player_char: String, rival_char: String, difficulty: int, target_points: int)
 signal start_pvp_match_requested(room_code: String, is_host: bool, player_char: String, target_points: int, match_sets: int, first_server: String, opponent_char: String, player_name: String, opponent_name: String)
 signal spectate_room_requested(room_code: String)
 signal touch_toggle_requested(enabled: bool)
@@ -70,8 +72,9 @@ enum MenuState {
 	MATCH_SETUP,    # Cấu hình chi tiết trận đấu với AI
 	PVP_LOBBY,      # Phòng chờ trực tuyến thời gian thực
 	ROSTER,         # Quản lý cầu thủ (Locker room grid)
-	SHOP,           # Cửa hàng (Locked)
-	QUESTS,         # Nhiệm vụ hàng ngày (Locked)
+	SHOP,           # Cửa hàng
+	QUESTS,         # Nhiệm vụ hàng ngày
+	TOURNAMENT,     # Chế độ Giải đấu (Tournament Cup)
 	SETTINGS        # Cài đặt chuyên sâu
 }
 
@@ -126,7 +129,11 @@ var pvp_panel: Control
 var roster_panel: Control
 var shop_panel: Control
 var quests_panel: Control
+var tournament_panel: Control
 var settings_panel: Control
+var lbl_gold_pill: Label = null
+var lbl_gem_pill: Label = null
+var selected_cup_id: String = "rookie"
 
 # Top Bar Widgets
 var top_bar: Control
@@ -241,9 +248,9 @@ const CHAR_DATA = {
 		"skill_icon": TEX_SKILL_WIND,
 		"standee": null,
 		"power": 82,
-		"agility": 92,
+		"agility": 91,
 		"control": 99,
-		"composure": 90,
+		"composure": 88,
 		"skill_name": "Đặc tính: Én Lượn (Flow 80)",
 		"skill_desc": "• Phong Thần Tinh Anh: Control tối đa 99, ngưỡng Flow rút ngắn còn 80.\n• Tsubame Gaeshi: Đủ 80 Flow, Bỏ nhỏ (Drop) hóa đường cầu xoáy lướt sà mép lưới (+15 Balance, +10 Accuracy).\n• Áp Lực Gió Xoáy: Địch đỡ cầu mất 20 Accuracy, 25 Balance và 30% bung cầu non.",
 		"passive": "Phong Thần Tinh Anh & Tsubame Gaeshi: Đường cầu lướt sà mép lưới cực hiểm hóc, tích Flow nhanh!"
@@ -259,10 +266,10 @@ const CHAR_DATA = {
 		"face_icon": TEX_ICON_ISABEL,
 		"skill_icon": TEX_SKILL_SHIELD,
 		"standee": TEX_STANDEE_ISABEL,
-		"power": 74,
-		"agility": 88,
-		"control": 85,
-		"composure": 96,
+		"power": 78,
+		"agility": 90,
+		"control": 93,
+		"composure": 99,
 		"skill_name": "Đặc tính: Thần Thuẫn (Flow 90)",
 		"skill_desc": "• Bức Tường Thép: Đủ 90 Flow tự động kích hoạt Mirage Counter khi đỡ Smash hoặc Cầu non.\n• Mirage Shield: Hóa giải hoàn toàn lực đập (slow-mo 1.55s), bung sâu cuối sân, hồi 20% Thể lực & +15 Accuracy.\n• Phản Chấn La Mã: Kẻ đập bị phản chấn mất 10% Thể lực & 30 Balance.",
 		"passive": "Bức Tường Thép & Mirage Shield: Hóa giải mọi cú Smash, hồi 20% thể lực & phản chấn đối thủ!"
@@ -278,10 +285,10 @@ const CHAR_DATA = {
 		"face_icon": TEX_ICON_GITAE,
 		"skill_icon": TEX_SKILL_FIRE,
 		"standee": TEX_STANDEE_GITAE,
-		"power": 92,
-		"agility": 82,
-		"control": 78,
-		"composure": 94,
+		"power": 96,
+		"agility": 86,
+		"control": 82,
+		"composure": 96,
 		"skill_name": "Đặc tính: Hỏa Ngục (Flow 100)",
 		"skill_desc": "• Hỏa Ngục (Shift/Skill - 7s): Hitbox mở rộng toàn bộ nửa sân nhà, mọi cú đánh tự động Perfect (tạm dừng đếm ngược khi đợi giao cầu).\n• Cầu Lửa Thiêu Đốt: Không thể Đập khi bật skill; cầu lửa trừ 1.5 Thể lực, 1.5 Balance & 1.5 Accuracy địch khi đỡ.\n• Hỏa Diễm Tiết Chế: Đánh Perfect chỉ tăng 8 Flow (ít hơn người thường 15 Flow).",
 		"passive": "Hỏa Ngục & Cầu Lửa Thiêu Đốt: Bao sân 100% trong 7s, thiêu đốt nhẹ mọi chỉ số đối phương!"
@@ -297,9 +304,9 @@ const CHAR_DATA = {
 		"face_icon": TEX_ICON_SARA,
 		"skill_icon": TEX_SKILL_FROST,
 		"standee": TEX_STANDEE_SARA,
-		"power": 80,
-		"agility": 96,
-		"control": 92,
+		"power": 82,
+		"agility": 97,
+		"control": 93,
 		"composure": 88,
 		"skill_name": "Đặc tính: Hàn Băng (Flow 105)",
 		"skill_desc": "• Hàn Băng Thần Vực (Shift/Skill - 12s): Đóng băng sàn địch (-20% tốc chạy), tạm dừng đếm ngược khi đợi giao cầu.\n• Không Gian Băng Giá: Space/Jump hóa Dịch Chuyển khi cầu sang sân (làm chậm thời gian 0.5s); Hitbox Băng Auto-Perfect (0 Flow trong lúc bật skill).\n• Băng Toái Kích: Smash khi bật skill tạo vệt bông tuyết, trừ 20 Balance & -5% tốc độ địch (cộng dồn, giải trừ khi hết skill).",
@@ -430,8 +437,16 @@ func switch_state(new_state: MenuState) -> void:
 		if roster_panel.visible:
 			_update_roster_view()
 	if shop_panel: shop_panel.visible = (new_state == MenuState.SHOP)
-	if quests_panel: quests_panel.visible = (new_state == MenuState.QUESTS)
+	if quests_panel:
+		quests_panel.visible = (new_state == MenuState.QUESTS)
+		if quests_panel.visible:
+			_refresh_quests_ui()
+	if tournament_panel:
+		tournament_panel.visible = (new_state == MenuState.TOURNAMENT)
+		if tournament_panel.visible:
+			_refresh_tournament_ui()
 	if settings_panel: settings_panel.visible = (new_state == MenuState.SETTINGS)
+	refresh_progression_ui()
 	
 	# Top bar visibility (Always on top on all states except TITLE)
 	if top_bar:
@@ -565,6 +580,7 @@ func _build_ui() -> void:
 	# ----------------------------------------------------
 	_build_shop_panel()
 	_build_quests_panel()
+	_build_tournament_panel()
 	
 	# ----------------------------------------------------
 	# 8. SETTINGS PANEL (The Spike Stepped Bars)
@@ -756,10 +772,18 @@ func _build_top_bar() -> void:
 	row.add_child(VSeparator.new())
 	
 	# 1. Real Gold Coin Pill
-	row.add_child(_create_currency_pill_tex(TEX_COIN, "0", Color(1.0, 0.82, 0.25)))
+	var gold_pill = _create_currency_pill_tex(TEX_COIN, str(PlayerProgress.gold_coins), Color(1.0, 0.82, 0.25))
+	lbl_gold_pill = gold_pill.find_child("AmountLbl", true, false) as Label
+	row.add_child(gold_pill)
 	
-	# 2. Next Locked Feature Pill (Ổ khóa hoàng kim 3D)
+	# 2. Gems Pill
+	var gem_pill = _create_currency_pill_tex(TEX_TROPHY, str(PlayerProgress.gems) + " ĐÁ", Color(0.45, 0.85, 1.0))
+	lbl_gem_pill = gem_pill.find_child("AmountLbl", true, false) as Label
+	row.add_child(gem_pill)
+	
+	# 3. Placeholder pill (kept hidden/compact)
 	var lock_pill = PanelContainer.new()
+	lock_pill.visible = false
 	lock_pill.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	var sb_lp = StyleBoxFlat.new()
 	sb_lp.bg_color = Color(0.10, 0.13, 0.18, 0.85)
@@ -847,6 +871,7 @@ func _create_currency_pill_tex(tex: Texture2D, amount_str: String, col: Color) -
 	h.add_child(icon)
 	
 	var lbl = Label.new()
+	lbl.name = "AmountLbl"
 	lbl.text = amount_str
 	lbl.add_theme_font_size_override("font_size", 12)
 	lbl.modulate = Color(0.96, 0.96, 0.96)
@@ -1366,16 +1391,18 @@ func _build_match_select_panel() -> void:
 		func(): pass
 	))
 	
-	# 5. Tournament Cup Card (Studio Gold Padlock Icon)
+	# 5. Tournament Cup Card (MỞ KHÓA)
 	cards_row.add_child(_create_mode_card_tex(
 		"GIẢI ĐẤU VÔ ĐỊCH",
 		"CÚP THẾ GIỚI",
-		TEX_PADLOCK,
-		Color(1.0, 0.55, 0.30),
-		"Vòng bảng và loại trực tiếp 16 hạt giống xuất sắc\ntranh cúp vô địch danh giá.",
-		"SẮP RA MẮT",
-		true,
-		func(): pass
+		TEX_TROPHY,
+		Color(1.0, 0.65, 0.25),
+		"Đấu loại trực tiếp qua 3 hạng giải:\nPhong Trào, Quốc Gia & Kaiser Thế Giới!",
+		"ĐÃ MỞ KHÓA",
+		false,
+		func():
+			if Time.get_ticks_msec() < _state_switch_cooldown_until: return
+			switch_state(MenuState.TOURNAMENT)
 	))
 
 func _create_mode_card_tex(title: String, tag: String, tex: Texture2D, col: Color, desc: String, status_str: String, is_locked: bool, on_click: Callable) -> PanelContainer:
@@ -2181,11 +2208,35 @@ func _update_roster_view() -> void:
 	
 	v.add_child(HSeparator.new())
 	
-	# Stats bars
-	v.add_child(_create_stat_bar("LỰC ĐẬP", data["power"], data["color"]))
-	v.add_child(_create_stat_bar("TỐC ĐỘ", data["agility"], Color(0.25, 0.85, 1.0)))
-	v.add_child(_create_stat_bar("KIỂM SOÁT", data["control"], Color(0.35, 0.95, 0.55)))
-	v.add_child(_create_stat_bar("TÂM LÝ", data["composure"], Color(0.85, 0.55, 1.0)))
+	# Stats bars + Upgrade buttons (Min LV = Max - 10, Max LV = Max; chênh lệch ~11%)
+	var stat_defs = [
+		["LỰC ĐẬP", "power", data["color"]],
+		["TỐC ĐỘ", "agility", Color(0.25, 0.85, 1.0)],
+		["KIỂM SOÁT", "control", Color(0.35, 0.95, 0.55)],
+		["TÂM LÝ", "composure", Color(0.85, 0.55, 1.0)],
+	]
+	for sd in stat_defs:
+		var s_row = HBoxContainer.new()
+		s_row.add_theme_constant_override("separation", 8)
+		var cur_v = PlayerProgress.get_effective_stat(selected_player_id, sd[1])
+		var max_v = PlayerProgress.get_max_stat(selected_player_id, sd[1])
+		var bar = _create_stat_bar("%s (%d/%d)" % [sd[0], cur_v, max_v], cur_v, sd[2])
+		bar.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		s_row.add_child(bar)
+		var cost = PlayerProgress.get_upgrade_cost(selected_player_id, sd[1])
+		var btn_txt = "MAX" if cost == 0 else "+1 (%d)" % cost
+		var up_btn = _create_clean_button(btn_txt, Color(1.0, 0.82, 0.25) if cost > 0 else Color(0.4, 0.8, 0.5), Vector2(76, 24), 10)
+		up_btn.disabled = (cost == 0 or PlayerProgress.gold_coins < cost)
+		var skey = sd[1]
+		up_btn.pressed.connect(func():
+			if PlayerProgress.upgrade_stat(selected_player_id, skey):
+				refresh_progression_ui()
+				_update_roster_view()
+				_update_setup_cards()
+				_update_pvp_controls()
+		)
+		s_row.add_child(up_btn)
+		v.add_child(s_row)
 	
 	v.add_child(HSeparator.new())
 	
@@ -2269,22 +2320,176 @@ func _build_quests_panel() -> void:
 	box.add_child(m)
 	
 	var v = VBoxContainer.new()
-	v.add_theme_constant_override("separation", 18)
+	v.name = "QuestsVBox"
+	v.add_theme_constant_override("separation", 14)
 	v.mouse_filter = Control.MOUSE_FILTER_PASS
 	m.add_child(v)
-	
-	var top_r = HBoxContainer.new()
+	_refresh_quests_ui()
+
+
+func _refresh_quests_ui() -> void:
+	if not quests_panel:
+		return
+	var v = quests_panel.find_child("QuestsVBox", true, false) as VBoxContainer
+	if not v:
+		return
+	for c in v.get_children():
+		c.queue_free()
+		
+	PlayerProgress.ensure_loaded()
+	var done_cnt = 0
+	for qid in PlayerProgress.quests.keys():
+		if PlayerProgress.quests[qid]["claimed"]:
+			done_cnt += 1
 	var q_lbl = Label.new()
-	q_lbl.text = "NHIỆM VỤ HÀNG NGÀY - TIẾN TRÌNH: 0 / 1000P"
+	q_lbl.text = "NHIỆM VỤ HÀNG NGÀY (ĐÃ NHẬN: %d / %d)" % [done_cnt, PlayerProgress.quests.size()]
 	q_lbl.add_theme_font_size_override("font_size", 16)
 	q_lbl.modulate = Color(1.0, 0.85, 0.3)
-	top_r.add_child(q_lbl)
-	v.add_child(top_r)
+	v.add_child(q_lbl)
 	
-	v.add_child(_create_quest_item("Điểm danh hàng ngày", "+250P", "0/1"))
-	v.add_child(_create_quest_item("Chiến thắng 2 ván đấu ở Đấu Đối Kháng Trực Tuyến", "+250P", "0/2"))
-	v.add_child(_create_quest_item("Ghi 3 điểm trực tiếp từ cú SMASH hoàn hảo", "+250P", "0/3"))
-	v.add_child(_create_quest_item("Thực hiện 5 pha cứu cầu trượt sàn thành công", "+250P", "0/5"))
+	for qid in PlayerProgress.quests.keys():
+		var q = PlayerProgress.quests[qid]
+		var rew_str = "+%d XU  +%d ĐÁ" % [int(q["gold"]), int(q["gems"])]
+		var prog_str = "%d/%d" % [int(q["prog"]), int(q["target"])]
+		var row_p = _create_quest_item(q["title"], rew_str, prog_str)
+		var h = row_p.get_child(0).get_child(0) as HBoxContainer
+		if h:
+			var btn_txt = "ĐÃ NHẬN" if q["claimed"] else ("NHẬN THƯỞNG" if int(q["prog"]) >= int(q["target"]) else "CHƯA XONG")
+			var btn_col = Color(0.45, 0.50, 0.60) if q["claimed"] else (Color(0.25, 0.90, 0.50) if int(q["prog"]) >= int(q["target"]) else Color(0.45, 0.55, 0.70))
+			var btn = _create_clean_button(btn_txt, btn_col, Vector2(130, 30), 11)
+			btn.disabled = (q["claimed"] or int(q["prog"]) < int(q["target"]))
+			btn.pressed.connect(func():
+				if PlayerProgress.claim_quest(qid):
+					refresh_progression_ui()
+					_refresh_quests_ui()
+			)
+			h.add_child(btn)
+		v.add_child(row_p)
+
+
+func refresh_progression_ui() -> void:
+	PlayerProgress.ensure_loaded()
+	if lbl_gold_pill:
+		lbl_gold_pill.text = str(PlayerProgress.gold_coins)
+	if lbl_gem_pill:
+		lbl_gem_pill.text = str(PlayerProgress.gems) + " ĐÁ"
+
+
+func _build_tournament_panel() -> void:
+	tournament_panel = Control.new()
+	tournament_panel.custom_minimum_size = Vector2(1280, 720)
+	tournament_panel.size = Vector2(1280, 720)
+	tournament_panel.position = Vector2.ZERO
+	tournament_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	tournament_panel.visible = false
+	add_child(tournament_panel)
+	
+	var back_btn = _create_clean_button("<  QUAY LẠI", Color(0.75, 0.82, 0.92), Vector2(150, 36), 12)
+	back_btn.position = Vector2(40, 80)
+	back_btn.pressed.connect(func(): switch_state(MenuState.MATCH_SELECT))
+	tournament_panel.add_child(back_btn)
+	
+	var t_box = _create_spike_translucent_panel(Vector2(1040, 520), 12, Color(1.0, 0.75, 0.25, 0.55))
+	t_box.position = Vector2(120, 125)
+	t_box.mouse_filter = Control.MOUSE_FILTER_PASS
+	tournament_panel.add_child(t_box)
+	
+	var m = MarginContainer.new()
+	m.add_theme_constant_override("margin_left", 24)
+	m.add_theme_constant_override("margin_top", 20)
+	m.add_theme_constant_override("margin_right", 24)
+	m.add_theme_constant_override("margin_bottom", 20)
+	t_box.add_child(m)
+	
+	var tv = VBoxContainer.new()
+	tv.name = "TourneyVBox"
+	tv.add_theme_constant_override("separation", 14)
+	m.add_child(tv)
+	_refresh_tournament_ui()
+
+
+func _refresh_tournament_ui() -> void:
+	if not tournament_panel:
+		return
+	var tv = tournament_panel.find_child("TourneyVBox", true, false) as VBoxContainer
+	if not tv:
+		return
+	for c in tv.get_children():
+		c.queue_free()
+		
+	PlayerProgress.ensure_loaded()
+	var hdr = Label.new()
+	hdr.text = "GIẢI ĐẤU VÔ ĐỊCH (TOURNAMENT CUP) — VẬN ĐỘNG VIÊN: %s" % CHAR_DATA[selected_player_id]["name"]
+	hdr.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	hdr.add_theme_font_size_override("font_size", 17)
+	hdr.modulate = Color(1.0, 0.85, 0.30)
+	tv.add_child(hdr)
+	
+	var cups_row = HBoxContainer.new()
+	cups_row.alignment = BoxContainer.ALIGNMENT_CENTER
+	cups_row.add_theme_constant_override("separation", 16)
+	cups_row.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	tv.add_child(cups_row)
+	
+	for cup_id in ["rookie", "national", "world"]:
+		var cup = PlayerProgress.CUPS[cup_id]
+		var card = _create_spike_translucent_panel(Vector2(315, 390), 10, Color(cup["color"].r, cup["color"].g, cup["color"].b, 0.55))
+		cups_row.add_child(card)
+		var cm = MarginContainer.new()
+		cm.add_theme_constant_override("margin_left", 16)
+		cm.add_theme_constant_override("margin_top", 14)
+		cm.add_theme_constant_override("margin_right", 16)
+		cm.add_theme_constant_override("margin_bottom", 14)
+		card.add_child(cm)
+		var cv = VBoxContainer.new()
+		cv.add_theme_constant_override("separation", 8)
+		cm.add_child(cv)
+		
+		var t_lbl = Label.new()
+		t_lbl.text = cup["name"]
+		t_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		t_lbl.add_theme_font_size_override("font_size", 14)
+		t_lbl.modulate = cup["color"]
+		cv.add_child(t_lbl)
+		
+		var d_lbl = Label.new()
+		d_lbl.text = cup["desc"]
+		d_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		d_lbl.add_theme_font_size_override("font_size", 11)
+		d_lbl.modulate = Color(0.80, 0.86, 0.94)
+		cv.add_child(d_lbl)
+		
+		cv.add_child(HSeparator.new())
+		var rounds_lbl = Label.new()
+		var r_lines = []
+		for r in cup["rounds"]:
+			var opp_name = CHAR_DATA[r["char"]]["name"]
+			r_lines.append("• %s: %s (%dđ)" % [r["label"], opp_name, int(r["pts"])])
+		rounds_lbl.text = "\n".join(r_lines)
+		rounds_lbl.add_theme_font_size_override("font_size", 11)
+		rounds_lbl.modulate = Color(0.92, 0.96, 1.0)
+		cv.add_child(rounds_lbl)
+		
+		var sp = Control.new()
+		sp.size_flags_vertical = Control.SIZE_EXPAND_FILL
+		cv.add_child(sp)
+		
+		var won_cnt = int(PlayerProgress.cups_won.get(cup_id, 0))
+		var rew_lbl = Label.new()
+		rew_lbl.text = "THƯỞNG: +%d XU  +%d ĐÁ  (ĐÃ VÔ ĐỊCH: %d)" % [int(cup["reward_gold"]), int(cup["reward_gems"]), won_cnt]
+		rew_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		rew_lbl.add_theme_font_size_override("font_size", 11)
+		rew_lbl.modulate = Color(1.0, 0.85, 0.30)
+		cv.add_child(rew_lbl)
+		
+		var start_btn = _create_clean_button("THAM CHIẾN GIẢI", cup["color"], Vector2(260, 38), 13)
+		var cid_cap = cup_id
+		start_btn.pressed.connect(func():
+			var first_r = PlayerProgress.CUPS[cid_cap]["rounds"][0]
+			start_tournament_match_requested.emit(cid_cap, 0, selected_player_id, first_r["char"], first_r["diff"], first_r["pts"])
+			visible = false
+		)
+		cv.add_child(start_btn)
 
 func _create_quest_item(title: String, reward: String, prog: String) -> PanelContainer:
 	var p = PanelContainer.new()
@@ -3080,10 +3285,15 @@ func _populate_detail_card(panel: PanelContainer, cid: String, role_label: Strin
 	stat_grid.add_theme_constant_override("h_separation", 14)
 	stat_grid.add_theme_constant_override("v_separation", 3)
 	v.add_child(stat_grid)
-	var b1 = _create_stat_bar("LỰC ĐẬP", data["power"], data["color"]); b1.size_flags_horizontal = Control.SIZE_EXPAND_FILL; stat_grid.add_child(b1)
-	var b2 = _create_stat_bar("TỐC ĐỘ", data["agility"], Color(0.25, 0.85, 1.0)); b2.size_flags_horizontal = Control.SIZE_EXPAND_FILL; stat_grid.add_child(b2)
-	var b3 = _create_stat_bar("KIỂM SOÁT", data["control"], Color(0.35, 0.95, 0.55)); b3.size_flags_horizontal = Control.SIZE_EXPAND_FILL; stat_grid.add_child(b3)
-	var b4 = _create_stat_bar("TÂM LÝ", data["composure"], Color(0.85, 0.55, 1.0)); b4.size_flags_horizontal = Control.SIZE_EXPAND_FILL; stat_grid.add_child(b4)
+	var is_ai_role = (role_label.find("AI") != -1)
+	var p_v = data["power"] if is_ai_role else PlayerProgress.get_effective_stat(cid, "power")
+	var a_v = data["agility"] if is_ai_role else PlayerProgress.get_effective_stat(cid, "agility")
+	var c_v = data["control"] if is_ai_role else PlayerProgress.get_effective_stat(cid, "control")
+	var m_v = data["composure"] if is_ai_role else PlayerProgress.get_effective_stat(cid, "composure")
+	var b1 = _create_stat_bar("LỰC ĐẬP", p_v, data["color"]); b1.size_flags_horizontal = Control.SIZE_EXPAND_FILL; stat_grid.add_child(b1)
+	var b2 = _create_stat_bar("TỐC ĐỘ", a_v, Color(0.25, 0.85, 1.0)); b2.size_flags_horizontal = Control.SIZE_EXPAND_FILL; stat_grid.add_child(b2)
+	var b3 = _create_stat_bar("KIỂM SOÁT", c_v, Color(0.35, 0.95, 0.55)); b3.size_flags_horizontal = Control.SIZE_EXPAND_FILL; stat_grid.add_child(b3)
+	var b4 = _create_stat_bar("TÂM LÝ", m_v, Color(0.85, 0.55, 1.0)); b4.size_flags_horizontal = Control.SIZE_EXPAND_FILL; stat_grid.add_child(b4)
 	
 	v.add_child(HSeparator.new())
 	

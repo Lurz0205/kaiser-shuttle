@@ -379,11 +379,11 @@ static func create_nishikawa() -> Resource:
 	s.character_name = "Nishikawa (Tia chớp vàng)"
 	s.special_skill_id = "golden_smash"
 	s.special_skill_name = "Golden Smash"
-	s.power = 96.0
-	s.agility = 78.0
-	s.control = 75.0
-	s.composure = 82.0
-	s.max_flow = 100.0
+	s.power = 99.0
+	s.agility = 87.0
+	s.control = 84.0
+	s.composure = 90.0
+	s.max_flow = 85.0
 	return s
 
 static func create_fuji() -> Resource:
@@ -393,9 +393,9 @@ static func create_fuji() -> Resource:
 	s.special_skill_id = "tsubame_gaeshi"
 	s.special_skill_name = "Tsubame Gaeshi"
 	s.power = 82.0
-	s.agility = 92.0
+	s.agility = 91.0
 	s.control = 99.0
-	s.composure = 90.0
+	s.composure = 88.0
 	s.max_flow = 80.0
 	return s
 
@@ -405,10 +405,10 @@ static func create_wall() -> Resource:
 	s.character_name = "Isabel (Nữ hoàng của đấu trường La Mã)"
 	s.special_skill_id = "mirage_counter"
 	s.special_skill_name = "Mirage Shield"
-	s.power = 75.0
-	s.agility = 88.0
-	s.control = 84.0
-	s.composure = 96.0
+	s.power = 78.0
+	s.agility = 90.0
+	s.control = 93.0
+	s.composure = 99.0
 	s.max_flow = 90.0
 	return s
 
@@ -418,10 +418,10 @@ static func create_gitae() -> Resource:
 	s.character_name = "Han Gitae (Bão lửa tiên phong)"
 	s.special_skill_id = "fire_realm"
 	s.special_skill_name = "Infernal Flame Realm"
-	s.power = 92.0
-	s.agility = 82.0
-	s.control = 78.0
-	s.composure = 94.0
+	s.power = 96.0
+	s.agility = 86.0
+	s.control = 82.0
+	s.composure = 96.0
 	s.max_flow = 100.0
 	return s
 
@@ -431,12 +431,20 @@ static func create_sara() -> Resource:
 	s.character_name = "Sara (Băng giá toàn năng)"
 	s.special_skill_id = "ice_domain"
 	s.special_skill_name = "Glacial Frost Domain"
-	s.power = 80.0
-	s.agility = 96.0
-	s.control = 92.0
+	s.power = 82.0
+	s.agility = 97.0
+	s.control = 93.0
 	s.composure = 88.0
 	s.max_flow = 105.0
 	return s
+
+func apply_player_upgrades() -> void:
+	var pp = load("res://scripts/core/player_progress.gd")
+	if pp:
+		power = float(pp.get_effective_stat(character_id, "power"))
+		agility = float(pp.get_effective_stat(character_id, "agility"))
+		control = float(pp.get_effective_stat(character_id, "control"))
+		composure = float(pp.get_effective_stat(character_id, "composure"))
 
 static func create_cannon() -> Resource:
 	return create_nishikawa()
